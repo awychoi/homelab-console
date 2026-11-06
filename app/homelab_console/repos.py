@@ -33,6 +33,7 @@ import time
 from collections import Counter
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any, TYPE_CHECKING
 from urllib import error as urlerror
@@ -94,6 +95,15 @@ UNREACHABLE_MARKERS = (
     "timed out",
 )
 STATUS_CAP = 500
+ACTIVITY_DAYS = 14
+ACTIVITY_WINDOW_DAYS = 90
+ACTIVITY_MAX_COMMITS = 2000
+ACTIVITY_CACHE_TTL = 300.0
+LAST_COMMIT_CACHE_TTL = 300.0
+_activity_cache: dict[str, tuple[str, float, dict[str, Any]]] = {}
+_activity_cache_lock = threading.Lock()
+_last_commit_cache: dict[str, tuple[str, float, dict[str, Any]]] = {}
+_last_commit_cache_lock = threading.Lock()
 
 
 class RepoError(RuntimeError):
@@ -551,6 +561,7 @@ def _parse_status(text: str) -> dict[str, Any]:
     behind: int | None = None
     entries: list[dict[str, Any]] = []
     total_entries = 0
+    conflicts = 0
     truncated = False
     index = 0
     while index < len(records):
@@ -586,6 +597,7 @@ def _parse_status(text: str) -> dict[str, Any]:
             orig = records[index] if index < len(records) else ""
             index += 1
         elif line.startswith("u "):
+            conflicts += 1
             parts = line.split(" ", 10)
             if len(parts) < 11:
                 continue
@@ -622,6 +634,7 @@ def _parse_status(text: str) -> dict[str, Any]:
         "behind": behind,
         "entries": entries,
         "total_entries": total_entries,
+        "conflicts": conflicts,
         "entries_truncated": truncated,
     }
 
@@ -639,7 +652,78 @@ def _ahead_behind(repo: Path, upstream: str) -> tuple[int | None, int | None]:
         return None, None
 
 
-def _last_commit(repo: Path) -> dict[str, Any]:
+def _empty_commit_activity() -> dict[str, Any]:
+    return {
+        "last_7d": 0,
+        "last_30d": 0,
+        "days": [0] * ACTIVITY_DAYS,
+    }
+
+
+def _commit_activity(repo: Path, head: str) -> dict[str, Any]:
+    """Commit cadence for the pulse views.
+
+    One capped git log call is enough for the 14-day sparkline and the
+    7/30-day counts.  The scan loop runs every 10 seconds, so cache by HEAD
+    and reuse the result until the tip moves (or the cache ages out) instead of
+    walking history on every poll.
+    """
+    empty = _empty_commit_activity()
+    if not head or head == "(initial)":
+        return empty
+    key = str(repo.resolve())
+    now = time.time()
+    with _activity_cache_lock:
+        cached = _activity_cache.get(key)
+        if cached and cached[0] == head and now - cached[1] < ACTIVITY_CACHE_TTL:
+            return copy.deepcopy(cached[2])
+
+    activity = _empty_commit_activity()
+    log = _git(
+        repo,
+        "log",
+        f"--since={ACTIVITY_WINDOW_DAYS} days ago",
+        "--format=%ct",
+        f"--max-count={ACTIVITY_MAX_COMMITS}",
+        timeout=25,
+    )
+    timestamps: list[int] = []
+    if log.returncode == 0:
+        for line in log.stdout.splitlines():
+            try:
+                timestamps.append(int(line.strip()))
+            except ValueError:
+                continue
+    cutoff_7 = now - 7 * 86400
+    cutoff_30 = now - 30 * 86400
+    activity["last_7d"] = sum(1 for ts in timestamps if ts >= cutoff_7)
+    activity["last_30d"] = sum(1 for ts in timestamps if ts >= cutoff_30)
+    start = date.today() - timedelta(days=ACTIVITY_DAYS - 1)
+    for ts in timestamps:
+        try:
+            day = datetime.fromtimestamp(ts).date()
+        except (OverflowError, OSError, ValueError):
+            continue
+        offset = (day - start).days
+        if 0 <= offset < ACTIVITY_DAYS:
+            activity["days"][offset] += 1
+    with _activity_cache_lock:
+        _activity_cache[key] = (head, now, copy.deepcopy(activity))
+        if len(_activity_cache) > 600:
+            oldest = sorted(_activity_cache.items(), key=lambda item: item[1][1])[:100]
+            for cached_key, _ in oldest:
+                _activity_cache.pop(cached_key, None)
+    return activity
+
+
+def _last_commit(repo: Path, head: str = "") -> dict[str, Any]:
+    key = str(repo.resolve())
+    now = time.time()
+    if head:
+        with _last_commit_cache_lock:
+            cached = _last_commit_cache.get(key)
+            if cached and cached[0] == head and now - cached[1] < LAST_COMMIT_CACHE_TTL:
+                return copy.deepcopy(cached[2])
     result = _git(
         repo,
         "log",
@@ -648,16 +732,67 @@ def _last_commit(repo: Path) -> dict[str, Any]:
         "--date=format:%Y-%m-%d %H:%M",
         timeout=15,
     )
-    if result.returncode != 0 or not result.stdout.strip():
-        return {}
-    parts = result.stdout.rstrip("\n").split("\0")
-    if len(parts) < 4:
-        return {}
+    commit: dict[str, Any] = {}
+    if result.returncode == 0 and result.stdout.strip():
+        parts = result.stdout.rstrip("\n").split("\0")
+        if len(parts) >= 4:
+            try:
+                at = int(parts[1])
+            except ValueError:
+                at = 0
+            commit = {"sha": parts[0], "at": at, "date": parts[2], "subject": parts[3]}
+    if head:
+        with _last_commit_cache_lock:
+            _last_commit_cache[key] = (head, now, copy.deepcopy(commit))
+            if len(_last_commit_cache) > 600:
+                oldest = sorted(_last_commit_cache.items(), key=lambda item: item[1][1])[:100]
+                for cached_key, _ in oldest:
+                    _last_commit_cache.pop(cached_key, None)
+    return commit
+
+
+def _last_touch_at(repo: Path, entries: list[dict[str, Any]], last_commit_at: int) -> int:
+    """Newest mtime among the dirty paths, falling back to the last commit.
+
+    A working tree can move for days without a commit.  This is a filesystem
+    read of at most 50 entries, no git process, and it keeps "dormant" honest
+    for repositories that are actively edited but rarely committed.
+    """
+    newest = int(last_commit_at or 0)
+    root = repo.resolve()
+    for entry in entries[:50]:
+        if entry.get("ignored"):
+            continue
+        raw = str(entry.get("path") or "")
+        if not raw:
+            continue
+        try:
+            resolved = (repo / raw).resolve()
+            if resolved != root and root not in resolved.parents:
+                continue
+            newest = max(newest, int(resolved.lstat().st_mtime))
+        except (OSError, ValueError):
+            continue
+    return newest
+
+
+def _last_fetch_at(repo: Path) -> int:
+    """Timestamp of the last fetch, if git left a FETCH_HEAD behind.
+
+    This is a cheap filesystem read, not another git process.  It lets the
+    pulse views distinguish "behind origin as of a minute ago" from "behind
+    origin as of last month" without claiming the remote was just contacted.
+    """
+    dotgit = repo / ".git"
     try:
-        at = int(parts[1])
-    except ValueError:
-        at = 0
-    return {"sha": parts[0], "at": at, "date": parts[2], "subject": parts[3]}
+        if dotgit.is_file():
+            text = dotgit.read_text(encoding="utf-8", errors="replace")[:200]
+            if text.startswith("gitdir:"):
+                dotgit = (repo / text.split(":", 1)[1].strip()).resolve()
+        fetch_head = dotgit / "FETCH_HEAD"
+        return int(fetch_head.stat().st_mtime) if fetch_head.is_file() else 0
+    except (OSError, ValueError):
+        return 0
 
 
 def _origin(repo: Path) -> str:
@@ -727,7 +862,11 @@ def repo_row(path: Path, root: Path, cfg: GiteaConfig) -> dict[str, Any]:
             "entries": [],
             "entries_truncated": False,
             "entries_total": 0,
+            "conflicts": 0,
             "last_commit": {},
+            "commit_activity": _empty_commit_activity(),
+            "last_touch_at": 0,
+            "last_fetch_at": 0,
             "origin": "",
             "github": None,
             "lfs": False,
@@ -762,7 +901,7 @@ def repo_row(path: Path, root: Path, cfg: GiteaConfig) -> dict[str, Any]:
         (ahead is not None and ahead > 0) or (ahead is None and new_branch)
     ))
     entries = parsed["entries"]
-    ignored_paths = _ignored_paths(path)
+    ignored_paths = _ignored_paths(path) if entries else set()
     for entry in entries:
         entry["ignored"] = entry["path"] in ignored_paths
     selectable_entries = [entry for entry in entries if not entry.get("ignored")]
@@ -796,6 +935,10 @@ def repo_row(path: Path, root: Path, cfg: GiteaConfig) -> dict[str, Any]:
             "checked_at": 0,
         }
 
+    last_commit = _last_commit(path, parsed["head"])
+    commit_activity = _commit_activity(path, parsed["head"])
+    last_touch_at = _last_touch_at(path, entries, last_commit.get("at", 0))
+    last_fetch_at = _last_fetch_at(path)
     return {
         **identity,
         "error": "",
@@ -813,7 +956,11 @@ def repo_row(path: Path, root: Path, cfg: GiteaConfig) -> dict[str, Any]:
         "entries": entries,
         "entries_truncated": parsed["entries_truncated"],
         "entries_total": parsed["total_entries"],
-        "last_commit": _last_commit(path),
+        "conflicts": parsed["conflicts"],
+        "last_commit": last_commit,
+        "commit_activity": commit_activity,
+        "last_touch_at": last_touch_at,
+        "last_fetch_at": last_fetch_at,
         "origin": redact(origin),
         "github": ({"owner": github[0], "repo": github[1], "url": github_url(*github)} if github else None),
         "lfs": lfs,
@@ -2241,13 +2388,34 @@ def _summarise(rows: list[dict[str, Any]]) -> dict[str, Any]:
     gitea_behind = sum(1 for row in rows if (row.get("gitea") or {}).get("status") in ("behind", "missing"))
     gitea_errors = sum(1 for row in rows if (row.get("gitea") or {}).get("status") in ("auth", "unreachable", "error"))
     unknown = sum(1 for row in rows if (row.get("gitea") or {}).get("status") == "unknown")
+    activity_days = [0] * ACTIVITY_DAYS
+    commits_7d = commits_30d = 0
+    active_repos = 0
+    quiet_repos = 0
+    now = time.time()
+    for row in rows:
+        activity = row.get("commit_activity") or {}
+        last_7d = int(activity.get("last_7d") or 0)
+        last_30d = int(activity.get("last_30d") or 0)
+        commits_7d += last_7d
+        commits_30d += last_30d
+        if last_30d:
+            active_repos += 1
+        days = activity.get("days") or []
+        for index in range(min(ACTIVITY_DAYS, len(days))):
+            activity_days[index] += int(days[index] or 0)
+        touch_at = int(row.get("last_touch_at") or (row.get("last_commit") or {}).get("at") or 0)
+        if not touch_at or now - touch_at > ACTIVITY_WINDOW_DAYS * 86400:
+            quiet_repos += 1
     attention = 0
     clean = 0
     for row in rows:
         gitea_status = (row.get("gitea") or {}).get("status")
         needs = row.get("needs") or {}
         bad = bool(
-            needs.get("commit")
+            row.get("error")
+            or int(row.get("conflicts") or 0) > 0
+            or needs.get("commit")
             or needs.get("push")
             or int(row.get("behind") or 0) > 0
             or gitea_status in ("behind", "missing", "auth", "unreachable", "error")
@@ -2277,6 +2445,11 @@ def _summarise(rows: list[dict[str, Any]]) -> dict[str, Any]:
         "gitea_unknown": unknown,
         "attention": attention,
         "clean": clean,
+        "commits_7d": commits_7d,
+        "commits_30d": commits_30d,
+        "active_repos": active_repos,
+        "quiet_repos": quiet_repos,
+        "activity_days": activity_days,
     }
 
 

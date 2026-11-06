@@ -185,7 +185,7 @@ DEFAULTS: dict[str, Any] = {
     "repo_poll_interval_s": 10,
     "auto_update_enabled": False,
     "health_timeout_s": 90,
-    "theme": "dark",
+    "theme": "system",
     "check_releases_on_start": True,
 }
 

@@ -109,8 +109,8 @@ Repo street is optional and not needed to deploy to a Pi.
 
 ### Appearance
 
-Dark, Light or System. The choice is stored server-side and mirrored in
-`localStorage` for a flash-free first paint.
+System (the default for a fresh install), Dark or Light. The choice is stored
+server-side and mirrored in `localStorage` for a flash-free first paint.
 
 ## Stack safety and backup profiles
 

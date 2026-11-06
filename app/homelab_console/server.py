@@ -1617,9 +1617,9 @@ class ConsoleHandler(BaseHTTPRequestHandler):
             text = data.decode("utf-8")
             text = text.replace("__HLC_TOKEN__", html.escape(self.server.token, quote=True))
             text = text.replace("__HLC_VERSION__", html.escape(VERSION, quote=True))
-            theme = str(self.server.app.settings.get("theme", "dark"))
+            theme = str(self.server.app.settings.get("theme", "system"))
             if theme not in ("dark", "light", "system"):
-                theme = "dark"
+                theme = "system"
             text = text.replace("__HLC_THEME_MODE__", html.escape(theme, quote=True))
             data = text.encode("utf-8")
         self.send_response(200)

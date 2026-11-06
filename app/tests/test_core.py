@@ -1014,6 +1014,7 @@ class ConfigTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             (root / ".hlc").mkdir()
+            self.assertEqual(Settings.load(root).get("theme"), "system")
             (root / ".hlc" / "config.json").write_text('{"theme": "carbon"}')
             self.assertEqual(Settings.load(root).get("theme"), "dark")
             (root / ".hlc" / "config.json").write_text('{"theme": "light"}')

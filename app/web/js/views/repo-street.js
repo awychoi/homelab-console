@@ -1,15 +1,15 @@
 import * as ui from '../ui.js';
 import { rootsFromSettings, rootsLabel } from '../repoRoots.js';
+import {
+  activityBars, activitySummaryHtml, allRepos, backupSummary, bindRepoFocus, commitListHtml,
+  focusRepos, formatAgeDays, medianCommitAge, quietReposHtml, reposSnapshot,
+} from '../repoMetrics.js';
 import { pageHead, statTile, emptyState, giteaAuthBanner } from './common.js';
 
 const { esc, icon } = ui;
 
 function reposState(ctx) {
-  return ctx.state?.repos || null;
-}
-
-function allRepos(ctx) {
-  return reposState(ctx)?.repos || [];
+  return reposSnapshot(ctx);
 }
 
 function healthTone(state) {
@@ -53,15 +53,38 @@ function healthCard({ title, iconName, entry, detail, chips = [], action = '', t
   </div>`;
 }
 
-function attentionItems(repos, connectivity) {
+function attentionItems(repos) {
   const items = [];
   for (const repo of repos) {
     const name = repo.rel;
+    if (repo.error) {
+      items.push({ tone: 'bad', title: name, detail: `git error: ${repo.error}`, filter: 'all' });
+      continue;
+    }
+    if (repo.conflicts) {
+      items.push({
+        tone: 'bad',
+        title: name,
+        detail: `${repo.conflicts} unresolved merge conflict${repo.conflicts === 1 ? '' : 's'} in the working tree`,
+        filter: 'commit',
+      });
+    }
     if (repo.needs?.commit) {
+      const entries = (repo.entries || []).filter((entry) => !entry.ignored);
+      const staged = entries.filter((entry) => entry.staged).length;
+      const unstaged = entries.filter((entry) => entry.unstaged && !entry.untracked).length;
+      const untracked = entries.filter((entry) => entry.untracked).length;
+      const composition = [
+        staged ? `${staged} staged` : '',
+        unstaged ? `${unstaged} unstaged` : '',
+        untracked ? `${untracked} new` : '',
+        repo.ignored_count ? `${repo.ignored_count} ignored hidden` : '',
+      ].filter(Boolean).join(' · ');
+      const touched = repo.last_touch_at ? ` · last touched ${ui.ago(repo.last_touch_at)}` : '';
       items.push({
         tone: 'warn',
         title: name,
-        detail: `${repo.dirty_count} file${repo.dirty_count === 1 ? '' : 's'} to commit${repo.ignored_count ? ` · ${repo.ignored_count} ignored hidden` : ''}`,
+        detail: `${repo.dirty_count} file${repo.dirty_count === 1 ? '' : 's'} to commit${composition ? ` · ${composition}` : ''}${touched}`,
         filter: 'commit',
       });
     }
@@ -104,19 +127,6 @@ function attentionHtml(items) {
       <button class="btn ghost sm" type="button" data-repo-review="${esc(item.filter)}" data-repo-name="${esc(item.title)}">Review</button>
     </li>`).join('')}
   </ul>${items.length > 9 ? `<div class="card-foot muted tiny">+${items.length - 9} more in Repositories</div>` : ''}</div>`;
-}
-
-function recentHtml(events) {
-  const rows = events.filter((event) => event.kind === 'repo').slice(0, 8);
-  if (!rows.length) {
-    return `<div class="card"><div class="card-body attention-empty"><span class="status-dot"></span><span class="muted">No repo activity yet. Commits, pushes and Gitea syncs appear here.</span></div></div>`;
-  }
-  return `<div class="card"><ul class="repo-events">
-    ${rows.map((event) => `<li class="repo-event">
-      <span class="stat-icon ${event.status === 'warning' ? 'warn' : event.status === 'error' ? 'bad' : 'ok'}">${icon('git', 13)}</span>
-      <div><div class="repo-event-message">${esc(event.message)}</div><div class="repo-event-time muted tiny">${esc(ui.ago(event.ts))} · ${esc(event.status || 'info')}</div></div>
-    </li>`).join('')}
-  </ul></div>`;
 }
 
 function queueHtml(queue) {
@@ -162,7 +172,10 @@ function contentHtml(ctx) {
   const behind = repos.filter((repo) => repo.behind > 0).length;
   const authErrors = repos.filter((repo) => repo.gitea?.status === 'auth').length;
   const giteaBehind = repos.filter((repo) => ['behind', 'missing'].includes(repo.gitea?.status)).length;
-  const items = attentionItems(repos, connectivity);
+  const items = attentionItems(repos);
+  const giteaConfigured = snapshot.gitea_configured !== false;
+  const backup = backupSummary(repos, { configured: giteaConfigured });
+  const medianAge = medianCommitAge(repos);
   const stale = !connectivity.checked_at || (Date.now() / 1000 - Number(connectivity.checked_at) > 300);
   const checking = connectivity.state === 'checking' || connectivity.github?.state === 'checking' || connectivity.gitea?.state === 'checking';
   const checkButton = `<button class="btn ghost sm" type="button" data-repo-check-connections ${checking ? 'disabled' : ''}>${checking ? '<span class="spinner sm"></span> Checking…' : `${icon('refresh', 12)} Check connections`}</button>`;
@@ -180,7 +193,14 @@ function contentHtml(ctx) {
     ${statTile({ label: 'Repositories', value: String(summary.total || 0), sub: `${summary.github || 0} with GitHub · ${(summary.total || 0) - (summary.github || 0)} local-only`, iconName: 'git' })}
     ${statTile({ label: 'Files to commit', value: String(summary.dirty_files || 0), sub: summary.dirty_repos ? `${ui.plural(summary.dirty_repos, 'repo')} dirty${summary.ignored_files ? ` · ${summary.ignored_files} ignored hidden` : ''}` : 'all working trees clean', iconName: 'commit', toneName: summary.dirty_repos ? 'warn' : 'ok', valueTone: summary.dirty_repos ? 'text-warn' : '' })}
     ${statTile({ label: 'Commits to push', value: String(summary.ahead_commits || 0), sub: summary.ahead_repos ? `${ui.plural(summary.ahead_repos, 'repo')} ahead of GitHub` : 'GitHub is current', iconName: 'upload', toneName: summary.ahead_repos ? 'warn' : 'ok', valueTone: summary.ahead_repos ? 'text-warn' : '' })}
-    ${statTile({ label: 'Gitea backup', value: gitea.checked_at ? String(summary.gitea_behind || 0) : '—', sub: gitea.checked_at ? `${ui.plural(summary.gitea_checked || 0, 'repo')} checked · ${ui.ago(gitea.checked_at)}` : 'not checked yet', iconName: 'shield', toneName: summary.gitea_behind ? 'warn' : gitea.checked_at ? 'ok' : '', valueTone: summary.gitea_behind ? 'text-warn' : '' })}
+    ${statTile({
+      label: 'Backup coverage',
+      value: !backup.configured || !backup.checked || !backup.eligible ? '—' : `${backup.synced}<small> / ${backup.eligible}</small>`,
+      sub: !backup.configured ? 'Gitea is not configured' : !backup.checked ? 'refs not checked yet' : !backup.eligible ? 'no repositories eligible for backup' : `${backup.pct}% of eligible refs in sync · ${ui.ago(gitea.checked_at)}`,
+      iconName: 'shield',
+      toneName: backup.configured && backup.checked && backup.eligible && backup.synced === backup.eligible ? 'ok' : backup.configured && backup.checked && backup.synced < backup.eligible ? 'warn' : '',
+      valueTone: backup.configured && backup.checked && backup.eligible && backup.synced < backup.eligible ? 'text-warn' : '',
+    })}
   </div>
   <div class="grid cols-4 health-grid">
     ${healthCard({
@@ -207,17 +227,33 @@ function contentHtml(ctx) {
     })}
     ${queueHtml(queue)}
   </div>
+  <div class="card repo-pulse-card section">
+    <div class="card-head">
+      <div class="health-icon info">${icon('activity', 16)}</div>
+      <div><div class="card-title">Repo pulse</div><div class="card-sub">commit cadence and repository freshness · last 14 days</div></div>
+      <div class="card-actions"><a class="btn ghost sm" href="#/repo-pulse">${icon('activity', 12)} Open pulse</a></div>
+    </div>
+    <div class="card-body">
+      <div class="repo-pulse-chart">${activityBars(summary.activity_days || [])}</div>
+      <div class="repo-pulse-side">
+        ${activitySummaryHtml(summary, repos)}
+        <div class="pulse-note">${medianAge === null ? 'No commit history yet.' : `Median repository is ${esc(formatAgeDays(medianAge))} since its last commit.`}</div>
+      </div>
+    </div>
+  </div>
   <div class="grid cols-2 section">
     <div>
       <div class="section-head"><div class="section-title">Needs attention <span class="count">${items.length}</span></div><div class="section-sub">commit, push, pull and backup work</div></div>
       ${attentionHtml(items)}
+      <div class="section-head mt-3"><div class="section-title">Quiet repositories <span class="count">${Number(summary.quiet_repos || 0)}</span></div><div class="section-sub">no commits or edits in 90 days</div></div>
+      ${quietReposHtml(repos, 5)}
     </div>
     <div>
-      <div class="section-head"><div class="section-title">Recent repo activity</div><div class="section-sub">commits, pushes and Gitea syncs</div></div>
-      ${recentHtml(ctx.state?.activity || [])}
+      <div class="section-head"><div class="section-title">Recent commits</div><div class="section-sub">latest commit across every repository</div></div>
+      ${commitListHtml(repos, ctx.state?.activity || [], 5)}
     </div>
   </div>
-  <div class="hint mt-2">Connectivity checks are a short HTTPS probe to github.com and the Gitea version endpoint; they run when you open this overview, press Check connections, or finish a GitHub push or Gitea sync. Gitea ref comparison runs at startup, after a repo commit/push, and on demand; mirroring stays explicit.</div>`;
+  <div class="hint mt-2">Activity metrics come from local git history and are cached until a branch tip changes. Connectivity checks are a short HTTPS probe to github.com and the Gitea version endpoint; they run when you open this overview, press Check connections, or finish a GitHub push or Gitea sync. Gitea ref comparison runs at startup, after a repo commit/push, and on demand; mirroring stays explicit.</div>`;
 }
 
 export default {
@@ -240,15 +276,9 @@ export default {
       }).catch(() => {});
     }
 
-    const focusRepos = (filter, name = '') => {
-      if (!ctx.uiState.repos) ctx.uiState.repos = { filter: 'all', q: '', selection: null };
-      ctx.uiState.repos.filter = filter || 'all';
-      ctx.uiState.repos.q = name || '';
-      ctx.navigate('#/repos');
-    };
-
+    bindRepoFocus(root, ctx);
     root.querySelectorAll('[data-repo-review]').forEach((button) => {
-      button.addEventListener('click', () => focusRepos(button.dataset.repoReview, button.dataset.repoName || ''));
+      button.addEventListener('click', () => focusRepos(ctx, button.dataset.repoReview, button.dataset.repoName || ''));
     });
     root.querySelectorAll('[data-repo-check-connections]').forEach((button) => {
       button.addEventListener('click', async () => {

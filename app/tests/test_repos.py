@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -707,6 +708,79 @@ class ConnectivityTests(unittest.TestCase):
         with mock.patch.object(repos, "_probe_http", return_value=auth):
             result = repos.probe_gitea(cfg, "")
         self.assertEqual(result["state"], "auth")
+
+
+class CommitMetricsTests(unittest.TestCase):
+    def test_commit_activity_feeds_the_repo_summary(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp).resolve()
+            local = base / "local"
+            make_repo(local)
+            cfg = repos.GiteaConfig(root=base, url="https://gitea.invalid", owner="example")
+            row = repos.repo_row(local, base, cfg)
+            self.assertEqual(len(row["commit_activity"]["days"]), 14)
+            self.assertGreaterEqual(row["commit_activity"]["last_30d"], 1)
+            summary = repos._summarise([row])
+            self.assertGreaterEqual(summary["commits_30d"], 1)
+            self.assertEqual(summary["active_repos"], 1)
+            self.assertEqual(summary["quiet_repos"], 0)
+            self.assertEqual(len(summary["activity_days"]), 14)
+
+    def test_merge_conflicts_are_reported(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp).resolve()
+            local = base / "conflict"
+            make_repo(local)
+            branch = run("git", "rev-parse", "--abbrev-ref", "HEAD", cwd=local).stdout.strip()
+            run("git", "checkout", "-qb", "feature", cwd=local)
+            (local / "f.txt").write_text("feature\n")
+            run("git", "commit", "-qam", "feature", cwd=local)
+            run("git", "checkout", "-q", branch, cwd=local)
+            (local / "f.txt").write_text("base\n")
+            run("git", "commit", "-qam", "base", cwd=local)
+            subprocess.run(
+                ["git", "merge", "feature"],
+                cwd=local, text=True, capture_output=True, check=False,
+            )
+            cfg = repos.GiteaConfig(root=base, url="https://gitea.invalid", owner="example")
+            row = repos.repo_row(local, base, cfg)
+            self.assertEqual(row["conflicts"], 1)
+            self.assertTrue(row["needs"]["commit"])
+
+    def test_last_touch_and_fetch_metadata(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp).resolve()
+            local = base / "local"
+            make_repo(local)
+            env = {
+                **os.environ,
+                "GIT_AUTHOR_DATE": "2020-01-01T00:00:00",
+                "GIT_COMMITTER_DATE": "2020-01-01T00:00:00",
+            }
+            (local / "f.txt").write_text("two\n")
+            subprocess.run(["git", "add", "f.txt"], cwd=local, check=True, capture_output=True)
+            subprocess.run(["git", "commit", "-qm", "old"], cwd=local, check=True, capture_output=True, env=env)
+            (local / "f.txt").write_text("dirty\n")
+            (local / ".git" / "FETCH_HEAD").write_text("unused\n", encoding="utf-8")
+            cfg = repos.GiteaConfig(root=base, url="https://gitea.invalid", owner="example")
+            row = repos.repo_row(local, base, cfg)
+            self.assertGreater(row["last_touch_at"], row["last_commit"]["at"])
+            self.assertGreater(row["last_fetch_at"], 0)
+
+    def test_activity_cache_reuses_a_tip_until_it_moves(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp).resolve()
+            local = base / "local"
+            make_repo(local)
+            head = run("git", "rev-parse", "HEAD", cwd=local).stdout.strip()
+            first = repos._commit_activity(local, head)
+            self.assertEqual(first["last_30d"], 1)
+            (local / "f.txt").write_text("two\n")
+            run("git", "add", "f.txt", cwd=local)
+            run("git", "commit", "-qm", "second", cwd=local)
+            new_head = run("git", "rev-parse", "HEAD", cwd=local).stdout.strip()
+            second = repos._commit_activity(local, new_head)
+            self.assertEqual(second["last_30d"], 2)
 
 
 class BehindsTests(unittest.TestCase):

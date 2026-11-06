@@ -5,7 +5,7 @@
   var injected = root.getAttribute('data-theme-mode') || '';
   var stored = '';
   try { stored = localStorage.getItem('hlc-theme') || ''; } catch (e) { stored = ''; }
-  var mode = modes.indexOf(injected) >= 0 ? injected : (modes.indexOf(stored) >= 0 ? stored : 'dark');
+  var mode = modes.indexOf(injected) >= 0 ? injected : (modes.indexOf(stored) >= 0 ? stored : 'system');
   var media = window.matchMedia('(prefers-color-scheme: light)');
 
   function resolve(value) {
@@ -13,13 +13,13 @@
     return value === 'light' ? 'light' : 'dark';
   }
   function apply(value) {
-    mode = modes.indexOf(value) >= 0 ? value : 'dark';
+    mode = modes.indexOf(value) >= 0 ? value : 'system';
     var theme = resolve(mode);
     root.setAttribute('data-theme', theme);
     root.setAttribute('data-theme-mode', mode);
     try { localStorage.setItem('hlc-theme', mode); } catch (e) { /* private mode */ }
     var meta = document.getElementById('theme-color');
-    if (meta) meta.setAttribute('content', theme === 'light' ? '#eef3fa' : '#06080c');
+    if (meta) meta.setAttribute('content', theme === 'light' ? '#edf2f9' : '#131b27');
   }
 
   apply(mode);

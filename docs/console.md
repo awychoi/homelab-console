@@ -124,15 +124,18 @@ or **Settings → Appearance**:
 
 | Mode | Look |
 |---|---|
-| **Dark** (default) | Black/navy surfaces, white text, blue primary actions, orange for updates and warnings |
-| **Light** | White/cool-white surfaces, blue primary actions, orange accents, dark text |
-| **System** | Follows the macOS appearance and switches live when the OS does |
+| **System** (default) | Follows the macOS appearance and switches live when the OS does |
+| **Dark** | Deep slate surfaces, soft white text, blue primary actions, amber for updates and warnings |
+| **Light** | White/cool-white surfaces, blue primary actions, amber accents, dark text |
 
-The choice is stored server-side in `.hlc/config.json`, so a reload or another
-tab picks it up; `localStorage` mirrors it for a flash-free first paint. The
-top-bar button cycles Dark → Light → System.
+A fresh install follows macOS. The choice is stored server-side in
+`.hlc/config.json`, so a reload or another tab picks it up; `localStorage`
+mirrors it for a flash-free first paint. The top-bar button cycles
+System → Dark → Light.
 
 ![Fleet dashboard, light theme](assets/screenshots/fleet-light.png)
+
+![Repo street, light theme](assets/screenshots/repo-street-light.png)
 
 ### Layout, mobile and accessibility
 
@@ -165,10 +168,10 @@ Narrow screens adapt rather than hiding controls:
 
 - At 900px the two-workspace rail is replaced by one compact rail: every Pi and
   Repo street view is one click away, with a short visible label under each icon
-  (`Street` / `Repos` for the two repo views) plus the full accessible name and
+  (`Street` / `Pulse` / `Repos` for the three repo views) plus the full accessible name and
   native tooltip. Short windows reduce item padding so the rail still fits.
-- At 700px the top-bar actions (theme, check releases, refresh) become icon
-  buttons with the same accessible names.
+- At 700px the top-bar actions (theme, check releases, refresh) become larger
+  icon buttons with the same accessible names and native tooltips.
 - At 600px stat tiles pack two-up, key/value rows stack, and the attention list
   becomes stacked rows with their own Open buttons.
 - The Stacks table becomes stacked stack cards at 900px so status, sync, images,
@@ -298,17 +301,41 @@ outside the contract, and `./hlc doctor` reports the same paths.
 
 ![Repo street overview](assets/screenshots/repo-street.png)
 
-The **Overview** dashboard has fleet totals, GitHub/Gitea connectivity and the
-latest backup health; connectivity is probed when the page opens, on demand and
-after a push/sync, and the Gitea ref comparison runs at startup, after a local
-commit/push, and on demand — never on a timer.
+Repo street has three views: **Overview** answers "what needs me now?",
+**Pulse** answers "what is changing over time?", and **Repositories** is where
+you commit, push and mirror.
 
-The **Repositories** view lists branch/upstream, dirty files, ahead/behind,
-Gitea state and last commit. **Commit** stages only the checked paths
-(`.env`-family files and ignored paths are refused); **Push** sends the current
-branch with your credential helper; **Check Gitea** previews and then mirrors
-heads/tags; **Queue both** runs GitHub → Gitea serially. **Open in VS Code**
-launches `code -n`.
+- **Overview** keeps the fleet totals, GitHub/Gitea/VS Code/queue health, a
+  14-day commit pulse, the action queue and the latest commit in each repo.
+  Backup coverage shows *synced / eligible* rather than a bare "0", so an
+  unconfigured or ineligible Gitea is not mistaken for a failing backup.
+  Connectivity is probed when the page opens, on demand and after a push/sync;
+  the Gitea ref comparison runs at startup, after a local commit/push, and on
+  demand — never on a timer.
+- **Pulse** adds commit cadence, freshness, remote/backup coverage and quiet
+  repositories: commits in the last 7 and 30 days, active repositories,
+  median/oldest last commit, a 14-day bar chart, the most active repositories,
+  a GitHub/upstream/fetch/Gitea/clean-tree coverage breakdown, recent commits
+  and repositories with no commit or working-tree edit for 90 days.
+  **Check refs** on the coverage card runs the same read-only Gitea comparison
+  as Overview.
+- **Repositories** lists branch/upstream, dirty files, conflicts, ahead/behind,
+  Gitea state and last commit. **Commit** stages only the checked paths
+  (`.env`-family files and ignored paths are refused); **Push** sends the
+  current branch with your credential helper; **Check Gitea** previews and then
+  mirrors heads/tags; **Queue both** runs GitHub → Gitea serially.
+  **Open in VS Code** launches `code -n`.
+
+![Repo pulse metrics](assets/screenshots/repo-pulse.png)
+
+Activity numbers come from local git history. The backend caches each repo's
+commit counts by branch tip for five minutes, so the 10-second status scan does
+not re-walk history on every tick. "Last touched" is the newer of the last
+commit and the mtime of dirty paths (at most 50 stats, no git process); that is
+why an actively edited but rarely committed repo is not called dormant. A
+"behind origin" count is only as fresh as the last fetch, and the coverage card
+shows the age of the newest `FETCH_HEAD` so the number can be trusted. No fetch,
+pull, network call or destructive git action is performed by Pulse.
 
 <details>
 <summary>Repository discovery, Gitea auth and sync details</summary>
@@ -329,9 +356,11 @@ launches `code -n`.
   current branch. A repo with no upstream still reports ahead/behind against
   `origin/<branch>` when that ref exists.
 - The dashboard highlights up to nine tasks that need action and offers
-  **Review** shortcuts into the filtered Repositories table. A repo with
+  **Review** shortcuts into the filtered Repositories table. Conflicts, local
+  changes, push work and backup gaps are called out; dirty items include staged,
+  unstaged, new and ignored counts plus the last touched age. A repo with
   commits behind origin shows a download icon and an **Updates** filter, based
-  on the last fetch.
+  on the last fetch, and the fetch age is shown in Pulse coverage.
 - **Open in VS Code** launches `code -n` with the repo path; the app falls
   back to the macOS application path if the `code` shell command is missing.
 - **Commit** opens a checklist of changed and untracked files with an editable
@@ -609,6 +638,8 @@ app/
 │   └── templates.py             # starter stacks
 ├── web/                         # vanilla ES modules, no build step
 │   ├── js/views/repo-street.js  # repo dashboard + GitHub/Gitea health
+│   ├── js/views/repo-pulse.js   # commit cadence, freshness and coverage
+│   ├── js/repoMetrics.js        # shared repo metric calculations and charts
 │   └── js/views/repos.js        # repositories table and queue UI
 └── tests/                       # stdlib unittest suite
 ```

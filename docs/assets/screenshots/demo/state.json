@@ -3654,8 +3654,8 @@
     "entries_total": 0,
     "last_commit": {
      "sha": "dce69a8",
-     "at": 1793750759,
-     "date": "2026-11-03 09:10",
+     "at": 1793989954,
+     "date": "2026-11-06 13:32",
      "subject": "app shell and console"
     },
     "origin": "https://github.com/you/homelab-app.git",
@@ -3682,7 +3682,30 @@
      "commit": false,
      "push": false,
      "gitea": false
-    }
+    },
+    "commit_activity": {
+     "last_7d": 5,
+     "last_30d": 9,
+     "days": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      1,
+      0,
+      2,
+      1,
+      1
+     ]
+    },
+    "last_fetch_at": 1794006874,
+    "last_touch_at": 1793989954,
+    "conflicts": 0
    },
    {
     "id": "homelab-workspace",
@@ -3707,8 +3730,8 @@
     "entries_total": 0,
     "last_commit": {
      "sha": "4f97a02",
-     "at": 1793747159,
-     "date": "2026-11-02 10:11",
+     "at": 1793903554,
+     "date": "2026-11-05 13:32",
      "subject": "fleet inventory and stacks"
     },
     "origin": "https://github.com/you/homelab-workspace.git",
@@ -3735,7 +3758,30 @@
      "commit": false,
      "push": false,
      "gitea": false
-    }
+    },
+    "commit_activity": {
+     "last_7d": 3,
+     "last_30d": 6,
+     "days": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      1
+     ]
+    },
+    "last_fetch_at": 1794006514,
+    "last_touch_at": 1793903554,
+    "conflicts": 0
    },
    {
     "id": "personal-site",
@@ -3760,8 +3806,8 @@
     "entries_total": 0,
     "last_commit": {
      "sha": "d22ba8d",
-     "at": 1793743559,
-     "date": "2026-11-01 11:12",
+     "at": 1793799874,
+     "date": "2026-11-04 08:44",
      "subject": "personal website"
     },
     "origin": "https://github.com/you/personal-site.git",
@@ -3788,7 +3834,30 @@
      "commit": false,
      "push": false,
      "gitea": false
-    }
+    },
+    "commit_activity": {
+     "last_7d": 1,
+     "last_30d": 3,
+     "days": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0
+     ]
+    },
+    "last_fetch_at": 1794005434,
+    "last_touch_at": 1793799874,
+    "conflicts": 0
    },
    {
     "id": "notes",
@@ -3813,8 +3882,8 @@
     "entries_total": 0,
     "last_commit": {
      "sha": "ab5aa97",
-     "at": 1793739959,
-     "date": "2026-11-03 12:13",
+     "at": 1793722114,
+     "date": "2026-11-03 11:08",
      "subject": "notes and runbooks"
     },
     "origin": "https://github.com/you/notes.git",
@@ -3841,7 +3910,30 @@
      "commit": false,
      "push": false,
      "gitea": false
-    }
+    },
+    "commit_activity": {
+     "last_7d": 2,
+     "last_30d": 5,
+     "days": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1,
+      0
+     ]
+    },
+    "last_fetch_at": 1794003634,
+    "last_touch_at": 1793722114,
+    "conflicts": 0
    },
    {
     "id": "budget",
@@ -3866,8 +3958,8 @@
     "entries_total": 0,
     "last_commit": {
      "sha": "0af96a8",
-     "at": 1793736359,
-     "date": "2026-11-02 13:14",
+     "at": 1784935234,
+     "date": "2026-07-24 19:20",
      "subject": "finance tracker"
     },
     "origin": "https://github.com/you/budget.git",
@@ -3894,7 +3986,30 @@
      "commit": false,
      "push": false,
      "gitea": false
-    }
+    },
+    "commit_activity": {
+     "last_7d": 0,
+     "last_30d": 0,
+     "days": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    "last_fetch_at": 1793992834,
+    "last_touch_at": 1784935234,
+    "conflicts": 0
    },
    {
     "id": "tools/agent-docs",
@@ -3919,8 +4034,8 @@
     "entries_total": 0,
     "last_commit": {
      "sha": "cdfc9be",
-     "at": 1793732759,
-     "date": "2026-11-01 14:15",
+     "at": 1793696194,
+     "date": "2026-11-03 03:56",
      "subject": "shared agent docs"
     },
     "origin": "https://github.com/you/agent-docs.git",
@@ -3947,7 +4062,30 @@
      "commit": false,
      "push": false,
      "gitea": false
-    }
+    },
+    "commit_activity": {
+     "last_7d": 2,
+     "last_30d": 4,
+     "days": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      1,
+      1,
+      0,
+      0
+     ]
+    },
+    "last_fetch_at": 1793982034,
+    "last_touch_at": 1793696194,
+    "conflicts": 0
    },
    {
     "id": "tools/watch",
@@ -3972,8 +4110,8 @@
     "entries_total": 0,
     "last_commit": {
      "sha": "a2366bb",
-     "at": 1793729159,
-     "date": "2026-11-03 15:16",
+     "at": 1792452034,
+     "date": "2026-10-19 19:20",
      "subject": "watch scripts"
     },
     "origin": "https://github.com/you/watch.git",
@@ -4000,7 +4138,30 @@
      "commit": false,
      "push": false,
      "gitea": false
-    }
+    },
+    "commit_activity": {
+     "last_7d": 0,
+     "last_30d": 1,
+     "days": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    "last_fetch_at": 1793967634,
+    "last_touch_at": 1792452034,
+    "conflicts": 0
    },
    {
     "id": "gitea-tools",
@@ -4025,8 +4186,8 @@
     "entries_total": 0,
     "last_commit": {
      "sha": "75a8d3f",
-     "at": 1793725559,
-     "date": "2026-11-02 16:17",
+     "at": 1793825794,
+     "date": "2026-11-04 15:56",
      "subject": "backup tooling"
     },
     "origin": "https://github.com/you/gitea-tools.git",
@@ -4053,7 +4214,30 @@
      "commit": false,
      "push": false,
      "gitea": false
-    }
+    },
+    "commit_activity": {
+     "last_7d": 3,
+     "last_30d": 7,
+     "days": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      0,
+      1,
+      1
+     ]
+    },
+    "last_fetch_at": 1793935234,
+    "last_touch_at": 1793825794,
+    "conflicts": 0
    },
    {
     "id": "pipeline",
@@ -4078,8 +4262,8 @@
     "entries_total": 0,
     "last_commit": {
      "sha": "23bf0d2",
-     "at": 1793721959,
-     "date": "2026-11-01 09:18",
+     "at": 1792020034,
+     "date": "2026-10-14 19:20",
      "subject": "data pipeline"
     },
     "origin": "https://github.com/you/pipeline.git",
@@ -4106,7 +4290,30 @@
      "commit": false,
      "push": false,
      "gitea": false
-    }
+    },
+    "commit_activity": {
+     "last_7d": 0,
+     "last_30d": 3,
+     "days": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    "last_fetch_at": 1793899234,
+    "last_touch_at": 1792020034,
+    "conflicts": 0
    },
    {
     "id": "cost-model",
@@ -4131,8 +4338,8 @@
     "entries_total": 0,
     "last_commit": {
      "sha": "7ceff1a",
-     "at": 1793718359,
-     "date": "2026-11-03 10:19",
+     "at": 1782948034,
+     "date": "2026-07-01 19:20",
      "subject": "cost model"
     },
     "origin": "https://github.com/you/cost-model.git",
@@ -4159,7 +4366,30 @@
      "commit": false,
      "push": false,
      "gitea": false
-    }
+    },
+    "commit_activity": {
+     "last_7d": 0,
+     "last_30d": 0,
+     "days": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    "last_fetch_at": 0,
+    "last_touch_at": 1782948034,
+    "conflicts": 0
    },
    {
     "id": "classifier",
@@ -4184,8 +4414,8 @@
     "entries_total": 0,
     "last_commit": {
      "sha": "fe1991a",
-     "at": 1793714759,
-     "date": "2026-11-02 11:20",
+     "at": 1783639234,
+     "date": "2026-07-09 19:20",
      "subject": "document classifier"
     },
     "origin": "https://github.com/you/classifier.git",
@@ -4212,7 +4442,30 @@
      "commit": false,
      "push": false,
      "gitea": false
-    }
+    },
+    "commit_activity": {
+     "last_7d": 0,
+     "last_30d": 0,
+     "days": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    "last_fetch_at": 1793719234,
+    "last_touch_at": 1783639234,
+    "conflicts": 0
    },
    {
     "id": "dotfiles",
@@ -4237,8 +4490,8 @@
     "entries_total": 0,
     "last_commit": {
      "sha": "f40cc12",
-     "at": 1793711159,
-     "date": "2026-11-01 12:21",
+     "at": 1775604034,
+     "date": "2026-04-07 19:20",
      "subject": "shell and editor config"
     },
     "origin": "https://github.com/you/dotfiles.git",
@@ -4265,7 +4518,30 @@
      "commit": false,
      "push": false,
      "gitea": false
-    }
+    },
+    "commit_activity": {
+     "last_7d": 0,
+     "last_30d": 0,
+     "days": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    "last_fetch_at": 1793359234,
+    "last_touch_at": 1775604034,
+    "conflicts": 0
    }
   ],
   "summary": {
@@ -4283,9 +4559,29 @@
    "gitea_errors": 0,
    "gitea_unknown": 0,
    "attention": 0,
-   "clean": 12
+   "clean": 12,
+   "commits_7d": 16,
+   "commits_30d": 38,
+   "active_repos": 8,
+   "quiet_repos": 4,
+   "activity_days": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    2,
+    1,
+    1,
+    2,
+    4,
+    3,
+    3
+   ]
   },
-  "generated_at": 1793761311,
+  "generated_at": 1794007234,
   "scanning": false,
   "gitea": {
    "state": "done",
@@ -4315,10 +4611,7 @@
   "vscode": {
    "available": true
   },
-  "gitea_configured": true,
-  "roots": [
-   "/Users/you/code"
-  ]
+  "gitea_configured": true
  },
  "warmup": {
   "state": "ready",

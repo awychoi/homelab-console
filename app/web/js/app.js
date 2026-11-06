@@ -3,6 +3,7 @@ import * as ui from './ui.js';
 import fleetView from './views/fleet.js';
 import reposView from './views/repos.js';
 import repoStreetView from './views/repo-street.js';
+import repoPulseView from './views/repo-pulse.js';
 import hostView from './views/host.js';
 import servicesView from './views/services.js';
 import stackView from './views/stack.js';
@@ -26,6 +27,7 @@ const PI_NAV = [
 
 const REPO_NAV = [
   { id: 'repo-street', label: 'Overview', short: 'Street', href: '#/repo-street', icon: 'layers' },
+  { id: 'repo-pulse', label: 'Pulse', short: 'Pulse', href: '#/repo-pulse', icon: 'activity' },
   { id: 'repos', label: 'Repositories', short: 'Repos', href: '#/repos', icon: 'git' },
 ];
 
@@ -44,6 +46,7 @@ const CRUMBS = {
   updates: 'Pi fleet / Updates',
   hosts: 'Pi fleet / Hosts',
   'repo-street': 'Repo street / Overview',
+  'repo-pulse': 'Repo street / Pulse',
   repos: 'Repo street / Repositories',
   activity: 'Console / Activity',
   settings: 'Console / Settings',
@@ -81,14 +84,14 @@ function resolveTheme(mode) {
 function updateThemeButton() {
   const button = document.querySelector('[data-action="cycle-theme"]');
   if (!button) return;
-  const mode = ctx.themeMode || 'dark';
+  const mode = ctx.themeMode || 'system';
   button.innerHTML = `<span class="theme-icon">${ui.icon(THEME_ICONS[mode] || 'moon', 13)}</span><span class="theme-label">${THEME_LABELS[mode] || 'Dark'}</span>`;
   button.title = `Theme: ${THEME_LABELS[mode] || 'Dark'} — click to change`;
   button.setAttribute('aria-label', `Theme: ${THEME_LABELS[mode] || 'Dark'}. Click to change.`);
 }
 
 const ctx = {
-  themeMode: document.documentElement.dataset.themeMode || (window.__hlcTheme?.mode?.() || 'dark'),
+  themeMode: document.documentElement.dataset.themeMode || (window.__hlcTheme?.mode?.() || 'system'),
   themeMedia,
   api,
   ui,
@@ -134,14 +137,14 @@ const ctx = {
   },
   runModal: (runId, title) => ui.runModal(ctx, runId, title),
   applyTheme(mode, { persist = false } = {}) {
-    const next = THEME_MODES.includes(mode) ? mode : 'dark';
+    const next = THEME_MODES.includes(mode) ? mode : 'system';
     const resolved = resolveTheme(next);
     ctx.themeMode = next;
     window.__hlcTheme?.apply?.(next);
     document.documentElement.dataset.theme = resolved;
     document.documentElement.dataset.themeMode = next;
     try { localStorage.setItem('hlc-theme', next); } catch { /* private browsing */ }
-    document.getElementById('theme-color')?.setAttribute('content', resolved === 'light' ? '#eef3fa' : '#06080c');
+    document.getElementById('theme-color')?.setAttribute('content', resolved === 'light' ? '#edf2f9' : '#131b27');
     if (ctx.bootstrap?.settings) ctx.bootstrap.settings.theme = next;
     document.querySelectorAll('[data-theme-choice]').forEach((node) => {
       const active = node.dataset.themeChoice === next;
@@ -157,12 +160,12 @@ const ctx = {
     return resolved;
   },
   async setTheme(mode) {
-    const next = THEME_MODES.includes(mode) ? mode : 'dark';
+    const next = THEME_MODES.includes(mode) ? mode : 'system';
     ctx.applyTheme(next, { persist: true });
     return next;
   },
   cycleTheme() {
-    const index = THEME_MODES.indexOf(ctx.themeMode || 'dark');
+    const index = THEME_MODES.indexOf(ctx.themeMode || 'system');
     const next = THEME_MODES[(index + 1) % THEME_MODES.length];
     ctx.setTheme(next);
     ui.toast(`Theme: ${THEME_LABELS[next]}`, 'ok', next === 'system' ? 'Following the macOS appearance.' : '');
@@ -207,12 +210,12 @@ function parseRoute() {
   if (name === 'stack' && parts[1] && parts[2]) {
     return { name: 'stack', params: [decodeURIComponent(parts[1]), decodeURIComponent(parts[2])] };
   }
-  if (['repo-street', 'repos', 'services', 'updates', 'hosts', 'activity', 'settings'].includes(name)) return { name, params: [] };
+  if (['repo-street', 'repo-pulse', 'repos', 'services', 'updates', 'hosts', 'activity', 'settings'].includes(name)) return { name, params: [] };
   return { name: 'fleet', params: [] };
 }
 
 function workspaceForRoute(name) {
-  if (name === 'repos' || name === 'repo-street') return 'repos';
+  if (name === 'repos' || name === 'repo-street' || name === 'repo-pulse') return 'repos';
   if (['fleet', 'host', 'services', 'stack', 'updates', 'hosts'].includes(name)) return 'pi';
   return null;
 }
@@ -239,6 +242,7 @@ function navCounts() {
     fleet: summary.hosts_total ? `${summary.hosts_online}/${summary.hosts_total}` : '',
     repos: repoSummary.attention || '',
     'repo-street': repoSummary.attention || '',
+    'repo-pulse': repoSummary.attention || '',
     services: summary.stacks_total ?? '',
     updates: summary.updates_available || '',
     hosts: summary.hosts_total ?? '',
@@ -267,7 +271,7 @@ function updateChrome() {
 
   // Releases are a Pi-fleet concern; on Repo street the same topbar action was
   // a dead end. Swap in the right label so the controls match the workspace.
-  const inRepoStreet = ['repos', 'repo-street'].includes(route.name);
+  const inRepoStreet = ['repos', 'repo-street', 'repo-pulse'].includes(route.name);
   const releaseButton = document.querySelector('[data-action="check-updates"]');
   if (releaseButton) releaseButton.classList.toggle('hidden', inRepoStreet);
   const refreshButton = document.querySelector('[data-action="refresh"]');
@@ -316,7 +320,7 @@ function updateChrome() {
       const value = counts[item.id];
       countNode.textContent = value && value !== '0' ? String(value) : '';
       countNode.classList.toggle('hidden', !value || value === '0');
-      countNode.classList.toggle('alert', (item.id === 'updates' && Number(counts.updates) > 0) || ((item.id === 'repos' || item.id === 'repo-street') && Number(value) > 0));
+      countNode.classList.toggle('alert', (item.id === 'updates' && Number(counts.updates) > 0) || ((item.id === 'repos' || item.id === 'repo-street' || item.id === 'repo-pulse') && Number(value) > 0));
       countNode.classList.toggle('bad', item.id === 'fleet' && Number(state.summary?.hosts_online) < Number(state.summary?.hosts_total));
     }
   }
@@ -399,7 +403,7 @@ function renderShell() {
     button.innerHTML = `<span class="spinner sm"></span><span class="btn-label">Refreshing…</span>`;
     try {
       await api.post('/api/refresh');
-      const inRepos = ['repos', 'repo-street'].includes(ctx.route?.name);
+      const inRepos = ['repos', 'repo-street', 'repo-pulse'].includes(ctx.route?.name);
       if (inRepos) await api.post('/api/repos/refresh');
       ui.toast(inRepos ? 'Refreshing repositories' : 'Refreshing fleet', 'ok');
       setTimeout(() => ctx.refreshState({ force: true }), 900);
@@ -433,6 +437,7 @@ function renderCurrent() {
   const view = {
     fleet: fleetView,
     'repo-street': repoStreetView,
+    'repo-pulse': repoPulseView,
     repos: reposView,
     host: hostView,
     services: servicesView,

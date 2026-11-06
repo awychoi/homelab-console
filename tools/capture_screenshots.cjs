@@ -42,12 +42,24 @@ for (const name of ['bootstrap', 'state', 'repos', 'system']) {
   fixtures[name] = JSON.parse(fs.readFileSync(path.join(DEMO, `${name}.json`), 'utf8'));
 }
 
-// Make the captured data look freshly collected on every run.
+// Make the captured data look freshly collected on every run.  Shift the
+// relative commit/fetch ages too, so a screenshot taken months after the
+// fixture was created still reads "2 days ago" instead of drifting stale.
 const now = Math.floor(Date.now() / 1000);
+const fixtureBase = Number(fixtures.repos.generated_at) || now;
+const shift = Math.max(0, now - fixtureBase);
 fixtures.state.generated_at = now;
 fixtures.state.age_s = 2;
 for (const host of fixtures.state.hosts || []) host.collected_at = now - 2;
-for (const row of fixtures.repos.repos || []) (row.gitea || {}).checked_at = now;
+for (const row of fixtures.repos.repos || []) {
+  (row.gitea || {}).checked_at = now;
+  if (row.last_commit?.at) {
+    row.last_commit.at += shift;
+    row.last_commit.date = new Date(row.last_commit.at * 1000).toISOString().slice(0, 16).replace('T', ' ');
+  }
+  if (row.last_touch_at) row.last_touch_at += shift;
+  if (row.last_fetch_at) row.last_fetch_at += shift;
+}
 fixtures.repos.generated_at = now;
 fixtures.repos.gitea.checked_at = now;
 fixtures.repos.connectivity.checked_at = now;
@@ -101,6 +113,7 @@ async function main() {
 }
 
 async function newContext(browser, { theme, width, height, light = false, mobile = false }) {
+  fixtures.bootstrap.settings.theme = theme;
   const context = await browser.newContext({
     viewport: { width, height },
     deviceScaleFactor: mobile ? 2 : 1,
@@ -153,13 +166,12 @@ async function capture({ context, page, light = false, mobile = false }) {
     }
 
     if (light) {
-      fixtures.bootstrap.settings.theme = 'light';
-      try {
-        await open(page, 'fleet');
-        await shot(page, 'fleet-light.png');
-      } finally {
-        fixtures.bootstrap.settings.theme = 'dark';
-      }
+      await open(page, 'fleet');
+      await shot(page, 'fleet-light.png');
+      await open(page, 'repo-street');
+      await shot(page, 'repo-street-light.png');
+      await open(page, 'repo-pulse');
+      await shot(page, 'repo-pulse-light.png', true);
       return;
     }
 
@@ -169,6 +181,8 @@ async function capture({ context, page, light = false, mobile = false }) {
     await shot(page, 'services.png', true);
     await open(page, 'repo-street');
     await shot(page, 'repo-street.png', true);
+    await open(page, 'repo-pulse');
+    await shot(page, 'repo-pulse.png', true);
 
     // Wizard step 1, opened from Hosts.
     await open(page, 'hosts');

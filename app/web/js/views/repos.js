@@ -127,6 +127,9 @@ function giteaCell(repo) {
 
 function workingTreeCell(repo) {
   const entries = (repo.entries || []).filter((entry) => !entry.ignored);
+  if (repo.conflicts) {
+    return `<span class="chip bad" title="Unresolved merge conflicts block commit and push">${icon('alert', 11)} ${repo.conflicts} conflict${repo.conflicts === 1 ? '' : 's'}</span><span class="sub">resolve before committing</span>`;
+  }
   if (!repo.needs?.commit) {
     if (repo.ignored_count) {
       return `<span class="chip neutral" title="Tracked paths matching .gitignore are hidden from commit selection">${repo.ignored_count} ignored</span><span class="sub">not shown in commit selection</span>`;

@@ -341,7 +341,7 @@ function contentHtml(ctx) {
     <div class="card-head"><div class="card-title">Appearance</div><div class="card-sub">blue is the working accent; orange marks updates and warnings</div></div>
     <div class="card-body">
       <div class="theme-grid">
-        ${themeChoice('dark', 'Dark', 'Black surfaces, white text, blue primary, orange highlights.', 'dark')}
+        ${themeChoice('dark', 'Dark', 'Deep slate surfaces, soft white text, blue primary, amber highlights.', 'dark')}
         ${themeChoice('light', 'Light', 'White surfaces, blue primary, orange warnings. Easier in daylight.', 'light')}
         ${themeChoice('system', 'System', 'Follows the macOS appearance and changes live when the OS does.', 'system')}
       </div>
