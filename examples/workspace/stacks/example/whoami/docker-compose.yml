@@ -1,0 +1,8 @@
+# whoami — disposable diagnostic endpoint on loopback :9180.
+services:
+  whoami:
+    image: traefik/whoami:v1.11.0
+    container_name: whoami
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:9180:80"

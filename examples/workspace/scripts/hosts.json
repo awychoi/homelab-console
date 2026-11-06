@@ -1,0 +1,9 @@
+{
+    "location_": "scripts/hosts.json",
+    "example": {
+        "user": "pi",
+        "host": "192.0.2.10",
+        "role": "example",
+        "notes": "Replace with your Pi's LAN or Tailscale address"
+    }
+}

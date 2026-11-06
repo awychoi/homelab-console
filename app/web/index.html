@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en" data-theme="dark" data-theme-mode="__HLC_THEME_MODE__">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="hlc-token" content="__HLC_TOKEN__">
+  <meta name="hlc-version" content="__HLC_VERSION__">
+  <meta name="theme-color" id="theme-color" content="#06080c">
+  <title>Homelab Console</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <script src="/theme.js"></script>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div id="app">
+    <div class="boot">
+      <div class="boot-mark"></div>
+      <div>
+        <strong>Homelab Console</strong>
+        <span>opening the control plane…</span>
+      </div>
+    </div>
+  </div>
+  <div id="modal-root"></div>
+  <div id="toast-root" aria-live="polite" aria-atomic="false"></div>
+  <script type="module" src="/js/app.js"></script>
+</body>
+</html>

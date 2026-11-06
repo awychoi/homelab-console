@@ -1,0 +1,692 @@
+{
+ "root": "/Users/you/code",
+ "root_configured": true,
+ "root_error": "",
+ "gitea_config_error": "",
+ "repos": [
+  {
+   "id": "homelab-app",
+   "name": "homelab-app",
+   "rel": "homelab-app",
+   "container": "",
+   "path": "/Users/you/code/homelab-app",
+   "error": "",
+   "branch": "main",
+   "detached": false,
+   "head": "dce69a87fd92583c30e1ec31b4189a273b0174b6305fe00b7f43f4fcdd129e57",
+   "upstream": "origin/main",
+   "tracking": true,
+   "ahead": 0,
+   "behind": 0,
+   "new_branch": false,
+   "dirty": false,
+   "dirty_count": 0,
+   "ignored_count": 0,
+   "entries": [],
+   "entries_truncated": false,
+   "entries_total": 0,
+   "last_commit": {
+    "sha": "dce69a8",
+    "at": 1793750759,
+    "date": "2026-11-03 09:10",
+    "subject": "app shell and console"
+   },
+   "origin": "https://github.com/you/homelab-app.git",
+   "github": {
+    "owner": "you",
+    "repo": "homelab-app",
+    "url": "https://github.com/you/homelab-app"
+   },
+   "lfs": false,
+   "gitea": {
+    "status": "synced",
+    "detail": "in sync",
+    "target": "https://gitea.example.com/you/homelab-app.git",
+    "checked_at": 1793761559,
+    "counts": {
+     "local": 1,
+     "remote": 1,
+     "push": 0,
+     "prune": 0,
+     "changed": 0
+    }
+   },
+   "needs": {
+    "commit": false,
+    "push": false,
+    "gitea": false
+   }
+  },
+  {
+   "id": "homelab-workspace",
+   "name": "homelab-workspace",
+   "rel": "homelab-workspace",
+   "container": "",
+   "path": "/Users/you/code/homelab-workspace",
+   "error": "",
+   "branch": "main",
+   "detached": false,
+   "head": "4f97a0254ac6f27962f90766ec49cecaa60facf879f166933e0bca55857e6b5d",
+   "upstream": "origin/main",
+   "tracking": true,
+   "ahead": 0,
+   "behind": 0,
+   "new_branch": false,
+   "dirty": false,
+   "dirty_count": 0,
+   "ignored_count": 0,
+   "entries": [],
+   "entries_truncated": false,
+   "entries_total": 0,
+   "last_commit": {
+    "sha": "4f97a02",
+    "at": 1793747159,
+    "date": "2026-11-02 10:11",
+    "subject": "fleet inventory and stacks"
+   },
+   "origin": "https://github.com/you/homelab-workspace.git",
+   "github": {
+    "owner": "you",
+    "repo": "homelab-workspace",
+    "url": "https://github.com/you/homelab-workspace"
+   },
+   "lfs": false,
+   "gitea": {
+    "status": "synced",
+    "detail": "in sync",
+    "target": "https://gitea.example.com/you/homelab-workspace.git",
+    "checked_at": 1793761559,
+    "counts": {
+     "local": 1,
+     "remote": 1,
+     "push": 0,
+     "prune": 0,
+     "changed": 0
+    }
+   },
+   "needs": {
+    "commit": false,
+    "push": false,
+    "gitea": false
+   }
+  },
+  {
+   "id": "personal-site",
+   "name": "personal-site",
+   "rel": "personal-site",
+   "container": "",
+   "path": "/Users/you/code/personal-site",
+   "error": "",
+   "branch": "main",
+   "detached": false,
+   "head": "d22ba8d0182cc6896e41ea1296f47645fd434f6c4d2db8841ba3dc8d9e7daf9c",
+   "upstream": "origin/main",
+   "tracking": true,
+   "ahead": 0,
+   "behind": 0,
+   "new_branch": false,
+   "dirty": false,
+   "dirty_count": 0,
+   "ignored_count": 0,
+   "entries": [],
+   "entries_truncated": false,
+   "entries_total": 0,
+   "last_commit": {
+    "sha": "d22ba8d",
+    "at": 1793743559,
+    "date": "2026-11-01 11:12",
+    "subject": "personal website"
+   },
+   "origin": "https://github.com/you/personal-site.git",
+   "github": {
+    "owner": "you",
+    "repo": "personal-site",
+    "url": "https://github.com/you/personal-site"
+   },
+   "lfs": false,
+   "gitea": {
+    "status": "synced",
+    "detail": "in sync",
+    "target": "https://gitea.example.com/you/personal-site.git",
+    "checked_at": 1793761559,
+    "counts": {
+     "local": 1,
+     "remote": 1,
+     "push": 0,
+     "prune": 0,
+     "changed": 0
+    }
+   },
+   "needs": {
+    "commit": false,
+    "push": false,
+    "gitea": false
+   }
+  },
+  {
+   "id": "notes",
+   "name": "notes",
+   "rel": "notes",
+   "container": "",
+   "path": "/Users/you/code/notes",
+   "error": "",
+   "branch": "main",
+   "detached": false,
+   "head": "ab5aa97074c454a0632057e704220d9a6678fbf773a0a5806fc09b8173b07309",
+   "upstream": "origin/main",
+   "tracking": true,
+   "ahead": 0,
+   "behind": 0,
+   "new_branch": false,
+   "dirty": false,
+   "dirty_count": 0,
+   "ignored_count": 0,
+   "entries": [],
+   "entries_truncated": false,
+   "entries_total": 0,
+   "last_commit": {
+    "sha": "ab5aa97",
+    "at": 1793739959,
+    "date": "2026-11-03 12:13",
+    "subject": "notes and runbooks"
+   },
+   "origin": "https://github.com/you/notes.git",
+   "github": {
+    "owner": "you",
+    "repo": "notes",
+    "url": "https://github.com/you/notes"
+   },
+   "lfs": false,
+   "gitea": {
+    "status": "synced",
+    "detail": "in sync",
+    "target": "https://gitea.example.com/you/notes.git",
+    "checked_at": 1793761559,
+    "counts": {
+     "local": 1,
+     "remote": 1,
+     "push": 0,
+     "prune": 0,
+     "changed": 0
+    }
+   },
+   "needs": {
+    "commit": false,
+    "push": false,
+    "gitea": false
+   }
+  },
+  {
+   "id": "budget",
+   "name": "budget",
+   "rel": "budget",
+   "container": "",
+   "path": "/Users/you/code/budget",
+   "error": "",
+   "branch": "main",
+   "detached": false,
+   "head": "0af96a8ed622a394e8b2a239284ee46e9a7a7b0ec38191bbd08571b171118dd6",
+   "upstream": "origin/main",
+   "tracking": true,
+   "ahead": 0,
+   "behind": 0,
+   "new_branch": false,
+   "dirty": false,
+   "dirty_count": 0,
+   "ignored_count": 0,
+   "entries": [],
+   "entries_truncated": false,
+   "entries_total": 0,
+   "last_commit": {
+    "sha": "0af96a8",
+    "at": 1793736359,
+    "date": "2026-11-02 13:14",
+    "subject": "finance tracker"
+   },
+   "origin": "https://github.com/you/budget.git",
+   "github": {
+    "owner": "you",
+    "repo": "budget",
+    "url": "https://github.com/you/budget"
+   },
+   "lfs": false,
+   "gitea": {
+    "status": "synced",
+    "detail": "in sync",
+    "target": "https://gitea.example.com/you/budget.git",
+    "checked_at": 1793761559,
+    "counts": {
+     "local": 1,
+     "remote": 1,
+     "push": 0,
+     "prune": 0,
+     "changed": 0
+    }
+   },
+   "needs": {
+    "commit": false,
+    "push": false,
+    "gitea": false
+   }
+  },
+  {
+   "id": "tools/agent-docs",
+   "name": "agent-docs",
+   "rel": "tools/agent-docs",
+   "container": "tools",
+   "path": "/Users/you/code/tools/agent-docs",
+   "error": "",
+   "branch": "main",
+   "detached": false,
+   "head": "cdfc9bed27185ecb8170652d690fe10ecd8889079e90649e5bca9b5b3ddcafcc",
+   "upstream": "origin/main",
+   "tracking": true,
+   "ahead": 0,
+   "behind": 0,
+   "new_branch": false,
+   "dirty": false,
+   "dirty_count": 0,
+   "ignored_count": 0,
+   "entries": [],
+   "entries_truncated": false,
+   "entries_total": 0,
+   "last_commit": {
+    "sha": "cdfc9be",
+    "at": 1793732759,
+    "date": "2026-11-01 14:15",
+    "subject": "shared agent docs"
+   },
+   "origin": "https://github.com/you/agent-docs.git",
+   "github": {
+    "owner": "you",
+    "repo": "agent-docs",
+    "url": "https://github.com/you/agent-docs"
+   },
+   "lfs": false,
+   "gitea": {
+    "status": "synced",
+    "detail": "in sync",
+    "target": "https://gitea.example.com/you/agent-docs.git",
+    "checked_at": 1793761559,
+    "counts": {
+     "local": 1,
+     "remote": 1,
+     "push": 0,
+     "prune": 0,
+     "changed": 0
+    }
+   },
+   "needs": {
+    "commit": false,
+    "push": false,
+    "gitea": false
+   }
+  },
+  {
+   "id": "tools/watch",
+   "name": "watch",
+   "rel": "tools/watch",
+   "container": "tools",
+   "path": "/Users/you/code/tools/watch",
+   "error": "",
+   "branch": "main",
+   "detached": false,
+   "head": "a2366bbbef8a9f0a63873c10772d4cb7da11ef71023d2ee0909fe3021698a1cf",
+   "upstream": "origin/main",
+   "tracking": true,
+   "ahead": 0,
+   "behind": 0,
+   "new_branch": false,
+   "dirty": false,
+   "dirty_count": 0,
+   "ignored_count": 0,
+   "entries": [],
+   "entries_truncated": false,
+   "entries_total": 0,
+   "last_commit": {
+    "sha": "a2366bb",
+    "at": 1793729159,
+    "date": "2026-11-03 15:16",
+    "subject": "watch scripts"
+   },
+   "origin": "https://github.com/you/watch.git",
+   "github": {
+    "owner": "you",
+    "repo": "watch",
+    "url": "https://github.com/you/watch"
+   },
+   "lfs": false,
+   "gitea": {
+    "status": "synced",
+    "detail": "in sync",
+    "target": "https://gitea.example.com/you/watch.git",
+    "checked_at": 1793761559,
+    "counts": {
+     "local": 1,
+     "remote": 1,
+     "push": 0,
+     "prune": 0,
+     "changed": 0
+    }
+   },
+   "needs": {
+    "commit": false,
+    "push": false,
+    "gitea": false
+   }
+  },
+  {
+   "id": "gitea-tools",
+   "name": "gitea-tools",
+   "rel": "gitea-tools",
+   "container": "",
+   "path": "/Users/you/code/gitea-tools",
+   "error": "",
+   "branch": "main",
+   "detached": false,
+   "head": "75a8d3fa8324442e1c93996104091cc44eb08fe514baa5f72eaf91329106de55",
+   "upstream": "origin/main",
+   "tracking": true,
+   "ahead": 0,
+   "behind": 0,
+   "new_branch": false,
+   "dirty": false,
+   "dirty_count": 0,
+   "ignored_count": 0,
+   "entries": [],
+   "entries_truncated": false,
+   "entries_total": 0,
+   "last_commit": {
+    "sha": "75a8d3f",
+    "at": 1793725559,
+    "date": "2026-11-02 16:17",
+    "subject": "backup tooling"
+   },
+   "origin": "https://github.com/you/gitea-tools.git",
+   "github": {
+    "owner": "you",
+    "repo": "gitea-tools",
+    "url": "https://github.com/you/gitea-tools"
+   },
+   "lfs": false,
+   "gitea": {
+    "status": "synced",
+    "detail": "in sync",
+    "target": "https://gitea.example.com/you/gitea-tools.git",
+    "checked_at": 1793761559,
+    "counts": {
+     "local": 1,
+     "remote": 1,
+     "push": 0,
+     "prune": 0,
+     "changed": 0
+    }
+   },
+   "needs": {
+    "commit": false,
+    "push": false,
+    "gitea": false
+   }
+  },
+  {
+   "id": "pipeline",
+   "name": "pipeline",
+   "rel": "pipeline",
+   "container": "",
+   "path": "/Users/you/code/pipeline",
+   "error": "",
+   "branch": "main",
+   "detached": false,
+   "head": "23bf0d244a4cb62c85fc3aa0e8ebf8eb7eb970522a51326adf1ac015fc738c7c",
+   "upstream": "origin/main",
+   "tracking": true,
+   "ahead": 0,
+   "behind": 0,
+   "new_branch": false,
+   "dirty": false,
+   "dirty_count": 0,
+   "ignored_count": 0,
+   "entries": [],
+   "entries_truncated": false,
+   "entries_total": 0,
+   "last_commit": {
+    "sha": "23bf0d2",
+    "at": 1793721959,
+    "date": "2026-11-01 09:18",
+    "subject": "data pipeline"
+   },
+   "origin": "https://github.com/you/pipeline.git",
+   "github": {
+    "owner": "you",
+    "repo": "pipeline",
+    "url": "https://github.com/you/pipeline"
+   },
+   "lfs": false,
+   "gitea": {
+    "status": "synced",
+    "detail": "in sync",
+    "target": "https://gitea.example.com/you/pipeline.git",
+    "checked_at": 1793761559,
+    "counts": {
+     "local": 1,
+     "remote": 1,
+     "push": 0,
+     "prune": 0,
+     "changed": 0
+    }
+   },
+   "needs": {
+    "commit": false,
+    "push": false,
+    "gitea": false
+   }
+  },
+  {
+   "id": "cost-model",
+   "name": "cost-model",
+   "rel": "cost-model",
+   "container": "",
+   "path": "/Users/you/code/cost-model",
+   "error": "",
+   "branch": "main",
+   "detached": false,
+   "head": "7ceff1a68ddd995b2e87790bad3d75edd4bd42da19cf19039af8888851a7f520",
+   "upstream": "origin/main",
+   "tracking": true,
+   "ahead": 0,
+   "behind": 0,
+   "new_branch": false,
+   "dirty": false,
+   "dirty_count": 0,
+   "ignored_count": 0,
+   "entries": [],
+   "entries_truncated": false,
+   "entries_total": 0,
+   "last_commit": {
+    "sha": "7ceff1a",
+    "at": 1793718359,
+    "date": "2026-11-03 10:19",
+    "subject": "cost model"
+   },
+   "origin": "https://github.com/you/cost-model.git",
+   "github": {
+    "owner": "you",
+    "repo": "cost-model",
+    "url": "https://github.com/you/cost-model"
+   },
+   "lfs": false,
+   "gitea": {
+    "status": "synced",
+    "detail": "in sync",
+    "target": "https://gitea.example.com/you/cost-model.git",
+    "checked_at": 1793761559,
+    "counts": {
+     "local": 1,
+     "remote": 1,
+     "push": 0,
+     "prune": 0,
+     "changed": 0
+    }
+   },
+   "needs": {
+    "commit": false,
+    "push": false,
+    "gitea": false
+   }
+  },
+  {
+   "id": "classifier",
+   "name": "classifier",
+   "rel": "classifier",
+   "container": "",
+   "path": "/Users/you/code/classifier",
+   "error": "",
+   "branch": "main",
+   "detached": false,
+   "head": "fe1991a9d8b6abd7ff7c58d5e22b4538a75dadae9f33dcca784e7a87c2d0f6ae",
+   "upstream": "origin/main",
+   "tracking": true,
+   "ahead": 0,
+   "behind": 0,
+   "new_branch": false,
+   "dirty": false,
+   "dirty_count": 0,
+   "ignored_count": 0,
+   "entries": [],
+   "entries_truncated": false,
+   "entries_total": 0,
+   "last_commit": {
+    "sha": "fe1991a",
+    "at": 1793714759,
+    "date": "2026-11-02 11:20",
+    "subject": "document classifier"
+   },
+   "origin": "https://github.com/you/classifier.git",
+   "github": {
+    "owner": "you",
+    "repo": "classifier",
+    "url": "https://github.com/you/classifier"
+   },
+   "lfs": false,
+   "gitea": {
+    "status": "synced",
+    "detail": "in sync",
+    "target": "https://gitea.example.com/you/classifier.git",
+    "checked_at": 1793761559,
+    "counts": {
+     "local": 1,
+     "remote": 1,
+     "push": 0,
+     "prune": 0,
+     "changed": 0
+    }
+   },
+   "needs": {
+    "commit": false,
+    "push": false,
+    "gitea": false
+   }
+  },
+  {
+   "id": "dotfiles",
+   "name": "dotfiles",
+   "rel": "dotfiles",
+   "container": "",
+   "path": "/Users/you/code/dotfiles",
+   "error": "",
+   "branch": "main",
+   "detached": false,
+   "head": "f40cc1299629259447e388440ce62167fc6caa3b9dc387640bf2e9621293a73e",
+   "upstream": "origin/main",
+   "tracking": true,
+   "ahead": 0,
+   "behind": 0,
+   "new_branch": false,
+   "dirty": false,
+   "dirty_count": 0,
+   "ignored_count": 0,
+   "entries": [],
+   "entries_truncated": false,
+   "entries_total": 0,
+   "last_commit": {
+    "sha": "f40cc12",
+    "at": 1793711159,
+    "date": "2026-11-01 12:21",
+    "subject": "shell and editor config"
+   },
+   "origin": "https://github.com/you/dotfiles.git",
+   "github": {
+    "owner": "you",
+    "repo": "dotfiles",
+    "url": "https://github.com/you/dotfiles"
+   },
+   "lfs": false,
+   "gitea": {
+    "status": "synced",
+    "detail": "in sync",
+    "target": "https://gitea.example.com/you/dotfiles.git",
+    "checked_at": 1793761559,
+    "counts": {
+     "local": 1,
+     "remote": 1,
+     "push": 0,
+     "prune": 0,
+     "changed": 0
+    }
+   },
+   "needs": {
+    "commit": false,
+    "push": false,
+    "gitea": false
+   }
+  }
+ ],
+ "summary": {
+  "total": 12,
+  "github": 12,
+  "dirty_repos": 0,
+  "dirty_files": 0,
+  "ignored_files": 0,
+  "ahead_repos": 0,
+  "ahead_commits": 0,
+  "behind_repos": 0,
+  "behind_commits": 0,
+  "gitea_checked": 12,
+  "gitea_behind": 0,
+  "gitea_errors": 0,
+  "gitea_unknown": 0,
+  "attention": 0,
+  "clean": 12
+ },
+ "generated_at": 1793761311,
+ "scanning": false,
+ "gitea": {
+  "state": "done",
+  "checked_at": 1793761311,
+  "checked": 12,
+  "errors": 0,
+  "message": "12 repo(s) checked"
+ },
+ "connectivity": {
+  "state": "done",
+  "checked_at": 1793761311,
+  "github": {
+   "state": "up",
+   "checked_at": 1793761311,
+   "latency_ms": 175,
+   "detail": "HTTP 200"
+  },
+  "gitea": {
+   "state": "up",
+   "checked_at": 1793761311,
+   "latency_ms": 20,
+   "version": "1.23.4",
+   "detail": "HTTP 200"
+  }
+ },
+ "queue": null,
+ "vscode": {
+  "available": true
+ },
+ "gitea_configured": true
+}

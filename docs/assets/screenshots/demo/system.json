@@ -1,0 +1,76 @@
+{
+ "app": {
+  "name": "Homelab Console",
+  "version": "0.1.0",
+  "package_version": "0.1.0",
+  "repo": "/Users/you/code/homelab/workspace",
+  "state_dir": "/Users/you/code/homelab/workspace/.hlc",
+  "remote_root": "/opt/stacks",
+  "started": 1793761248,
+  "port": 18790,
+  "python": "3.12.7",
+  "platform": "darwin",
+  "pid": 4242
+ },
+ "storage": {
+  "repo_free_bytes": 812000000000,
+  "repo_total_bytes": 1000000000000,
+  "state_bytes": 2400000,
+  "snapshots": 6,
+  "runs": 18,
+  "db": {
+   "host_samples": 2880,
+   "stack_samples": 2100,
+   "events": 128,
+   "runs": 18,
+   "db_bytes": 962560
+  }
+ },
+ "ssh": {
+  "dir": "/Users/you/.ssh",
+  "keys": [
+   {
+    "private": "/Users/you/.ssh/id_ed25519",
+    "public": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDemoKeyForScreenshotsOnly you@mac",
+    "type": "ED25519",
+    "fingerprint": "SHA256:demoFingerprintOnlyForScreenshots",
+    "comment": "you@mac",
+    "bits": "ED25519 256"
+   }
+  ],
+  "default_key": {
+   "private": "/Users/you/.ssh/id_ed25519",
+   "public": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDemoKeyForScreenshotsOnly you@mac",
+   "type": "ED25519",
+   "fingerprint": "SHA256:demoFingerprintOnlyForScreenshots",
+   "comment": "you@mac",
+   "bits": "ED25519 256"
+  }
+ },
+ "hosts": 3,
+ "settings": {
+  "poll_interval_s": 30,
+  "release_ttl_s": 21600,
+  "history_days": 30,
+  "remote_root": "/opt/stacks",
+  "repo_root": "/Users/you/code",
+  "gitea_url": "https://gitea.example.com",
+  "gitea_owner": "you",
+  "gitea_timeout_s": 120,
+  "gitea_prune": true,
+  "gitea_force": true,
+  "gitea_check_on_start": true,
+  "repo_poll_interval_s": 10,
+  "auto_update_enabled": false,
+  "health_timeout_s": 90,
+  "theme": "dark",
+  "check_releases_on_start": true,
+  "github_token_set": false,
+  "gitea_token_set": false,
+  "gitea_token_source": "",
+  "app_managed": false,
+  "repo_roots": [
+   "/Users/you/code"
+  ]
+ }
+}

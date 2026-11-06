@@ -1,0 +1,25 @@
+#!/bin/sh
+# Homelab Console launcher. Prefers the repo virtualenv, falls back to python3.
+set -eu
+REPO=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+PY=${HLC_PYTHON:-"$REPO/.venv/bin/python"}
+if [ ! -x "$PY" ]; then
+    PY=$(command -v python3 || true)
+fi
+if [ -z "$PY" ]; then
+    echo "error: python3 not found" >&2
+    exit 2
+fi
+if ! "$PY" -c 'import sys; raise SystemExit(0 if sys.version_info >= (3, 10) else 1)' \
+    >/dev/null 2>&1; then
+    echo "error: Python 3.10 or newer is required (found $("$PY" -V 2>&1))" >&2
+    exit 2
+fi
+# A source checkout keeps the private data module at workspace/. Use it unless
+# the caller already chose a repo or workspace explicitly.
+if [ -z "${HLC_REPO:-}" ] && [ -z "${HLC_WORKSPACE:-}" ] \
+    && [ -d "$REPO/workspace/stacks" ] && [ -d "$REPO/workspace/scripts" ]; then
+    HLC_REPO="$REPO/workspace"
+    export HLC_REPO
+fi
+exec env PYTHONPATH="$REPO/app${PYTHONPATH:+:$PYTHONPATH}" "$PY" -m homelab_console "$@"

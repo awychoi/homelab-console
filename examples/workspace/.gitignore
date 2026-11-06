@@ -1,0 +1,13 @@
+# local console state and backups
+.hlc/
+backups/
+
+# per-stack secrets — never commit (.env, .env.local, prod.env, ...)
+**/.env
+**/.env.*
+**/*.env
+
+# tooling noise
+__pycache__/
+*.pyc
+.DS_Store

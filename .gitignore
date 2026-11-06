@@ -1,0 +1,27 @@
+# per-stack secrets — never commit (.env, .env.local, prod.env, ...)
+**/.env
+**/.env.*
+**/*.env
+
+# macOS noise
+.DS_Store
+
+# private fleet checkout (separate repo, not a submodule)
+/workspace/
+
+# Homelab Console local state (SQLite, run logs, snapshots, caches)
+.hlc/
+
+# pre-update snapshots from update_run.py
+backups/
+
+# Python / node tooling
+.venv/
+__pycache__/
+*.pyc
+
+# PyInstaller bundle output
+/dist/
+/build/
+
+/AGENTS.md

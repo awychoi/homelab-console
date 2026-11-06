@@ -1,0 +1,4515 @@
+{
+ "app": {
+  "name": "Homelab Console",
+  "version": "0.1.0",
+  "package_version": "0.1.0",
+  "repo": "/Users/you/code/homelab/workspace",
+  "state_dir": "/Users/you/code/homelab/workspace/.hlc",
+  "remote_root": "/opt/stacks",
+  "started": 1793761248,
+  "port": 18780,
+  "python": "3.12.7",
+  "platform": "darwin"
+ },
+ "settings": {
+  "poll_interval_s": 30,
+  "release_ttl_s": 21600,
+  "history_days": 30,
+  "remote_root": "/opt/stacks",
+  "repo_root": "/Users/you/code",
+  "gitea_url": "https://gitea.example.com",
+  "gitea_owner": "you",
+  "gitea_timeout_s": 120,
+  "gitea_prune": true,
+  "gitea_force": true,
+  "gitea_check_on_start": true,
+  "repo_poll_interval_s": 10,
+  "auto_update_enabled": false,
+  "health_timeout_s": 90,
+  "theme": "dark",
+  "check_releases_on_start": true,
+  "github_token_set": false,
+  "gitea_token_set": false,
+  "gitea_token_source": "",
+  "app_managed": false,
+  "repo_roots": [
+   "/Users/you/code"
+  ],
+  "release_sources": {},
+  "stack_profiles": {}
+ },
+ "hosts": [
+  {
+   "alias": "pi-a",
+   "user": "pi",
+   "address": "192.0.2.10",
+   "port": 22,
+   "local": false,
+   "key": "",
+   "role": "DNS + proxy",
+   "tags": [],
+   "notes": "DNS and reverse proxy",
+   "added": "",
+   "target": "pi@192.0.2.10",
+   "ssh_config": {
+    "hostname": "192.0.2.10",
+    "user": "pi"
+   },
+   "key_info": null
+  },
+  {
+   "alias": "pi-b",
+   "user": "pi",
+   "address": "192.0.2.11",
+   "port": 22,
+   "local": false,
+   "key": "",
+   "role": "apps + monitoring",
+   "tags": [],
+   "notes": "apps and monitoring",
+   "added": "",
+   "target": "pi@192.0.2.11",
+   "ssh_config": {
+    "hostname": "192.0.2.11",
+    "user": "pi"
+   },
+   "key_info": null
+  },
+  {
+   "alias": "nas-a",
+   "user": "pi",
+   "address": "192.0.2.12",
+   "port": 22,
+   "local": false,
+   "key": "",
+   "role": "photos + backup",
+   "tags": [],
+   "notes": "photos and backup",
+   "added": "",
+   "target": "pi@192.0.2.12",
+   "ssh_config": {
+    "hostname": "192.0.2.12",
+    "user": "pi"
+   },
+   "key_info": null
+  }
+ ],
+ "ssh": {
+  "dir": "/Users/you/.ssh",
+  "keys": [
+   {
+    "private": "/Users/you/.ssh/id_ed25519",
+    "public": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDemoKeyForScreenshotsOnly you@mac",
+    "type": "ED25519",
+    "fingerprint": "SHA256:demoFingerprintOnlyForScreenshots",
+    "comment": "you@mac",
+    "bits": "ED25519 256"
+   }
+  ],
+  "default_key": {
+   "private": "/Users/you/.ssh/id_ed25519",
+   "public": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDemoKeyForScreenshotsOnly you@mac",
+   "type": "ED25519",
+   "fingerprint": "SHA256:demoFingerprintOnlyForScreenshots",
+   "comment": "you@mac",
+   "bits": "ED25519 256"
+  }
+ },
+ "git": {
+  "dirty": false,
+  "porcelain": "",
+  "branch": "main"
+ },
+ "state": {
+  "generated_at": 1793761311,
+  "generated_iso": "2026-11-03T22:00:00-05:00",
+  "duration_ms": 1039,
+  "warming_up": false,
+  "repo": "/Users/you/code/homelab/workspace",
+  "hosts": [
+   {
+    "alias": "pi-a",
+    "user": "pi",
+    "address": "192.0.2.10",
+    "port": 22,
+    "local": false,
+    "role": "DNS + proxy",
+    "notes": "DNS and reverse proxy",
+    "tags": [],
+    "online": true,
+    "status": "online",
+    "latency_ms": 981,
+    "error": "",
+    "collected_at": 1793761336,
+    "problems": [],
+    "data": {
+     "hostname": "pi-a",
+     "fqdn": "pi-a",
+     "os": "Debian GNU/Linux 12 (bookworm)",
+     "os_id": "debian",
+     "kernel": "6.18.39+rpt-rpi-v8",
+     "arch": "aarch64",
+     "model": "Raspberry Pi 3 Model B Plus Rev 1.3",
+     "cpu_count": 4,
+     "uptime_s": 4195603.8,
+     "load": [
+      0.05,
+      0.02,
+      0.0
+     ],
+     "memory": {
+      "total": 949071872,
+      "available": 595406848,
+      "used": 353665024,
+      "used_pct": 37.3,
+      "swap_total": 948957184,
+      "swap_used": 29093888
+     },
+     "temperature_c": 36.5,
+     "throttled": {
+      "supported": true,
+      "raw": "0x0",
+      "value": 0,
+      "now": [],
+      "since_boot": [],
+      "ok": true
+     },
+     "disks": [
+      {
+       "filesystem": "/dev/mmcblk0p2",
+       "filesystem_type": "ext4",
+       "size": "59G",
+       "used": "5.6G",
+       "available": "51G",
+       "percent": "10",
+       "mountpoint": "/"
+      },
+      {
+       "filesystem": "/dev/mmcblk0p1",
+       "filesystem_type": "vfat",
+       "size": "510M",
+       "used": "68M",
+       "available": "443M",
+       "percent": "14",
+       "mountpoint": "/boot/firmware"
+      }
+     ],
+     "raid": [],
+     "docker_version": "29.8.0",
+     "compose_version": "5.5.1",
+     "containers": [
+      {
+       "name": "pihole",
+       "image": "pihole/pihole:2026.10.1",
+       "image_id": "sha256:edb7f703649f4b6ab8b14f28d12f15e8cbe1c50a2092458e9b640bd6bc6fe59e",
+       "state": "running",
+       "health": "healthy",
+       "started_at": "2026-11-03T01:19:12.688454519Z",
+       "finished_at": "0001-01-01T00:00:00Z",
+       "restart_count": 0,
+       "oom_killed": false,
+       "project": "pihole",
+       "service": "pihole",
+       "working_dir": "/opt/stacks/pihole",
+       "config_files": "/opt/stacks/pihole/docker-compose.yml",
+       "ports": [],
+       "mounts": [
+        {
+         "type": "bind",
+         "source": "/srv/pihole/dnsmasq.d",
+         "destination": "/etc/dnsmasq.d"
+        },
+        {
+         "type": "bind",
+         "source": "/srv/pihole/etc",
+         "destination": "/etc/pihole"
+        }
+       ],
+       "image_repo": "pihole/pihole",
+       "image_tag": "2026.10.1",
+       "digest": "sha256:30f803ad5dd60ff96cc0a63008a2e9271af481c1b0399a182192b2e91152c1f9",
+       "repo_digests": [
+        "pihole/pihole@sha256:30f803ad5dd60ff96cc0a63008a2e9271af481c1b0399a182192b2e91152c1f9"
+       ],
+       "image_labels": {
+        "org.opencontainers.image.created": "2026-10-31T00:02:19.205Z",
+        "org.opencontainers.image.description": "The official Pi-hole Docker image from pi-hole.net",
+        "org.opencontainers.image.licenses": "NOASSERTION",
+        "org.opencontainers.image.revision": "ffd0a489a633d0f2512818c46fd651ac50789175",
+        "org.opencontainers.image.source": "https://github.com/pi-hole/docker-pi-hole",
+        "org.opencontainers.image.title": "docker-pi-hole",
+        "org.opencontainers.image.url": "https://github.com/pi-hole/docker-pi-hole",
+        "org.opencontainers.image.version": "2026.10.1"
+       },
+       "uptime_s": 92500,
+       "stopped_s": null,
+       "healthy": true,
+       "exception": false
+      },
+      {
+       "name": "unbound",
+       "image": "madnuttah/unbound:1.26.2-0",
+       "image_id": "sha256:bde49515ecbc48cdfe7345029886ec4489414ec1e8154079ba6227c444304475",
+       "state": "running",
+       "health": "",
+       "started_at": "2026-10-27T12:56:26.356560946Z",
+       "finished_at": "0001-01-01T00:00:00Z",
+       "restart_count": 0,
+       "oom_killed": false,
+       "project": "unbound",
+       "service": "unbound",
+       "working_dir": "/opt/stacks/unbound",
+       "config_files": "/opt/stacks/unbound/docker-compose.yml",
+       "ports": [
+        {
+         "container": "5335/tcp",
+         "host_ip": "127.0.0.1",
+         "host_port": "5053"
+        },
+        {
+         "container": "5335/udp",
+         "host_ip": "127.0.0.1",
+         "host_port": "5053"
+        }
+       ],
+       "mounts": [],
+       "image_repo": "madnuttah/unbound",
+       "image_tag": "1.26.2-0",
+       "digest": "sha256:e122f1fb49f2499d2932cee74bb998c60e6141844485cd54fa3c6ad31ce131cb",
+       "repo_digests": [
+        "madnuttah/unbound@sha256:e122f1fb49f2499d2932cee74bb998c60e6141844485cd54fa3c6ad31ce131cb"
+       ],
+       "image_labels": {
+        "org.opencontainers.image.authors": "madnuttah",
+        "org.opencontainers.image.base.name": "madnuttah/unbound",
+        "org.opencontainers.image.created": "2026-10-21T10:53:56Z",
+        "org.opencontainers.image.description": "Unbound is a validating, recursive, and caching DNS resolver.",
+        "org.opencontainers.image.licenses": "MIT",
+        "org.opencontainers.image.source": "https://github.com/madnuttah/unbound-docker",
+        "org.opencontainers.image.summary": "This distroless Unbound Docker image is based on Alpine Linux with focus on security, privacy, performance and a small image size. And with Pi-hole in mind.",
+        "org.opencontainers.image.title": "madnuttah/unbound",
+        "org.opencontainers.image.url": "https://hub.docker.com/r/madnuttah/unbound",
+        "org.opencontainers.image.version": "1.26.2-0"
+       },
+       "uptime_s": 655466,
+       "stopped_s": null,
+       "healthy": true,
+       "exception": false
+      },
+      {
+       "name": "caddy",
+       "image": "caddy:2.11.7",
+       "image_id": "sha256:f6a2207268b0f0914df9d3569e1824d6adcfa7b59fbffe0f3cbc5d2d60423f71",
+       "state": "running",
+       "health": "",
+       "started_at": "2026-10-13T04:29:53.113841037Z",
+       "finished_at": "0001-01-01T00:00:00Z",
+       "restart_count": 0,
+       "oom_killed": false,
+       "project": "caddy",
+       "service": "caddy",
+       "working_dir": "/opt/stacks/caddy",
+       "config_files": "/opt/stacks/caddy/docker-compose.yml",
+       "ports": [],
+       "mounts": [
+        {
+         "type": "volume",
+         "source": "/var/lib/docker/volumes/caddy_caddy_config/_data",
+         "destination": "/config"
+        },
+        {
+         "type": "volume",
+         "source": "/var/lib/docker/volumes/caddy_caddy_data/_data",
+         "destination": "/data"
+        },
+        {
+         "type": "bind",
+         "source": "/var/run/tailscale",
+         "destination": "/run/tailscale"
+        },
+        {
+         "type": "bind",
+         "source": "/opt/stacks/caddy/Caddyfile",
+         "destination": "/etc/caddy/Caddyfile"
+        }
+       ],
+       "image_repo": "caddy",
+       "image_tag": "2.11.7",
+       "digest": "sha256:f2a1290d0463aad60660d4ec134943f183ee2a5f6c3eb7bf32dd984f2f020772",
+       "repo_digests": [
+        "caddy@sha256:f2a1290d0463aad60660d4ec134943f183ee2a5f6c3eb7bf32dd984f2f020772"
+       ],
+       "image_labels": {
+        "org.opencontainers.image.description": "a powerful, enterprise-ready, open source web server with automatic HTTPS written in Go",
+        "org.opencontainers.image.documentation": "https://caddyserver.com/docs",
+        "org.opencontainers.image.licenses": "Apache-2.0",
+        "org.opencontainers.image.source": "https://github.com/caddyserver/caddy-docker",
+        "org.opencontainers.image.title": "Caddy",
+        "org.opencontainers.image.url": "https://caddyserver.com",
+        "org.opencontainers.image.vendor": "Light Code Labs",
+        "org.opencontainers.image.version": "v2.11.7"
+       },
+       "uptime_s": 1895459,
+       "stopped_s": null,
+       "healthy": true,
+       "exception": false
+      }
+     ],
+     "images": {
+      "sha256:bde49515ecbc48cdfe7345029886ec4489414ec1e8154079ba6227c444304475": {
+       "repo_digests": [
+        "madnuttah/unbound@sha256:e122f1fb49f2499d2932cee74bb998c60e6141844485cd54fa3c6ad31ce131cb"
+       ],
+       "repo_tags": [
+        "madnuttah/unbound:1.26.2-0"
+       ],
+       "labels": {
+        "org.opencontainers.image.authors": "madnuttah",
+        "org.opencontainers.image.base.name": "madnuttah/unbound",
+        "org.opencontainers.image.created": "2026-10-21T10:53:56Z",
+        "org.opencontainers.image.description": "Unbound is a validating, recursive, and caching DNS resolver.",
+        "org.opencontainers.image.licenses": "MIT",
+        "org.opencontainers.image.source": "https://github.com/madnuttah/unbound-docker",
+        "org.opencontainers.image.summary": "This distroless Unbound Docker image is based on Alpine Linux with focus on security, privacy, performance and a small image size. And with Pi-hole in mind.",
+        "org.opencontainers.image.title": "madnuttah/unbound",
+        "org.opencontainers.image.url": "https://hub.docker.com/r/madnuttah/unbound",
+        "org.opencontainers.image.version": "1.26.2-0"
+       }
+      },
+      "sha256:edb7f703649f4b6ab8b14f28d12f15e8cbe1c50a2092458e9b640bd6bc6fe59e": {
+       "repo_digests": [
+        "pihole/pihole@sha256:30f803ad5dd60ff96cc0a63008a2e9271af481c1b0399a182192b2e91152c1f9"
+       ],
+       "repo_tags": [
+        "pihole/pihole:2026.10.1"
+       ],
+       "labels": {
+        "org.opencontainers.image.created": "2026-10-31T00:02:19.205Z",
+        "org.opencontainers.image.description": "The official Pi-hole Docker image from pi-hole.net",
+        "org.opencontainers.image.licenses": "NOASSERTION",
+        "org.opencontainers.image.revision": "ffd0a489a633d0f2512818c46fd651ac50789175",
+        "org.opencontainers.image.source": "https://github.com/pi-hole/docker-pi-hole",
+        "org.opencontainers.image.title": "docker-pi-hole",
+        "org.opencontainers.image.url": "https://github.com/pi-hole/docker-pi-hole",
+        "org.opencontainers.image.version": "2026.10.1"
+       }
+      },
+      "sha256:f6a2207268b0f0914df9d3569e1824d6adcfa7b59fbffe0f3cbc5d2d60423f71": {
+       "repo_digests": [
+        "caddy@sha256:f2a1290d0463aad60660d4ec134943f183ee2a5f6c3eb7bf32dd984f2f020772"
+       ],
+       "repo_tags": [
+        "caddy:2.11.7"
+       ],
+       "labels": {
+        "org.opencontainers.image.description": "a powerful, enterprise-ready, open source web server with automatic HTTPS written in Go",
+        "org.opencontainers.image.documentation": "https://caddyserver.com/docs",
+        "org.opencontainers.image.licenses": "Apache-2.0",
+        "org.opencontainers.image.source": "https://github.com/caddyserver/caddy-docker",
+        "org.opencontainers.image.title": "Caddy",
+        "org.opencontainers.image.url": "https://caddyserver.com",
+        "org.opencontainers.image.vendor": "Light Code Labs",
+        "org.opencontainers.image.version": "v2.11.7"
+       }
+      }
+     },
+     "stack_files": {
+      "caddy": {
+       "docker-compose.yml": "185a39cdbde14fc6021a3391de82a35765789608226ce2ebd93bc68a9ca98940",
+       "Caddyfile": "350eaa3ddfd1cafa19062c34614877eb270f7bffaf77b172d8577267624f676b"
+      },
+      "pihole": {
+       "docker-compose.yml": "071985c2bf566010b903e0fd6ef1412763317f37de6dd1ad909d1f6b848ef241",
+       ".env": "b4ef4c18a983c94c1fbca0d3fb71a30103dfd9761f2b4fd241bb55f4e0183e88"
+      },
+      "unbound": {
+       "docker-compose.yml": "4d6b7a15b53cf353dcaf47676b7cb372bdcb27373e8375029e839ce78851f21e"
+      }
+     },
+     "listeners": [
+      "0.0.0.0:22",
+      "0.0.0.0:53",
+      "0.0.0.0:8053",
+      "0.0.0.0:8443",
+      "100.64.0.10:43986",
+      "100.64.0.10:443",
+      "100.64.0.10:80",
+      "127.0.0.1:2019",
+      "127.0.0.1:5053",
+      "192.0.2.10:443",
+      "192.0.2.10:80",
+      "[::]:22",
+      "[::]:53",
+      "[fd7a:115c:a1e0::803b:583e]:39316"
+     ],
+     "failed_units": [],
+     "tailscale": {
+      "installed": true,
+      "online": true,
+      "ip": "100.64.0.10",
+      "dns_name": "pi-a.example.ts.net",
+      "version": "1.102.4"
+     },
+     "time": {
+      "ntp_synced": true,
+      "boot_epoch": 1789565647.9870625,
+      "reboot_required": false
+     },
+     "collected_epoch": 1793761252.1671436
+    },
+    "summary": {
+     "hostname": "pi-a",
+     "model": "Raspberry Pi 3 Model B Plus Rev 1.3",
+     "os": "Debian GNU/Linux 13 (trixie)",
+     "kernel": "6.18.39+rpt-rpi-v8",
+     "arch": "aarch64",
+     "uptime_s": 4195603.8,
+     "uptime": "48d 13h",
+     "temp_c": 36.5,
+     "throttled": {
+      "supported": true,
+      "raw": "0x0",
+      "value": 0,
+      "now": [],
+      "since_boot": [],
+      "ok": true
+     },
+     "load": [
+      0.05,
+      0.02,
+      0.0
+     ],
+     "mem_pct": 37.3,
+     "mem_used": 353665024,
+     "mem_total": 949071872,
+     "disk_pct": 10.0,
+     "containers_running": 2,
+     "containers_total": 2,
+     "containers_bad": 0,
+     "updates": 0,
+     "docker_version": "29.8.0",
+     "compose_version": "5.5.1",
+     "tailscale": {
+      "installed": true,
+      "hostname": "pi-a",
+      "ipv4": "100.64.0.10",
+      "ips": [
+       "100.64.0.10",
+       "fd7a:115c:a1e0::803b:583e"
+      ],
+      "backend": "Running",
+      "version": "1.102.4-t3caf7d9e7-g084ee3b64",
+      "online": true,
+      "peers_total": 4,
+      "peers_online": 2
+     },
+     "reboot_required": false,
+     "ntp_synced": true,
+     "failed_units": [],
+     "raid": []
+    },
+    "stacks": [
+     {
+      "name": "caddy",
+      "status": "up",
+      "sync": "synced",
+      "updates": 0
+     },
+     {
+      "name": "pihole",
+      "status": "up",
+      "sync": "synced",
+      "updates": 0
+     }
+    ],
+    "history": {
+     "uptime_pct": 96.02,
+     "last_ts": 1793761251
+    },
+    "history_points": [
+     {
+      "ts": 1793739288,
+      "reachable": 1,
+      "uptime_s": 4173639,
+      "temp_c": 34.9,
+      "throttled": 0,
+      "load1": 0.0,
+      "mem_pct": 34.6,
+      "disk_pct": 10.0,
+      "containers_up": 3,
+      "containers_total": 3
+     },
+     {
+      "ts": 1793739648,
+      "reachable": 1,
+      "uptime_s": 4173999,
+      "temp_c": 35.4,
+      "throttled": 0,
+      "load1": 0.0,
+      "mem_pct": 36.0,
+      "disk_pct": 10.0,
+      "containers_up": 3,
+      "containers_total": 3
+     },
+     {
+      "ts": 1793740008,
+      "reachable": 1,
+      "uptime_s": 4174360,
+      "temp_c": 35.4,
+      "throttled": 0,
+      "load1": 0.0,
+      "mem_pct": 36.1,
+      "disk_pct": 10.0,
+      "containers_up": 3,
+      "containers_total": 3
+     },
+     {
+      "ts": 1793740368,
+      "reachable": 1,
+      "uptime_s": 4174720,
+      "temp_c": 34.9,
+      "throttled": 0,
+      "load1": 0.1,
+      "mem_pct": 34.9,
+      "disk_pct": 10.0,
+      "containers_up": 3,
+      "containers_total": 3
+     },
+     {
+      "ts": 1793740728,
+      "reachable": 1,
+      "uptime_s": 4175080,
+      "temp_c": 35.4,
+      "throttled": 0,
+      "load1": 0.01,
+      "mem_pct": 35.9,
+      "disk_pct": 10.0,
+      "containers_up": 3,
+      "containers_total": 3
+     },
+     {
+      "ts": 1793741088,
+      "reachable": 1,
+      "uptime_s": 4175440,
+      "temp_c": 35.4,
+      "throttled": 0,
+      "load1": 0.0,
+      "mem_pct": 35.1,
+      "disk_pct": 10.0,
+      "containers_up": 3,
+      "containers_total": 3
+     },
+     {
+      "ts": 1793741448,
+      "reachable": 1,
+      "uptime_s": 4175800,
+      "temp_c": 35.4,
+      "throttled": 0,
+      "load1": 0.05,
+      "mem_pct": 35.6,
+      "disk_pct": 10.0,
+      "containers_up": 3,
+      "containers_total": 3
+     },
+     {
+      "ts": 1793741809,
+      "reachable": 1,
+      "uptime_s": 4176160,
+      "temp_c": 35.4,
+      "throttled": 0,
+      "load1": 0.0,
+      "mem_pct": 35.3,
+      "disk_pct": 10.0,
+      "containers_up": 3,
+      "containers_total": 3
+     },
+     {
+      "ts": 1793742169,
+      "reachable": 1,
+      "uptime_s": 4176520,
+      "temp_c": 35.4,
+      "throttled": 0,
+      "load1": 0.03,
+      "mem_pct": 35.0,
+      "disk_pct": 10.0,
+      "containers_up": 3,
+      "containers_total": 3
+     },
+     {
+      "ts": 1793742529,
+      "reachable": 1,
+      "uptime_s": 4176880,
+      "temp_c": 35.4,
+      "throttled": 0,
+      "load1": 0.03,
+      "mem_pct": 36.2,
+      "disk_pct": 10.0,
+      "containers_up": 3,
+      "containers_total": 3
+     },
+     {
+      "ts": 1793742889,
+      "reachable": 1,
+      "uptime_s": 4177240,
+      "temp_c": 34.9,
+      "throttled": 0,
+      "load1": 0.0,
+      "mem_pct": 35.6,
+      "disk_pct": 10.0,
+      "containers_up": 3,
+      "containers_total": 3
+     },
+     {
+      "ts": 1793743249,
+      "reachable": 1,
+      "uptime_s": 4177601,
+      "temp_c": 35.4,
+      "throttled": 0,
+      "load1": 0.0,
+      "mem_pct": 34.9,
+      "disk_pct": 10.0,
+      "containers_up": 3,
+      "containers_total": 3
+     },
+     {
+      "ts": 1793743609,
+      "reachable": 1,
+      "uptime_s": 4177961,
+      "temp_c": 34.9,
+      "throttled": 0,
+      "load1": 0.0,
+      "mem_pct": 36.5,
+      "disk_pct": 10.0,
+      "containers_up": 3,
+      "containers_total": 3
+     },
+     {
+      "ts": 1793743965,
+      "reachable": 1,
+      "uptime_s": 4178316,
+      "temp_c": 35.4,
+      "throttled": 0,
+      "load1": 0.11,
+      "mem_pct": 36.5,
+      "disk_pct": 10.0,
+      "containers_up": 3,
+      "containers_total": 3
+     },
+     {
+      "ts": 1793744325,
+      "reachable": 1,
+      "uptime_s": 4178677,
+      "temp_c": 34.9,
+      "throttled": 0,
+      "load1": 0.02,
+      "mem_pct": 35.8,
+      "disk_pct": 10.0,
+      "containers_up": 3,
+      "containers_total": 3
+     },
+     {
+      "ts": 1793744685,
+      "reachable": 1,
+      "uptime_s": 4179037,
+      "temp_c": 34.9,
+      "throttled": 0,
+      "load1": 0.01,
+      "mem_pct": 36.1,
+      "disk_pct": 10.0,
+      "containers_up": 3,
+      "containers_total": 3
+     },
+     {
+      "ts": 1793745045,
+      "reachable": 1,
+      "uptime_s": 4179397,
+      "temp_c": 35.4,
+      "throttled": 0,
+      "load1": 0.04,
+      "mem_pct": 35.4,
+      "disk_pct": 10.0,
+      "containers_up": 3,
+      "containers_total": 3
+     },
+     {
+      "ts": 1793745405,
+      "reachable": 1,
+      "uptime_s": 4179757,
+      "temp_c": 35.4,
+      "throttled": 0,
+      "load1": 0.12,
+      "mem_pct": 36.2,
+      "disk_pct": 10.0,
+      "containers_up": 3,
+      "containers_total": 3
+     },
+     {
+      "ts": 1793745913,
+      "reachable": 1,
+      "uptime_s": 4180265,
+      "temp_c": 35.4,
+      "throttled": 0,
+      "load1": 0.0,
+      "mem_pct": 35.4,
+      "disk_pct": 10.0,
+      "containers_up": 3,
+      "containers_total": 3
+     },
+     {
+      "ts": 1793746306,
+      "reachable": 1,
+      "uptime_s": 4180657,
+      "temp_c": 35.4,
+      "throttled": 0,
+      "load1": 0.02,
+      "mem_pct": 35.9,
+      "disk_pct": 10.0,
+      "containers_up": 3,
+      "containers_total": 3
+     },
+     {
+      "ts": 1793746685,
+      "reachable": 1,
+      "uptime_s": 4181022,
+      "temp_c": 35.4,
+      "throttled": 0,
+      "load1": 0.01,
+      "mem_pct": 35.7,
+      "disk_pct": 10.0,
+      "containers_up": 3,
+      "containers_total": 3
+     },
+     {
+      "ts": 1793747060,
+      "reachable": 1,
+      "uptime_s": 4181412,
+      "temp_c": 35.4,
+      "throttled": 0,
+      "load1": 0.13,
+      "mem_pct": 36.5,
+      "disk_pct": 10.0,
+      "containers_up": 3,
+      "containers_total": 3
+     },
+     {
+      "ts": 1793747420,
+      "reachable": 1,
+      "uptime_s": 4181772,
+      "temp_c": 34.9,
+      "throttled": 0,
+      "load1": 0.0,
+      "mem_pct": 36.9,
+      "disk_pct": 10.0,
+      "containers_up": 3,
+      "containers_total": 3
+     },
+     {
+      "ts": 1793747780,
+      "reachable": 1,
+      "uptime_s": 4182132,
+      "temp_c": 35.4,
+      "throttled": 0,
+      "load1": 0.05,
+      "mem_pct": 36.1,
+      "disk_pct": 10.0,
+      "containers_up": 3,
+      "containers_total": 3
+     },
+     {
+      "ts": 1793748140,
+      "reachable": 1,
+      "uptime_s": 4182492,
+      "temp_c": 35.4,
+      "throttled": 0,
+      "load1": 0.15,
+      "mem_pct": 39.1,
+      "disk_pct": 10.0,
+      "containers_up": 3,
+      "containers_total": 3
+     },
+     {
+      "ts": 1793748500,
+      "reachable": 1,
+      "uptime_s": 4182852,
+      "temp_c": 35.4,
+      "throttled": 0,
+      "load1": 0.0,
+      "mem_pct": 37.0,
+      "disk_pct": 10.0,
+      "containers_up": 3,
+      "containers_total": 3
+     },
+     {
+      "ts": 1793748860,
+      "reachable": 1,
+      "uptime_s": 4183212,
+      "temp_c": 34.9,
+      "throttled": 0,
+      "load1": 0.05,
+      "mem_pct": 36.5,
+      "disk_pct": 10.0,
+      "containers_up": 3,
+      "containers_total": 3
+     },
+     {
+      "ts": 1793749221,
+      "reachable": 1,
+      "uptime_s": 4183572,
+      "temp_c": 35.4,
+      "throttled": 0,
+      "load1": 0.07,
+      "mem_pct": 35.8,
+      "disk_pct": 10.0,
+      "containers_up": 3,
+      "containers_total": 3
+     },
+     {
+      "ts": 1793749581,
+      "reachable": 1,
+      "uptime_s": 4183932,
+      "temp_c": 35.4,
+      "throttled": 0,
+      "load1": 0.0,
+      "mem_pct": 35.8,
+      "disk_pct": 10.0,
+      "containers_up": 3,
+      "containers_total": 3
+     },
+     {
+      "ts": 1793749941,
+      "reachable": 1,
+      "uptime_s": 4184292,
+      "temp_c": 35.9,
+      "throttled": 0,
+      "load1": 0.0,
+      "mem_pct": 36.4,
+      "disk_pct": 10.0,
+      "containers_up": 3,
+      "containers_total": 3
+     },
+     {
+      "ts": 1793750301,
+      "reachable": 1,
+      "uptime_s": 4184652,
+      "temp_c": 35.4,
+      "throttled": 0,
+      "load1": 0.0,
+      "mem_pct": 36.0,
+      "disk_pct": 10.0,
+      "containers_up": 3,
+      "containers_total": 3
+     },
+     {
+      "ts": 1793750661,
+      "reachable": 1,
+      "uptime_s": 4185013,
+      "temp_c": 35.4,
+      "throttled": 0,
+      "load1": 0.01,
+      "mem_pct": 35.7,
+      "disk_pct": 10.0,
+      "containers_up": 3,
+      "containers_total": 3
+     },
+     {
+      "ts": 1793751021,
+      "reachable": 1,
+      "uptime_s": 4185373,
+      "temp_c": 35.4,
+      "throttled": 0,
+      "load1": 0.0,
+      "mem_pct": 35.8,
+      "disk_pct": 10.0,
+      "containers_up": 3,
+      "containers_total": 3
+     },
+     {
+      "ts": 1793751381,
+      "reachable": 1,
+      "uptime_s": 4185733,
+      "temp_c": 35.4,
+      "throttled": 0,
+      "load1": 0.03,
+      "mem_pct": 36.4,
+      "disk_pct": 10.0,
+      "containers_up": 3,
+      "containers_total": 3
+     },
+     {
+      "ts": 1793751741,
+      "reachable": 1,
+      "uptime_s": 4186093,
+      "temp_c": 35.4,
+      "throttled": 0,
+      "load1": 0.06,
+      "mem_pct": 38.0,
+      "disk_pct": 10.0,
+      "containers_up": 3,
+      "containers_total": 3
+     },
+     {
+      "ts": 1793752101,
+      "reachable": 1,
+      "uptime_s": 4186453,
+      "temp_c": 35.4,
+      "throttled": 0,
+      "load1": 0.0,
+      "mem_pct": 36.1,
+      "disk_pct": 10.0,
+      "containers_up": 3,
+      "containers_total": 3
+     },
+     {
+      "ts": 1793752461,
+      "reachable": 1,
+      "uptime_s": 4186813,
+      "temp_c": 35.4,
+      "throttled": 0,
+      "load1": 0.0,
+      "mem_pct": 35.6,
+      "disk_pct": 10.0,
+      "containers_up": 3,
+      "containers_total": 3
+     },
+     {
+      "ts": 1793752777,
+      "reachable": 1,
+      "uptime_s": 4187129,
+      "temp_c": 35.4,
+      "throttled": 0,
+      "load1": 0.0,
+      "mem_pct": 36.2,
+      "disk_pct": 10.0,
+      "containers_up": 3,
+      "containers_total": 3
+     },
+     {
+      "ts": 1793753140,
+      "reachable": 1,
+      "uptime_s": 4187491,
+      "temp_c": 35.4,
+      "throttled": 0,
+      "load1": 0.04,
+      "mem_pct": 36.3,
+      "disk_pct": 10.0,
+      "containers_up": 3,
+      "containers_total": 3
+     },
+     {
+      "ts": 1793753500,
+      "reachable": 1,
+      "uptime_s": 4187851,
+      "temp_c": 34.9,
+      "throttled": 0,
+      "load1": 0.0,
+      "mem_pct": 35.6,
+      "disk_pct": 10.0,
+      "containers_up": 3,
+      "containers_total": 3
+     },
+     {
+      "ts": 1793753860,
+      "reachable": 1,
+      "uptime_s": 4188211,
+      "temp_c": 35.9,
+      "throttled": 0,
+      "load1": 0.26,
+      "mem_pct": 35.9,
+      "disk_pct": 10.0,
+      "containers_up": 3,
+      "containers_total": 3
+     },
+     {
+      "ts": 1793754220,
+      "reachable": 1,
+      "uptime_s": 4188571,
+      "temp_c": 35.9,
+      "throttled": 0,
+      "load1": 0.03,
+      "mem_pct": 35.2,
+      "disk_pct": 10.0,
+      "containers_up": 3,
+      "containers_total": 3
+     },
+     {
+      "ts": 1793754580,
+      "reachable": 1,
+      "uptime_s": 4188932,
+      "temp_c": 35.4,
+      "throttled": 0,
+      "load1": 0.07,
+      "mem_pct": 35.6,
+      "disk_pct": 10.0,
+      "containers_up": 3,
+      "containers_total": 3
+     },
+     {
+      "ts": 1793754940,
+      "reachable": 1,
+      "uptime_s": 4189292,
+      "temp_c": 35.9,
+      "throttled": 0,
+      "load1": 0.02,
+      "mem_pct": 35.5,
+      "disk_pct": 10.0,
+      "containers_up": 3,
+      "containers_total": 3
+     },
+     {
+      "ts": 1793755300,
+      "reachable": 1,
+      "uptime_s": 4189652,
+      "temp_c": 35.4,
+      "throttled": 0,
+      "load1": 0.08,
+      "mem_pct": 38.6,
+      "disk_pct": 10.0,
+      "containers_up": 3,
+      "containers_total": 3
+     },
+     {
+      "ts": 1793755660,
+      "reachable": 1,
+      "uptime_s": 4190012,
+      "temp_c": 35.4,
+      "throttled": 0,
+      "load1": 0.03,
+      "mem_pct": 35.6,
+      "disk_pct": 10.0,
+      "containers_up": 3,
+      "containers_total": 3
+     },
+     {
+      "ts": 1793756021,
+      "reachable": 1,
+      "uptime_s": 4190372,
+      "temp_c": 35.4,
+      "throttled": 0,
+      "load1": 0.0,
+      "mem_pct": 36.9,
+      "disk_pct": 10.0,
+      "containers_up": 3,
+      "containers_total": 3
+     },
+     {
+      "ts": 1793756494,
+      "reachable": 1,
+      "uptime_s": 4190846,
+      "temp_c": 36.5,
+      "throttled": 0,
+      "load1": 0.09,
+      "mem_pct": 35.8,
+      "disk_pct": 10.0,
+      "containers_up": 3,
+      "containers_total": 3
+     }
+    ],
+    "update_count": 0,
+    "key": "",
+    "key_info": null,
+    "last_commit": null
+   },
+   {
+    "alias": "pi-b",
+    "user": "pi",
+    "address": "192.0.2.11",
+    "port": 22,
+    "local": false,
+    "role": "apps + monitoring",
+    "notes": "apps and monitoring",
+    "tags": [],
+    "online": true,
+    "status": "online",
+    "latency_ms": 634,
+    "error": "",
+    "collected_at": 1793761336,
+    "problems": [],
+    "data": {
+     "hostname": "pi-b",
+     "fqdn": "pi-b",
+     "os": "Debian GNU/Linux 12 (bookworm)",
+     "os_id": "debian",
+     "kernel": "6.18.39+rpt-rpi-v8",
+     "arch": "aarch64",
+     "model": "Raspberry Pi 4 Model B Rev 1.1",
+     "cpu_count": 4,
+     "uptime_s": 4195601.3,
+     "load": [
+      0.11,
+      0.05,
+      0.01
+     ],
+     "memory": {
+      "total": 1934311424,
+      "available": 1050488832,
+      "used": 883822592,
+      "used_pct": 45.7,
+      "swap_total": 1933570048,
+      "swap_used": 70557696
+     },
+     "temperature_c": 37.0,
+     "throttled": {
+      "supported": true,
+      "raw": "0x0",
+      "value": 0,
+      "now": [],
+      "since_boot": [],
+      "ok": true
+     },
+     "disks": [
+      {
+       "filesystem": "/dev/mmcblk0p2",
+       "filesystem_type": "ext4",
+       "size": "59G",
+       "used": "19G",
+       "available": "38G",
+       "percent": "34",
+       "mountpoint": "/"
+      },
+      {
+       "filesystem": "/dev/mmcblk0p1",
+       "filesystem_type": "vfat",
+       "size": "510M",
+       "used": "68M",
+       "available": "443M",
+       "percent": "14",
+       "mountpoint": "/boot/firmware"
+      }
+     ],
+     "raid": [],
+     "docker_version": "29.8.0",
+     "compose_version": "5.5.1",
+     "containers": [
+      {
+       "name": "n8n",
+       "image": "docker.n8n.io/n8nio/n8n:3.1.0",
+       "image_id": "sha256:112b8af2400cd2da7aa7f290088addc14c900ad1b21cfa2afac017454f0b54c6",
+       "state": "running",
+       "health": "",
+       "started_at": "2026-11-03T22:56:58.427799994Z",
+       "finished_at": "0001-01-01T00:00:00Z",
+       "restart_count": 0,
+       "oom_killed": false,
+       "project": "n8n",
+       "service": "n8n",
+       "working_dir": "/opt/stacks/n8n",
+       "config_files": "/opt/stacks/n8n/docker-compose.yml",
+       "ports": [
+        {
+         "container": "5678/tcp",
+         "host_ip": "127.0.0.1",
+         "host_port": "5678"
+        }
+       ],
+       "mounts": [
+        {
+         "type": "bind",
+         "source": "/srv/n8n/data",
+         "destination": "/home/node/.n8n"
+        }
+       ],
+       "image_repo": "docker.n8n.io/n8nio/n8n",
+       "image_tag": "3.1.0",
+       "digest": "sha256:6e9f220e9cf0d2f17d3c2371c8d8a6fe6720f99b82a9672afb96bf068cfd04a5",
+       "repo_digests": [
+        "docker.n8n.io/n8nio/n8n@sha256:6e9f220e9cf0d2f17d3c2371c8d8a6fe6720f99b82a9672afb96bf068cfd04a5"
+       ],
+       "image_labels": {
+        "org.opencontainers.image.description": "Workflow Automation Tool",
+        "org.opencontainers.image.source": "https://github.com/n8n-io/n8n",
+        "org.opencontainers.image.title": "n8n",
+        "org.opencontainers.image.url": "https://n8n.io",
+        "org.opencontainers.image.version": "3.1.0"
+       },
+       "uptime_s": 14633,
+       "stopped_s": null,
+       "healthy": true,
+       "exception": false
+      },
+      {
+       "name": "vaultwarden",
+       "image": "vaultwarden/server:1.37.5",
+       "image_id": "sha256:a36b5e32664d17701912ba5d3fac8755a558e9ede0bf234ebd0a4dae522f25b3",
+       "state": "running",
+       "health": "healthy",
+       "started_at": "2026-11-03T06:18:44.114676735Z",
+       "finished_at": "0001-01-01T00:00:00Z",
+       "restart_count": 0,
+       "oom_killed": false,
+       "project": "vault",
+       "service": "vaultwarden",
+       "working_dir": "/opt/stacks/vault",
+       "config_files": "/opt/stacks/vault/docker-compose.yml",
+       "ports": [
+        {
+         "container": "80/tcp",
+         "host_ip": "127.0.0.1",
+         "host_port": "8091"
+        }
+       ],
+       "mounts": [
+        {
+         "type": "bind",
+         "source": "/srv/vault/vw-data",
+         "destination": "/data"
+        }
+       ],
+       "image_repo": "vaultwarden/server",
+       "image_tag": "1.37.5",
+       "digest": "sha256:4fe17f415f90087377d37c755e0ea3cf189dcc6794e49cdd2a9adbb4937d9e1f",
+       "repo_digests": [
+        "vaultwarden/server@sha256:4fe17f415f90087377d37c755e0ea3cf189dcc6794e49cdd2a9adbb4937d9e1f"
+       ],
+       "image_labels": {
+        "org.opencontainers.image.created": "2026-11-01T22:06:20+00:00",
+        "org.opencontainers.image.description": "Unofficial Bitwarden compatible server written in Rust - 1.37.5",
+        "org.opencontainers.image.documentation": "https://github.com/dani-garcia/vaultwarden/wiki",
+        "org.opencontainers.image.licenses": "AGPL-3.0-only",
+        "org.opencontainers.image.revision": "6ed6921cc2b0e03b4d74189574d2a5e71c512e97",
+        "org.opencontainers.image.source": "https://github.com/dani-garcia/vaultwarden",
+        "org.opencontainers.image.url": "https://github.com/dani-garcia/vaultwarden",
+        "org.opencontainers.image.version": "1.37.5"
+       },
+       "uptime_s": 74527,
+       "stopped_s": null,
+       "healthy": true,
+       "exception": false
+      },
+      {
+       "name": "pihole",
+       "image": "pihole/pihole:2026.10.1",
+       "image_id": "sha256:edb7f703649f4b6ab8b14f28d12f15e8cbe1c50a2092458e9b640bd6bc6fe59e",
+       "state": "running",
+       "health": "healthy",
+       "started_at": "2026-11-03T06:14:59.113351573Z",
+       "finished_at": "0001-01-01T00:00:00Z",
+       "restart_count": 0,
+       "oom_killed": false,
+       "project": "pihole",
+       "service": "pihole",
+       "working_dir": "/opt/stacks/pihole",
+       "config_files": "/opt/stacks/pihole/docker-compose.yml",
+       "ports": [],
+       "mounts": [
+        {
+         "type": "bind",
+         "source": "/srv/pihole/dnsmasq.d",
+         "destination": "/etc/dnsmasq.d"
+        },
+        {
+         "type": "bind",
+         "source": "/srv/pihole/etc",
+         "destination": "/etc/pihole"
+        }
+       ],
+       "image_repo": "pihole/pihole",
+       "image_tag": "2026.10.1",
+       "digest": "sha256:30f803ad5dd60ff96cc0a63008a2e9271af481c1b0399a182192b2e91152c1f9",
+       "repo_digests": [
+        "pihole/pihole@sha256:30f803ad5dd60ff96cc0a63008a2e9271af481c1b0399a182192b2e91152c1f9"
+       ],
+       "image_labels": {
+        "org.opencontainers.image.created": "2026-10-31T00:02:19.205Z",
+        "org.opencontainers.image.description": "The official Pi-hole Docker image from pi-hole.net",
+        "org.opencontainers.image.licenses": "NOASSERTION",
+        "org.opencontainers.image.revision": "ffd0a489a633d0f2512818c46fd651ac50789175",
+        "org.opencontainers.image.source": "https://github.com/pi-hole/docker-pi-hole",
+        "org.opencontainers.image.title": "docker-pi-hole",
+        "org.opencontainers.image.url": "https://github.com/pi-hole/docker-pi-hole",
+        "org.opencontainers.image.version": "2026.10.1"
+       },
+       "uptime_s": 74752,
+       "stopped_s": null,
+       "healthy": true,
+       "exception": false
+      },
+      {
+       "name": "unbound",
+       "image": "madnuttah/unbound:1.26.2-0",
+       "image_id": "sha256:bde49515ecbc48cdfe7345029886ec4489414ec1e8154079ba6227c444304475",
+       "state": "running",
+       "health": "",
+       "started_at": "2026-10-27T12:57:18.338330034Z",
+       "finished_at": "0001-01-01T00:00:00Z",
+       "restart_count": 0,
+       "oom_killed": false,
+       "project": "unbound",
+       "service": "unbound",
+       "working_dir": "/opt/stacks/unbound",
+       "config_files": "/opt/stacks/unbound/docker-compose.yml",
+       "ports": [
+        {
+         "container": "5335/tcp",
+         "host_ip": "127.0.0.1",
+         "host_port": "5053"
+        },
+        {
+         "container": "5335/udp",
+         "host_ip": "127.0.0.1",
+         "host_port": "5053"
+        }
+       ],
+       "mounts": [],
+       "image_repo": "madnuttah/unbound",
+       "image_tag": "1.26.2-0",
+       "digest": "sha256:e122f1fb49f2499d2932cee74bb998c60e6141844485cd54fa3c6ad31ce131cb",
+       "repo_digests": [
+        "madnuttah/unbound@sha256:e122f1fb49f2499d2932cee74bb998c60e6141844485cd54fa3c6ad31ce131cb"
+       ],
+       "image_labels": {
+        "org.opencontainers.image.authors": "madnuttah",
+        "org.opencontainers.image.base.name": "madnuttah/unbound",
+        "org.opencontainers.image.created": "2026-10-21T10:53:56Z",
+        "org.opencontainers.image.description": "Unbound is a validating, recursive, and caching DNS resolver.",
+        "org.opencontainers.image.licenses": "MIT",
+        "org.opencontainers.image.source": "https://github.com/madnuttah/unbound-docker",
+        "org.opencontainers.image.summary": "This distroless Unbound Docker image is based on Alpine Linux with focus on security, privacy, performance and a small image size. And with Pi-hole in mind.",
+        "org.opencontainers.image.title": "madnuttah/unbound",
+        "org.opencontainers.image.url": "https://hub.docker.com/r/madnuttah/unbound",
+        "org.opencontainers.image.version": "1.26.2-0"
+       },
+       "uptime_s": 655413,
+       "stopped_s": null,
+       "healthy": true,
+       "exception": false
+      },
+      {
+       "name": "caddy",
+       "image": "caddy:2.11.7",
+       "image_id": "sha256:f6a2207268b0f0914df9d3569e1824d6adcfa7b59fbffe0f3cbc5d2d60423f71",
+       "state": "running",
+       "health": "",
+       "started_at": "2026-10-13T04:30:43.825475968Z",
+       "finished_at": "0001-01-01T00:00:00Z",
+       "restart_count": 0,
+       "oom_killed": false,
+       "project": "caddy",
+       "service": "caddy",
+       "working_dir": "/opt/stacks/caddy",
+       "config_files": "/opt/stacks/caddy/docker-compose.yml",
+       "ports": [],
+       "mounts": [
+        {
+         "type": "volume",
+         "source": "/var/lib/docker/volumes/caddy_caddy_config/_data",
+         "destination": "/config"
+        },
+        {
+         "type": "volume",
+         "source": "/var/lib/docker/volumes/caddy_caddy_data/_data",
+         "destination": "/data"
+        },
+        {
+         "type": "bind",
+         "source": "/var/run/tailscale",
+         "destination": "/run/tailscale"
+        },
+        {
+         "type": "bind",
+         "source": "/opt/stacks/caddy/Caddyfile",
+         "destination": "/etc/caddy/Caddyfile"
+        }
+       ],
+       "image_repo": "caddy",
+       "image_tag": "2.11.7",
+       "digest": "sha256:f2a1290d0463aad60660d4ec134943f183ee2a5f6c3eb7bf32dd984f2f020772",
+       "repo_digests": [
+        "caddy@sha256:f2a1290d0463aad60660d4ec134943f183ee2a5f6c3eb7bf32dd984f2f020772"
+       ],
+       "image_labels": {
+        "org.opencontainers.image.description": "a powerful, enterprise-ready, open source web server with automatic HTTPS written in Go",
+        "org.opencontainers.image.documentation": "https://caddyserver.com/docs",
+        "org.opencontainers.image.licenses": "Apache-2.0",
+        "org.opencontainers.image.source": "https://github.com/caddyserver/caddy-docker",
+        "org.opencontainers.image.title": "Caddy",
+        "org.opencontainers.image.url": "https://caddyserver.com",
+        "org.opencontainers.image.vendor": "Light Code Labs",
+        "org.opencontainers.image.version": "v2.11.7"
+       },
+       "uptime_s": 1895408,
+       "stopped_s": null,
+       "healthy": true,
+       "exception": false
+      }
+     ],
+     "images": {
+      "sha256:112b8af2400cd2da7aa7f290088addc14c900ad1b21cfa2afac017454f0b54c6": {
+       "repo_digests": [
+        "docker.n8n.io/n8nio/n8n@sha256:6e9f220e9cf0d2f17d3c2371c8d8a6fe6720f99b82a9672afb96bf068cfd04a5"
+       ],
+       "repo_tags": [
+        "docker.n8n.io/n8nio/n8n:3.1.0"
+       ],
+       "labels": {
+        "org.opencontainers.image.description": "Workflow Automation Tool",
+        "org.opencontainers.image.source": "https://github.com/n8n-io/n8n",
+        "org.opencontainers.image.title": "n8n",
+        "org.opencontainers.image.url": "https://n8n.io",
+        "org.opencontainers.image.version": "3.1.0"
+       }
+      },
+      "sha256:a36b5e32664d17701912ba5d3fac8755a558e9ede0bf234ebd0a4dae522f25b3": {
+       "repo_digests": [
+        "vaultwarden/server@sha256:4fe17f415f90087377d37c755e0ea3cf189dcc6794e49cdd2a9adbb4937d9e1f"
+       ],
+       "repo_tags": [
+        "vaultwarden/server:1.37.5"
+       ],
+       "labels": {
+        "org.opencontainers.image.created": "2026-11-01T22:06:20+00:00",
+        "org.opencontainers.image.description": "Unofficial Bitwarden compatible server written in Rust - 1.37.5",
+        "org.opencontainers.image.documentation": "https://github.com/dani-garcia/vaultwarden/wiki",
+        "org.opencontainers.image.licenses": "AGPL-3.0-only",
+        "org.opencontainers.image.revision": "6ed6921cc2b0e03b4d74189574d2a5e71c512e97",
+        "org.opencontainers.image.source": "https://github.com/dani-garcia/vaultwarden",
+        "org.opencontainers.image.url": "https://github.com/dani-garcia/vaultwarden",
+        "org.opencontainers.image.version": "1.37.5"
+       }
+      },
+      "sha256:bde49515ecbc48cdfe7345029886ec4489414ec1e8154079ba6227c444304475": {
+       "repo_digests": [
+        "madnuttah/unbound@sha256:e122f1fb49f2499d2932cee74bb998c60e6141844485cd54fa3c6ad31ce131cb"
+       ],
+       "repo_tags": [
+        "madnuttah/unbound:1.26.2-0"
+       ],
+       "labels": {
+        "org.opencontainers.image.authors": "madnuttah",
+        "org.opencontainers.image.base.name": "madnuttah/unbound",
+        "org.opencontainers.image.created": "2026-10-21T10:53:56Z",
+        "org.opencontainers.image.description": "Unbound is a validating, recursive, and caching DNS resolver.",
+        "org.opencontainers.image.licenses": "MIT",
+        "org.opencontainers.image.source": "https://github.com/madnuttah/unbound-docker",
+        "org.opencontainers.image.summary": "This distroless Unbound Docker image is based on Alpine Linux with focus on security, privacy, performance and a small image size. And with Pi-hole in mind.",
+        "org.opencontainers.image.title": "madnuttah/unbound",
+        "org.opencontainers.image.url": "https://hub.docker.com/r/madnuttah/unbound",
+        "org.opencontainers.image.version": "1.26.2-0"
+       }
+      },
+      "sha256:edb7f703649f4b6ab8b14f28d12f15e8cbe1c50a2092458e9b640bd6bc6fe59e": {
+       "repo_digests": [
+        "pihole/pihole@sha256:30f803ad5dd60ff96cc0a63008a2e9271af481c1b0399a182192b2e91152c1f9"
+       ],
+       "repo_tags": [
+        "pihole/pihole:2026.10.1"
+       ],
+       "labels": {
+        "org.opencontainers.image.created": "2026-10-31T00:02:19.205Z",
+        "org.opencontainers.image.description": "The official Pi-hole Docker image from pi-hole.net",
+        "org.opencontainers.image.licenses": "NOASSERTION",
+        "org.opencontainers.image.revision": "ffd0a489a633d0f2512818c46fd651ac50789175",
+        "org.opencontainers.image.source": "https://github.com/pi-hole/docker-pi-hole",
+        "org.opencontainers.image.title": "docker-pi-hole",
+        "org.opencontainers.image.url": "https://github.com/pi-hole/docker-pi-hole",
+        "org.opencontainers.image.version": "2026.10.1"
+       }
+      },
+      "sha256:f6a2207268b0f0914df9d3569e1824d6adcfa7b59fbffe0f3cbc5d2d60423f71": {
+       "repo_digests": [
+        "caddy@sha256:f2a1290d0463aad60660d4ec134943f183ee2a5f6c3eb7bf32dd984f2f020772"
+       ],
+       "repo_tags": [
+        "caddy:2.11.7"
+       ],
+       "labels": {
+        "org.opencontainers.image.description": "a powerful, enterprise-ready, open source web server with automatic HTTPS written in Go",
+        "org.opencontainers.image.documentation": "https://caddyserver.com/docs",
+        "org.opencontainers.image.licenses": "Apache-2.0",
+        "org.opencontainers.image.source": "https://github.com/caddyserver/caddy-docker",
+        "org.opencontainers.image.title": "Caddy",
+        "org.opencontainers.image.url": "https://caddyserver.com",
+        "org.opencontainers.image.vendor": "Light Code Labs",
+        "org.opencontainers.image.version": "v2.11.7"
+       }
+      }
+     },
+     "stack_files": {
+      "caddy": {
+       "docker-compose.yml": "9f3daab9214010ac462713344c1b5f8201f3f4e66099a472d3643929703b8ec9",
+       "Caddyfile": "24ce0cd756172fbbebdde0619b81b029db22c52dcf855af6a6ab6016fd68fa2b"
+      },
+      "n8n": {
+       "docker-compose.yml": "686b07d3b207b776e292ad169a2493eb28cd407e555361bd4c36f65e6a6e5d37"
+      },
+      "pihole": {
+       "docker-compose.yml": "44a7642f805b854ab42e87c2d7af778f579dc934beef3c931af5d3ad8bcfb659",
+       ".env": "b4ef4c18a983c94c1fbca0d3fb71a30103dfd9761f2b4fd241bb55f4e0183e88"
+      },
+      "unbound": {
+       "docker-compose.yml": "4d6b7a15b53cf353dcaf47676b7cb372bdcb27373e8375029e839ce78851f21e"
+      },
+      "vault": {
+       "docker-compose.yml": "1e8d3ec3c63803d9489eb6f6dcd37adacb13314272561af9ded951917dcd8cfa"
+      },
+      "vaultwarden": {}
+     },
+     "listeners": [
+      "0.0.0.0:22",
+      "0.0.0.0:53",
+      "0.0.0.0:8053",
+      "0.0.0.0:8443",
+      "100.64.0.11:443",
+      "100.64.0.11:65028",
+      "100.64.0.11:80",
+      "127.0.0.1:2019",
+      "127.0.0.1:5053",
+      "127.0.0.1:5678",
+      "127.0.0.1:8091",
+      "192.0.2.11:443",
+      "192.0.2.11:80",
+      "[::]:22",
+      "[::]:53",
+      "[fd7a:115c:a1e0::7c3b:5b73]:63354"
+     ],
+     "failed_units": [],
+     "tailscale": {
+      "installed": true,
+      "online": true,
+      "ip": "100.64.0.11",
+      "dns_name": "pi-b.example.ts.net",
+      "version": "1.102.4"
+     },
+     "time": {
+      "ntp_synced": true,
+      "boot_epoch": 1789565650.3020935,
+      "reboot_required": false
+     },
+     "collected_epoch": 1793761251.8421514
+    },
+    "summary": {
+     "hostname": "pi-b",
+     "model": "Raspberry Pi 4 Model B Rev 1.1",
+     "os": "Debian GNU/Linux 13 (trixie)",
+     "kernel": "6.18.39+rpt-rpi-v8",
+     "arch": "aarch64",
+     "uptime_s": 4195601.3,
+     "uptime": "48d 13h",
+     "temp_c": 37.0,
+     "throttled": {
+      "supported": true,
+      "raw": "0x0",
+      "value": 0,
+      "now": [],
+      "since_boot": [],
+      "ok": true
+     },
+     "load": [
+      0.11,
+      0.05,
+      0.01
+     ],
+     "mem_pct": 45.7,
+     "mem_used": 883822592,
+     "mem_total": 1934311424,
+     "disk_pct": 34.0,
+     "containers_running": 2,
+     "containers_total": 2,
+     "containers_bad": 0,
+     "updates": 0,
+     "docker_version": "29.8.0",
+     "compose_version": "5.5.1",
+     "tailscale": {
+      "installed": true,
+      "hostname": "pi-b",
+      "ipv4": "100.64.0.11",
+      "ips": [
+       "100.64.0.11",
+       "fd7a:115c:a1e0::7c3b:5b73"
+      ],
+      "backend": "Running",
+      "version": "1.102.4-t3caf7d9e7-g084ee3b64",
+      "online": true,
+      "peers_total": 4,
+      "peers_online": 2
+     },
+     "reboot_required": false,
+     "ntp_synced": true,
+     "failed_units": [],
+     "raid": []
+    },
+    "stacks": [
+     {
+      "name": "n8n",
+      "status": "up",
+      "sync": "synced",
+      "updates": 0
+     },
+     {
+      "name": "uptime-kuma",
+      "status": "up",
+      "sync": "synced",
+      "updates": 0
+     }
+    ],
+    "history": {
+     "uptime_pct": 96.02,
+     "last_ts": 1793761251
+    },
+    "history_points": [
+     {
+      "ts": 1793739288,
+      "reachable": 1,
+      "uptime_s": 4173637,
+      "temp_c": 36.5,
+      "throttled": 0,
+      "load1": 0.01,
+      "mem_pct": 45.0,
+      "disk_pct": 31.0,
+      "containers_up": 5,
+      "containers_total": 5
+     },
+     {
+      "ts": 1793739648,
+      "reachable": 1,
+      "uptime_s": 4173997,
+      "temp_c": 36.0,
+      "throttled": 0,
+      "load1": 0.09,
+      "mem_pct": 44.7,
+      "disk_pct": 31.0,
+      "containers_up": 5,
+      "containers_total": 5
+     },
+     {
+      "ts": 1793740008,
+      "reachable": 1,
+      "uptime_s": 4174357,
+      "temp_c": 36.0,
+      "throttled": 0,
+      "load1": 0.01,
+      "mem_pct": 45.0,
+      "disk_pct": 31.0,
+      "containers_up": 5,
+      "containers_total": 5
+     },
+     {
+      "ts": 1793740368,
+      "reachable": 1,
+      "uptime_s": 4174717,
+      "temp_c": 36.5,
+      "throttled": 0,
+      "load1": 0.01,
+      "mem_pct": 45.1,
+      "disk_pct": 31.0,
+      "containers_up": 5,
+      "containers_total": 5
+     },
+     {
+      "ts": 1793740728,
+      "reachable": 1,
+      "uptime_s": 4175077,
+      "temp_c": 35.5,
+      "throttled": 0,
+      "load1": 0.23,
+      "mem_pct": 45.3,
+      "disk_pct": 31.0,
+      "containers_up": 5,
+      "containers_total": 5
+     },
+     {
+      "ts": 1793741088,
+      "reachable": 1,
+      "uptime_s": 4175437,
+      "temp_c": 35.5,
+      "throttled": 0,
+      "load1": 0.39,
+      "mem_pct": 44.9,
+      "disk_pct": 31.0,
+      "containers_up": 5,
+      "containers_total": 5
+     },
+     {
+      "ts": 1793741448,
+      "reachable": 1,
+      "uptime_s": 4175797,
+      "temp_c": 36.0,
+      "throttled": 0,
+      "load1": 0.18,
+      "mem_pct": 44.9,
+      "disk_pct": 31.0,
+      "containers_up": 5,
+      "containers_total": 5
+     },
+     {
+      "ts": 1793741809,
+      "reachable": 1,
+      "uptime_s": 4176158,
+      "temp_c": 35.5,
+      "throttled": 0,
+      "load1": 0.19,
+      "mem_pct": 44.6,
+      "disk_pct": 31.0,
+      "containers_up": 5,
+      "containers_total": 5
+     },
+     {
+      "ts": 1793742169,
+      "reachable": 1,
+      "uptime_s": 4176518,
+      "temp_c": 36.5,
+      "throttled": 0,
+      "load1": 0.11,
+      "mem_pct": 44.9,
+      "disk_pct": 31.0,
+      "containers_up": 5,
+      "containers_total": 5
+     },
+     {
+      "ts": 1793742529,
+      "reachable": 1,
+      "uptime_s": 4176878,
+      "temp_c": 36.5,
+      "throttled": 0,
+      "load1": 0.01,
+      "mem_pct": 44.9,
+      "disk_pct": 31.0,
+      "containers_up": 5,
+      "containers_total": 5
+     },
+     {
+      "ts": 1793742889,
+      "reachable": 1,
+      "uptime_s": 4177238,
+      "temp_c": 35.5,
+      "throttled": 0,
+      "load1": 0.04,
+      "mem_pct": 44.8,
+      "disk_pct": 31.0,
+      "containers_up": 5,
+      "containers_total": 5
+     },
+     {
+      "ts": 1793743249,
+      "reachable": 1,
+      "uptime_s": 4177598,
+      "temp_c": 36.5,
+      "throttled": 0,
+      "load1": 0.0,
+      "mem_pct": 45.1,
+      "disk_pct": 31.0,
+      "containers_up": 5,
+      "containers_total": 5
+     },
+     {
+      "ts": 1793743609,
+      "reachable": 1,
+      "uptime_s": 4177958,
+      "temp_c": 36.0,
+      "throttled": 0,
+      "load1": 0.01,
+      "mem_pct": 45.1,
+      "disk_pct": 31.0,
+      "containers_up": 5,
+      "containers_total": 5
+     },
+     {
+      "ts": 1793743965,
+      "reachable": 1,
+      "uptime_s": 4178314,
+      "temp_c": 35.0,
+      "throttled": 0,
+      "load1": 0.0,
+      "mem_pct": 44.6,
+      "disk_pct": 31.0,
+      "containers_up": 5,
+      "containers_total": 5
+     },
+     {
+      "ts": 1793744325,
+      "reachable": 1,
+      "uptime_s": 4178674,
+      "temp_c": 35.5,
+      "throttled": 0,
+      "load1": 0.02,
+      "mem_pct": 44.9,
+      "disk_pct": 31.0,
+      "containers_up": 5,
+      "containers_total": 5
+     },
+     {
+      "ts": 1793744685,
+      "reachable": 1,
+      "uptime_s": 4179034,
+      "temp_c": 37.0,
+      "throttled": 0,
+      "load1": 0.03,
+      "mem_pct": 44.9,
+      "disk_pct": 31.0,
+      "containers_up": 5,
+      "containers_total": 5
+     },
+     {
+      "ts": 1793745045,
+      "reachable": 1,
+      "uptime_s": 4179394,
+      "temp_c": 36.0,
+      "throttled": 0,
+      "load1": 0.0,
+      "mem_pct": 45.4,
+      "disk_pct": 31.0,
+      "containers_up": 5,
+      "containers_total": 5
+     },
+     {
+      "ts": 1793745405,
+      "reachable": 1,
+      "uptime_s": 4179754,
+      "temp_c": 36.0,
+      "throttled": 0,
+      "load1": 0.0,
+      "mem_pct": 45.2,
+      "disk_pct": 31.0,
+      "containers_up": 5,
+      "containers_total": 5
+     },
+     {
+      "ts": 1793745913,
+      "reachable": 1,
+      "uptime_s": 4180262,
+      "temp_c": 35.0,
+      "throttled": 0,
+      "load1": 0.02,
+      "mem_pct": 44.6,
+      "disk_pct": 31.0,
+      "containers_up": 5,
+      "containers_total": 5
+     },
+     {
+      "ts": 1793746306,
+      "reachable": 1,
+      "uptime_s": 4180655,
+      "temp_c": 36.0,
+      "throttled": 0,
+      "load1": 0.02,
+      "mem_pct": 45.8,
+      "disk_pct": 31.0,
+      "containers_up": 5,
+      "containers_total": 5
+     },
+     {
+      "ts": 1793746685,
+      "reachable": 1,
+      "uptime_s": 4181034,
+      "temp_c": 39.4,
+      "throttled": 0,
+      "load1": 5.64,
+      "mem_pct": 45.9,
+      "disk_pct": 34.0,
+      "containers_up": 5,
+      "containers_total": 5
+     },
+     {
+      "ts": 1793747060,
+      "reachable": 1,
+      "uptime_s": 4181409,
+      "temp_c": 36.0,
+      "throttled": 0,
+      "load1": 0.16,
+      "mem_pct": 44.3,
+      "disk_pct": 34.0,
+      "containers_up": 5,
+      "containers_total": 5
+     },
+     {
+      "ts": 1793747420,
+      "reachable": 1,
+      "uptime_s": 4181769,
+      "temp_c": 36.5,
+      "throttled": 0,
+      "load1": 0.13,
+      "mem_pct": 44.4,
+      "disk_pct": 34.0,
+      "containers_up": 5,
+      "containers_total": 5
+     },
+     {
+      "ts": 1793747780,
+      "reachable": 1,
+      "uptime_s": 4182129,
+      "temp_c": 36.5,
+      "throttled": 0,
+      "load1": 0.0,
+      "mem_pct": 43.6,
+      "disk_pct": 34.0,
+      "containers_up": 5,
+      "containers_total": 5
+     },
+     {
+      "ts": 1793748140,
+      "reachable": 1,
+      "uptime_s": 4182489,
+      "temp_c": 36.0,
+      "throttled": 0,
+      "load1": 0.01,
+      "mem_pct": 44.5,
+      "disk_pct": 34.0,
+      "containers_up": 5,
+      "containers_total": 5
+     },
+     {
+      "ts": 1793748500,
+      "reachable": 1,
+      "uptime_s": 4182849,
+      "temp_c": 36.0,
+      "throttled": 0,
+      "load1": 0.02,
+      "mem_pct": 43.6,
+      "disk_pct": 34.0,
+      "containers_up": 5,
+      "containers_total": 5
+     },
+     {
+      "ts": 1793748860,
+      "reachable": 1,
+      "uptime_s": 4183209,
+      "temp_c": 36.0,
+      "throttled": 0,
+      "load1": 0.0,
+      "mem_pct": 44.1,
+      "disk_pct": 34.0,
+      "containers_up": 5,
+      "containers_total": 5
+     },
+     {
+      "ts": 1793749221,
+      "reachable": 1,
+      "uptime_s": 4183570,
+      "temp_c": 36.0,
+      "throttled": 0,
+      "load1": 0.0,
+      "mem_pct": 43.9,
+      "disk_pct": 34.0,
+      "containers_up": 5,
+      "containers_total": 5
+     },
+     {
+      "ts": 1793749581,
+      "reachable": 1,
+      "uptime_s": 4183930,
+      "temp_c": 35.5,
+      "throttled": 0,
+      "load1": 0.02,
+      "mem_pct": 44.6,
+      "disk_pct": 34.0,
+      "containers_up": 5,
+      "containers_total": 5
+     },
+     {
+      "ts": 1793749941,
+      "reachable": 1,
+      "uptime_s": 4184290,
+      "temp_c": 36.0,
+      "throttled": 0,
+      "load1": 0.14,
+      "mem_pct": 44.5,
+      "disk_pct": 34.0,
+      "containers_up": 5,
+      "containers_total": 5
+     },
+     {
+      "ts": 1793750301,
+      "reachable": 1,
+      "uptime_s": 4184650,
+      "temp_c": 36.5,
+      "throttled": 0,
+      "load1": 0.18,
+      "mem_pct": 44.4,
+      "disk_pct": 34.0,
+      "containers_up": 5,
+      "containers_total": 5
+     },
+     {
+      "ts": 1793750661,
+      "reachable": 1,
+      "uptime_s": 4185010,
+      "temp_c": 37.0,
+      "throttled": 0,
+      "load1": 0.34,
+      "mem_pct": 44.7,
+      "disk_pct": 34.0,
+      "containers_up": 5,
+      "containers_total": 5
+     },
+     {
+      "ts": 1793751021,
+      "reachable": 1,
+      "uptime_s": 4185370,
+      "temp_c": 35.5,
+      "throttled": 0,
+      "load1": 0.22,
+      "mem_pct": 44.2,
+      "disk_pct": 34.0,
+      "containers_up": 5,
+      "containers_total": 5
+     },
+     {
+      "ts": 1793751381,
+      "reachable": 1,
+      "uptime_s": 4185730,
+      "temp_c": 35.0,
+      "throttled": 0,
+      "load1": 0.2,
+      "mem_pct": 44.8,
+      "disk_pct": 34.0,
+      "containers_up": 5,
+      "containers_total": 5
+     },
+     {
+      "ts": 1793751741,
+      "reachable": 1,
+      "uptime_s": 4186090,
+      "temp_c": 36.0,
+      "throttled": 0,
+      "load1": 0.09,
+      "mem_pct": 45.3,
+      "disk_pct": 34.0,
+      "containers_up": 5,
+      "containers_total": 5
+     },
+     {
+      "ts": 1793752101,
+      "reachable": 1,
+      "uptime_s": 4186450,
+      "temp_c": 35.5,
+      "throttled": 0,
+      "load1": 0.0,
+      "mem_pct": 44.3,
+      "disk_pct": 34.0,
+      "containers_up": 5,
+      "containers_total": 5
+     },
+     {
+      "ts": 1793752461,
+      "reachable": 1,
+      "uptime_s": 4186810,
+      "temp_c": 37.4,
+      "throttled": 0,
+      "load1": 0.1,
+      "mem_pct": 44.5,
+      "disk_pct": 34.0,
+      "containers_up": 5,
+      "containers_total": 5
+     },
+     {
+      "ts": 1793752777,
+      "reachable": 1,
+      "uptime_s": 4187126,
+      "temp_c": 36.0,
+      "throttled": 0,
+      "load1": 0.06,
+      "mem_pct": 44.2,
+      "disk_pct": 34.0,
+      "containers_up": 5,
+      "containers_total": 5
+     },
+     {
+      "ts": 1793753140,
+      "reachable": 1,
+      "uptime_s": 4187489,
+      "temp_c": 35.5,
+      "throttled": 0,
+      "load1": 0.03,
+      "mem_pct": 44.1,
+      "disk_pct": 34.0,
+      "containers_up": 5,
+      "containers_total": 5
+     },
+     {
+      "ts": 1793753500,
+      "reachable": 1,
+      "uptime_s": 4187849,
+      "temp_c": 36.5,
+      "throttled": 0,
+      "load1": 0.02,
+      "mem_pct": 44.8,
+      "disk_pct": 34.0,
+      "containers_up": 5,
+      "containers_total": 5
+     },
+     {
+      "ts": 1793753860,
+      "reachable": 1,
+      "uptime_s": 4188209,
+      "temp_c": 37.0,
+      "throttled": 0,
+      "load1": 0.0,
+      "mem_pct": 44.6,
+      "disk_pct": 34.0,
+      "containers_up": 5,
+      "containers_total": 5
+     },
+     {
+      "ts": 1793754220,
+      "reachable": 1,
+      "uptime_s": 4188569,
+      "temp_c": 37.0,
+      "throttled": 0,
+      "load1": 0.0,
+      "mem_pct": 44.1,
+      "disk_pct": 34.0,
+      "containers_up": 5,
+      "containers_total": 5
+     },
+     {
+      "ts": 1793754580,
+      "reachable": 1,
+      "uptime_s": 4188929,
+      "temp_c": 36.0,
+      "throttled": 0,
+      "load1": 0.0,
+      "mem_pct": 44.0,
+      "disk_pct": 34.0,
+      "containers_up": 5,
+      "containers_total": 5
+     },
+     {
+      "ts": 1793754940,
+      "reachable": 1,
+      "uptime_s": 4189289,
+      "temp_c": 36.5,
+      "throttled": 0,
+      "load1": 0.11,
+      "mem_pct": 44.3,
+      "disk_pct": 34.0,
+      "containers_up": 5,
+      "containers_total": 5
+     },
+     {
+      "ts": 1793755300,
+      "reachable": 1,
+      "uptime_s": 4189649,
+      "temp_c": 36.5,
+      "throttled": 0,
+      "load1": 0.01,
+      "mem_pct": 44.5,
+      "disk_pct": 34.0,
+      "containers_up": 5,
+      "containers_total": 5
+     },
+     {
+      "ts": 1793755660,
+      "reachable": 1,
+      "uptime_s": 4190010,
+      "temp_c": 37.0,
+      "throttled": 0,
+      "load1": 0.16,
+      "mem_pct": 44.3,
+      "disk_pct": 34.0,
+      "containers_up": 5,
+      "containers_total": 5
+     },
+     {
+      "ts": 1793756021,
+      "reachable": 1,
+      "uptime_s": 4190370,
+      "temp_c": 36.5,
+      "throttled": 0,
+      "load1": 0.0,
+      "mem_pct": 45.1,
+      "disk_pct": 34.0,
+      "containers_up": 5,
+      "containers_total": 5
+     },
+     {
+      "ts": 1793756494,
+      "reachable": 1,
+      "uptime_s": 4190843,
+      "temp_c": 37.0,
+      "throttled": 0,
+      "load1": 0.06,
+      "mem_pct": 44.4,
+      "disk_pct": 34.0,
+      "containers_up": 5,
+      "containers_total": 5
+     }
+    ],
+    "update_count": 0,
+    "key": "",
+    "key_info": null,
+    "last_commit": null
+   },
+   {
+    "alias": "nas-a",
+    "user": "pi",
+    "address": "192.0.2.12",
+    "port": 22,
+    "local": false,
+    "role": "photos + backup",
+    "notes": "photos and backup",
+    "tags": [],
+    "online": true,
+    "status": "online",
+    "latency_ms": 453,
+    "error": "",
+    "collected_at": 1793761336,
+    "problems": [],
+    "data": {
+     "hostname": "nas-a",
+     "fqdn": "nas-a",
+     "os": "Debian GNU/Linux 12 (bookworm)",
+     "os_id": "debian",
+     "kernel": "6.18.39+rpt-rpi-2712",
+     "arch": "aarch64",
+     "model": "NAS (x86)",
+     "cpu_count": 4,
+     "uptime_s": 4195595.9,
+     "load": [
+      0.17,
+      0.07,
+      0.01
+     ],
+     "memory": {
+      "total": 8454012928,
+      "available": 6133776384,
+      "used": 2320236544,
+      "used_pct": 27.4,
+      "swap_total": 2147467264,
+      "swap_used": 26902528
+     },
+     "temperature_c": 40.0,
+     "throttled": {
+      "supported": true,
+      "raw": "0x0",
+      "value": 0,
+      "now": [],
+      "since_boot": [],
+      "ok": true
+     },
+     "disks": [
+      {
+       "filesystem": "/dev/mmcblk0p2",
+       "filesystem_type": "ext4",
+       "size": "470G",
+       "used": "25G",
+       "available": "427G",
+       "percent": "6",
+       "mountpoint": "/"
+      },
+      {
+       "filesystem": "/dev/mmcblk0p1",
+       "filesystem_type": "vfat",
+       "size": "505M",
+       "used": "69M",
+       "available": "437M",
+       "percent": "14",
+       "mountpoint": "/boot/firmware"
+      },
+      {
+       "filesystem": "/dev/md0",
+       "filesystem_type": "ext4",
+       "size": "916G",
+       "used": "395G",
+       "available": "522G",
+       "percent": "44",
+       "mountpoint": "/srv/data"
+      }
+     ],
+     "raid": [
+      {
+       "name": "md0",
+       "status": "active raid1 nvme0n1[0] nvme1n1[1]",
+       "flags": "UU",
+       "degraded": false
+      }
+     ],
+     "docker_version": "29.8.0",
+     "compose_version": "5.5.1",
+     "containers": [
+      {
+       "name": "immich_server",
+       "image": "ghcr.io/immich-app/immich-server:v3.3.5",
+       "image_id": "sha256:485d546a2e31d6a8b4db8423fcba5c109de8c218d93410af115fd1ccfc4352a6",
+       "state": "running",
+       "health": "healthy",
+       "started_at": "2026-11-03T06:16:50.883374031Z",
+       "finished_at": "0001-01-01T00:00:00Z",
+       "restart_count": 0,
+       "oom_killed": false,
+       "project": "immich",
+       "service": "immich-server",
+       "working_dir": "/opt/stacks/immich",
+       "config_files": "/opt/stacks/immich/docker-compose.yml",
+       "ports": [
+        {
+         "container": "2283/tcp",
+         "host_ip": "127.0.0.1",
+         "host_port": "2283"
+        }
+       ],
+       "mounts": [
+        {
+         "type": "volume",
+         "source": "/var/lib/docker/volumes/1f282a4b02b8f7c14b310e1fd7e2cc0ec6296140679dfa1e1699c8f61363aee7/_data",
+         "destination": "/data"
+        },
+        {
+         "type": "bind",
+         "source": "/etc/localtime",
+         "destination": "/etc/localtime"
+        },
+        {
+         "type": "bind",
+         "source": "/srv/data/immich_data",
+         "destination": "/usr/src/app/upload"
+        }
+       ],
+       "image_repo": "ghcr.io/immich-app/immich-server",
+       "image_tag": "v3.3.5",
+       "digest": "sha256:485d546a2e31d6a8b4db8423fcba5c109de8c218d93410af115fd1ccfc4352a6",
+       "repo_digests": [
+        "ghcr.io/immich-app/immich-server@sha256:485d546a2e31d6a8b4db8423fcba5c109de8c218d93410af115fd1ccfc4352a6"
+       ],
+       "image_labels": {
+        "org.opencontainers.image.created": "2026-10-21T18:13:40.670Z",
+        "org.opencontainers.image.description": "High performance self-hosted photo and video management solution.",
+        "org.opencontainers.image.licenses": "AGPL-3.0",
+        "org.opencontainers.image.revision": "8303cb117e197c700332b33b61b45314c9cc5bb4",
+        "org.opencontainers.image.source": "https://github.com/immich-app/immich",
+        "org.opencontainers.image.title": "immich",
+        "org.opencontainers.image.url": "https://github.com/immich-app/immich",
+        "org.opencontainers.image.version": "v3.3.5"
+       },
+       "uptime_s": 74641,
+       "stopped_s": null,
+       "healthy": true,
+       "exception": false
+      },
+      {
+       "name": "immich_machine_learning",
+       "image": "ghcr.io/immich-app/immich-machine-learning:v3.3.5",
+       "image_id": "sha256:5b28c9352c8374b8a1ed96fbdd8d6755fea6e43510ec43fdf6538aa02ea40f56",
+       "state": "running",
+       "health": "healthy",
+       "started_at": "2026-11-03T06:16:50.597323926Z",
+       "finished_at": "0001-01-01T00:00:00Z",
+       "restart_count": 0,
+       "oom_killed": false,
+       "project": "immich",
+       "service": "immich-machine-learning",
+       "working_dir": "/opt/stacks/immich",
+       "config_files": "/opt/stacks/immich/docker-compose.yml",
+       "ports": [],
+       "mounts": [
+        {
+         "type": "bind",
+         "source": "/srv/data/app_data/immich/model-cache",
+         "destination": "/cache"
+        }
+       ],
+       "image_repo": "ghcr.io/immich-app/immich-machine-learning",
+       "image_tag": "v3.3.5",
+       "digest": "sha256:5b28c9352c8374b8a1ed96fbdd8d6755fea6e43510ec43fdf6538aa02ea40f56",
+       "repo_digests": [
+        "ghcr.io/immich-app/immich-machine-learning@sha256:5b28c9352c8374b8a1ed96fbdd8d6755fea6e43510ec43fdf6538aa02ea40f56"
+       ],
+       "image_labels": {
+        "org.opencontainers.image.created": "2026-10-21T18:13:38.951Z",
+        "org.opencontainers.image.description": "High performance self-hosted photo and video management solution.",
+        "org.opencontainers.image.licenses": "AGPL-3.0",
+        "org.opencontainers.image.revision": "8303cb117e197c700332b33b61b45314c9cc5bb4",
+        "org.opencontainers.image.source": "https://github.com/immich-app/immich",
+        "org.opencontainers.image.title": "immich",
+        "org.opencontainers.image.url": "https://github.com/immich-app/immich",
+        "org.opencontainers.image.version": "v3.3.5"
+       },
+       "uptime_s": 74641,
+       "stopped_s": null,
+       "healthy": true,
+       "exception": false
+      },
+      {
+       "name": "searxng",
+       "image": "docker.io/searxng/searxng:2026.11.2-cccbc9e15",
+       "image_id": "sha256:892ed5710603e38f9dc201e6a0b2f3f14dbdb8108edcadac30e55b165c979fb7",
+       "state": "running",
+       "health": "healthy",
+       "started_at": "2026-11-03T01:13:45.828429409Z",
+       "finished_at": "0001-01-01T00:00:00Z",
+       "restart_count": 0,
+       "oom_killed": false,
+       "project": "searxng",
+       "service": "searxng",
+       "working_dir": "/opt/stacks/searxng",
+       "config_files": "/opt/stacks/searxng/docker-compose.yml",
+       "ports": [
+        {
+         "container": "8080/tcp",
+         "host_ip": "127.0.0.1",
+         "host_port": "8080"
+        }
+       ],
+       "mounts": [
+        {
+         "type": "bind",
+         "source": "/opt/stacks/searxng/core-config",
+         "destination": "/etc/searxng"
+        },
+        {
+         "type": "volume",
+         "source": "/var/lib/docker/volumes/searxng_searxng-cache/_data",
+         "destination": "/var/cache/searxng"
+        }
+       ],
+       "image_repo": "docker.io/searxng/searxng",
+       "image_tag": "2026.11.2-cccbc9e15",
+       "digest": "sha256:892ed5710603e38f9dc201e6a0b2f3f14dbdb8108edcadac30e55b165c979fb7",
+       "repo_digests": [
+        "searxng/searxng@sha256:892ed5710603e38f9dc201e6a0b2f3f14dbdb8108edcadac30e55b165c979fb7"
+       ],
+       "image_labels": {
+        "org.opencontainers.image.created": "2026-11-02T17:43:20Z",
+        "org.opencontainers.image.description": "SearXNG is a metasearch engine. Users are neither tracked nor profiled.",
+        "org.opencontainers.image.documentation": "https://docs.searxng.org/admin/installation-docker",
+        "org.opencontainers.image.licenses": "AGPL-3.0-or-later",
+        "org.opencontainers.image.revision": "cccbc9e158b0ac3bb2158e9841a647a5bec57b57",
+        "org.opencontainers.image.source": "https://github.com/searxng/searxng",
+        "org.opencontainers.image.title": "SearXNG",
+        "org.opencontainers.image.url": "https://searxng.org",
+        "org.opencontainers.image.version": "2026.11.2-cccbc9e15"
+       },
+       "uptime_s": 92826,
+       "stopped_s": null,
+       "healthy": true,
+       "exception": false
+      },
+      {
+       "name": "gitea",
+       "image": "gitea/gitea:28.3",
+       "image_id": "sha256:8967bf9deaf3c5c4adae13519436dc1b20c646ac83fe37ae810c933a1045227d",
+       "state": "running",
+       "health": "",
+       "started_at": "2026-11-02T22:49:42.095872763Z",
+       "finished_at": "0001-01-01T00:00:00Z",
+       "restart_count": 0,
+       "oom_killed": false,
+       "project": "gitea",
+       "service": "gitea",
+       "working_dir": "/opt/stacks/gitea",
+       "config_files": "/opt/stacks/gitea/docker-compose.yml",
+       "ports": [
+        {
+         "container": "3000/tcp",
+         "host_ip": "127.0.0.1",
+         "host_port": "3000"
+        }
+       ],
+       "mounts": [
+        {
+         "type": "bind",
+         "source": "/srv/data/gitea",
+         "destination": "/data"
+        }
+       ],
+       "image_repo": "gitea/gitea",
+       "image_tag": "28.3",
+       "digest": "sha256:8967bf9deaf3c5c4adae13519436dc1b20c646ac83fe37ae810c933a1045227d",
+       "repo_digests": [
+        "gitea/gitea@sha256:8967bf9deaf3c5c4adae13519436dc1b20c646ac83fe37ae810c933a1045227d"
+       ],
+       "image_labels": {},
+       "uptime_s": 101469,
+       "stopped_s": null,
+       "healthy": true,
+       "exception": false
+      },
+      {
+       "name": "caddy",
+       "image": "caddy:2.11.7",
+       "image_id": "sha256:f2a1290d0463aad60660d4ec134943f183ee2a5f6c3eb7bf32dd984f2f020772",
+       "state": "running",
+       "health": "",
+       "started_at": "2026-11-01T01:43:46.142673939Z",
+       "finished_at": "0001-01-01T00:00:00Z",
+       "restart_count": 0,
+       "oom_killed": false,
+       "project": "caddy",
+       "service": "caddy",
+       "working_dir": "/opt/stacks/caddy",
+       "config_files": "/opt/stacks/caddy/docker-compose.yml",
+       "ports": [],
+       "mounts": [
+        {
+         "type": "bind",
+         "source": "/srv/data/caddy/config",
+         "destination": "/config"
+        },
+        {
+         "type": "bind",
+         "source": "/srv/data/caddy/data",
+         "destination": "/data"
+        },
+        {
+         "type": "bind",
+         "source": "/opt/stacks/caddy",
+         "destination": "/etc/caddy"
+        },
+        {
+         "type": "bind",
+         "source": "/run/tailscale",
+         "destination": "/run/tailscale"
+        }
+       ],
+       "image_repo": "caddy",
+       "image_tag": "2.11.7",
+       "digest": "sha256:f2a1290d0463aad60660d4ec134943f183ee2a5f6c3eb7bf32dd984f2f020772",
+       "repo_digests": [
+        "caddy@sha256:f2a1290d0463aad60660d4ec134943f183ee2a5f6c3eb7bf32dd984f2f020772"
+       ],
+       "image_labels": {
+        "org.opencontainers.image.description": "a powerful, enterprise-ready, open source web server with automatic HTTPS written in Go",
+        "org.opencontainers.image.documentation": "https://caddyserver.com/docs",
+        "org.opencontainers.image.licenses": "Apache-2.0",
+        "org.opencontainers.image.source": "https://github.com/caddyserver/caddy-docker",
+        "org.opencontainers.image.title": "Caddy",
+        "org.opencontainers.image.url": "https://caddyserver.com",
+        "org.opencontainers.image.vendor": "Light Code Labs",
+        "org.opencontainers.image.version": "v2.11.7"
+       },
+       "uptime_s": 263825,
+       "stopped_s": null,
+       "healthy": true,
+       "exception": false
+      },
+      {
+       "name": "copyparty",
+       "image": "copyparty/ac:1.20.26",
+       "image_id": "sha256:b2054d65e05daa8982ca17c26b12b74315c0ce586a03ff9018a59c80731b9e19",
+       "state": "running",
+       "health": "",
+       "started_at": "2026-10-19T02:13:16.878173251Z",
+       "finished_at": "0001-01-01T00:00:00Z",
+       "restart_count": 0,
+       "oom_killed": false,
+       "project": "copyparty",
+       "service": "copyparty",
+       "working_dir": "/opt/stacks/copyparty",
+       "config_files": "/opt/stacks/copyparty/docker-compose.yml",
+       "ports": [
+        {
+         "container": "3923/tcp",
+         "host_ip": "127.0.0.1",
+         "host_port": "3923"
+        }
+       ],
+       "mounts": [
+        {
+         "type": "bind",
+         "source": "/srv/data/app_data/copyparty",
+         "destination": "/cfg"
+        },
+        {
+         "type": "bind",
+         "source": "/srv/data/myDATA",
+         "destination": "/w"
+        },
+        {
+         "type": "bind",
+         "source": "/opt/stacks/copyparty/copyparty.conf",
+         "destination": "/cfg/copyparty.conf"
+        }
+       ],
+       "image_repo": "copyparty/ac",
+       "image_tag": "1.20.26",
+       "digest": "sha256:b2054d65e05daa8982ca17c26b12b74315c0ce586a03ff9018a59c80731b9e19",
+       "repo_digests": [
+        "copyparty/ac@sha256:b2054d65e05daa8982ca17c26b12b74315c0ce586a03ff9018a59c80731b9e19"
+       ],
+       "image_labels": {
+        "org.opencontainers.image.created": "2026-10-14T23:30:27Z",
+        "org.opencontainers.image.description": "copyparty with Pillow and FFmpeg (image/audio/video thumbnails, audio transcoding, media tags)",
+        "org.opencontainers.image.licenses": "MIT",
+        "org.opencontainers.image.source": "https://github.com/9001/copyparty",
+        "org.opencontainers.image.title": "copyparty-ac",
+        "org.opencontainers.image.url": "https://github.com/9001/copyparty",
+        "org.opencontainers.image.version": "1.20.26"
+       },
+       "uptime_s": 1385255,
+       "stopped_s": null,
+       "healthy": true,
+       "exception": false
+      },
+      {
+       "name": "immich_postgres",
+       "image": "ghcr.io/immich-app/postgres:14-vectorchord0.4.3-pgvectors0.2.0",
+       "image_id": "sha256:bcf63357191b76a916ae5eb93464d65c07511da41e3bf7a8416db519b40b1c23",
+       "state": "running",
+       "health": "healthy",
+       "started_at": "2026-09-16T11:43:02.230367057Z",
+       "finished_at": "2026-09-16T11:42:31.019070122Z",
+       "restart_count": 0,
+       "oom_killed": false,
+       "project": "immich",
+       "service": "database",
+       "working_dir": "/opt/stacks/immich",
+       "config_files": "/opt/stacks/immich/docker-compose.yml",
+       "ports": [],
+       "mounts": [
+        {
+         "type": "bind",
+         "source": "/srv/data/app_data/immich/postgres-recovery",
+         "destination": "/var/lib/postgresql/data"
+        }
+       ],
+       "image_repo": "ghcr.io/immich-app/postgres",
+       "image_tag": "14-vectorchord0.4.3-pgvectors0.2.0",
+       "digest": "sha256:bcf63357191b76a916ae5eb93464d65c07511da41e3bf7a8416db519b40b1c23",
+       "repo_digests": [
+        "ghcr.io/immich-app/postgres@sha256:bcf63357191b76a916ae5eb93464d65c07511da41e3bf7a8416db519b40b1c23"
+       ],
+       "image_labels": {
+        "org.opencontainers.image.created": "2025-10-07T12:08:54.320Z",
+        "org.opencontainers.image.description": "Base images for Immich containers",
+        "org.opencontainers.image.licenses": "AGPL-3.0",
+        "org.opencontainers.image.revision": "c5095615488fa07469b5df48a3c3e5cebeed7296",
+        "org.opencontainers.image.source": "https://github.com/immich-app/base-images",
+        "org.opencontainers.image.title": "base-images",
+        "org.opencontainers.image.url": "https://github.com/immich-app/base-images",
+        "org.opencontainers.image.version": "14-vectorchord0.4.3-pgvector0.8.1-pgvectors0.2.0"
+       },
+       "uptime_s": 4202269,
+       "stopped_s": null,
+       "healthy": true,
+       "exception": false
+      },
+      {
+       "name": "immich_redis",
+       "image": "docker.io/redis:6.2-alpine",
+       "image_id": "sha256:d0c875bdacfb5c4d2c2d9124de3f53cee1dc9ceff8936bd459fabc135cb33015",
+       "state": "running",
+       "health": "healthy",
+       "started_at": "2026-09-16T11:43:02.100051705Z",
+       "finished_at": "2026-09-16T11:42:31.055273029Z",
+       "restart_count": 0,
+       "oom_killed": false,
+       "project": "immich",
+       "service": "redis",
+       "working_dir": "/opt/stacks/immich",
+       "config_files": "/opt/stacks/immich/docker-compose.yml",
+       "ports": [],
+       "mounts": [
+        {
+         "type": "volume",
+         "source": "/var/lib/docker/volumes/11380e64736dd0b91166ae54a1fa36edbbf475a13d8671ddb182230b9dafbd5f/_data",
+         "destination": "/data"
+        }
+       ],
+       "image_repo": "docker.io/redis",
+       "image_tag": "6.2-alpine",
+       "digest": "sha256:d0c875bdacfb5c4d2c2d9124de3f53cee1dc9ceff8936bd459fabc135cb33015",
+       "repo_digests": [
+        "redis@sha256:d0c875bdacfb5c4d2c2d9124de3f53cee1dc9ceff8936bd459fabc135cb33015"
+       ],
+       "image_labels": {},
+       "uptime_s": 4202269,
+       "stopped_s": null,
+       "healthy": true,
+       "exception": false
+      }
+     ],
+     "images": {
+      "sha256:485d546a2e31d6a8b4db8423fcba5c109de8c218d93410af115fd1ccfc4352a6": {
+       "repo_digests": [
+        "ghcr.io/immich-app/immich-server@sha256:485d546a2e31d6a8b4db8423fcba5c109de8c218d93410af115fd1ccfc4352a6"
+       ],
+       "repo_tags": [
+        "ghcr.io/immich-app/immich-server:v3.3.5"
+       ],
+       "labels": {
+        "org.opencontainers.image.created": "2026-10-21T18:13:40.670Z",
+        "org.opencontainers.image.description": "High performance self-hosted photo and video management solution.",
+        "org.opencontainers.image.licenses": "AGPL-3.0",
+        "org.opencontainers.image.revision": "8303cb117e197c700332b33b61b45314c9cc5bb4",
+        "org.opencontainers.image.source": "https://github.com/immich-app/immich",
+        "org.opencontainers.image.title": "immich",
+        "org.opencontainers.image.url": "https://github.com/immich-app/immich",
+        "org.opencontainers.image.version": "v3.3.5"
+       }
+      },
+      "sha256:5b28c9352c8374b8a1ed96fbdd8d6755fea6e43510ec43fdf6538aa02ea40f56": {
+       "repo_digests": [
+        "ghcr.io/immich-app/immich-machine-learning@sha256:5b28c9352c8374b8a1ed96fbdd8d6755fea6e43510ec43fdf6538aa02ea40f56"
+       ],
+       "repo_tags": [
+        "ghcr.io/immich-app/immich-machine-learning:v3.3.5"
+       ],
+       "labels": {
+        "org.opencontainers.image.created": "2026-10-21T18:13:38.951Z",
+        "org.opencontainers.image.description": "High performance self-hosted photo and video management solution.",
+        "org.opencontainers.image.licenses": "AGPL-3.0",
+        "org.opencontainers.image.revision": "8303cb117e197c700332b33b61b45314c9cc5bb4",
+        "org.opencontainers.image.source": "https://github.com/immich-app/immich",
+        "org.opencontainers.image.title": "immich",
+        "org.opencontainers.image.url": "https://github.com/immich-app/immich",
+        "org.opencontainers.image.version": "v3.3.5"
+       }
+      },
+      "sha256:892ed5710603e38f9dc201e6a0b2f3f14dbdb8108edcadac30e55b165c979fb7": {
+       "repo_digests": [
+        "searxng/searxng@sha256:892ed5710603e38f9dc201e6a0b2f3f14dbdb8108edcadac30e55b165c979fb7"
+       ],
+       "repo_tags": [
+        "searxng/searxng:2026.11.2-cccbc9e15"
+       ],
+       "labels": {
+        "org.opencontainers.image.created": "2026-11-02T17:43:20Z",
+        "org.opencontainers.image.description": "SearXNG is a metasearch engine. Users are neither tracked nor profiled.",
+        "org.opencontainers.image.documentation": "https://docs.searxng.org/admin/installation-docker",
+        "org.opencontainers.image.licenses": "AGPL-3.0-or-later",
+        "org.opencontainers.image.revision": "cccbc9e158b0ac3bb2158e9841a647a5bec57b57",
+        "org.opencontainers.image.source": "https://github.com/searxng/searxng",
+        "org.opencontainers.image.title": "SearXNG",
+        "org.opencontainers.image.url": "https://searxng.org",
+        "org.opencontainers.image.version": "2026.11.2-cccbc9e15"
+       }
+      },
+      "sha256:8967bf9deaf3c5c4adae13519436dc1b20c646ac83fe37ae810c933a1045227d": {
+       "repo_digests": [
+        "gitea/gitea@sha256:8967bf9deaf3c5c4adae13519436dc1b20c646ac83fe37ae810c933a1045227d"
+       ],
+       "repo_tags": [
+        "gitea/gitea:28.3"
+       ],
+       "labels": {}
+      },
+      "sha256:b2054d65e05daa8982ca17c26b12b74315c0ce586a03ff9018a59c80731b9e19": {
+       "repo_digests": [
+        "copyparty/ac@sha256:b2054d65e05daa8982ca17c26b12b74315c0ce586a03ff9018a59c80731b9e19"
+       ],
+       "repo_tags": [
+        "copyparty/ac:1.20.26"
+       ],
+       "labels": {
+        "org.opencontainers.image.created": "2026-10-14T23:30:27Z",
+        "org.opencontainers.image.description": "copyparty with Pillow and FFmpeg (image/audio/video thumbnails, audio transcoding, media tags)",
+        "org.opencontainers.image.licenses": "MIT",
+        "org.opencontainers.image.source": "https://github.com/9001/copyparty",
+        "org.opencontainers.image.title": "copyparty-ac",
+        "org.opencontainers.image.url": "https://github.com/9001/copyparty",
+        "org.opencontainers.image.version": "1.20.26"
+       }
+      },
+      "sha256:bcf63357191b76a916ae5eb93464d65c07511da41e3bf7a8416db519b40b1c23": {
+       "repo_digests": [
+        "ghcr.io/immich-app/postgres@sha256:bcf63357191b76a916ae5eb93464d65c07511da41e3bf7a8416db519b40b1c23"
+       ],
+       "repo_tags": [
+        "ghcr.io/immich-app/postgres:14-vectorchord0.4.3-pgvectors0.2.0"
+       ],
+       "labels": {
+        "org.opencontainers.image.created": "2025-10-07T12:08:54.320Z",
+        "org.opencontainers.image.description": "Base images for Immich containers",
+        "org.opencontainers.image.licenses": "AGPL-3.0",
+        "org.opencontainers.image.revision": "c5095615488fa07469b5df48a3c3e5cebeed7296",
+        "org.opencontainers.image.source": "https://github.com/immich-app/base-images",
+        "org.opencontainers.image.title": "base-images",
+        "org.opencontainers.image.url": "https://github.com/immich-app/base-images",
+        "org.opencontainers.image.version": "14-vectorchord0.4.3-pgvector0.8.1-pgvectors0.2.0"
+       }
+      },
+      "sha256:d0c875bdacfb5c4d2c2d9124de3f53cee1dc9ceff8936bd459fabc135cb33015": {
+       "repo_digests": [
+        "redis@sha256:d0c875bdacfb5c4d2c2d9124de3f53cee1dc9ceff8936bd459fabc135cb33015"
+       ],
+       "repo_tags": [
+        "redis:6.2-alpine"
+       ],
+       "labels": {}
+      },
+      "sha256:f2a1290d0463aad60660d4ec134943f183ee2a5f6c3eb7bf32dd984f2f020772": {
+       "repo_digests": [
+        "caddy@sha256:f2a1290d0463aad60660d4ec134943f183ee2a5f6c3eb7bf32dd984f2f020772"
+       ],
+       "repo_tags": [
+        "caddy:2.11.7"
+       ],
+       "labels": {
+        "org.opencontainers.image.description": "a powerful, enterprise-ready, open source web server with automatic HTTPS written in Go",
+        "org.opencontainers.image.documentation": "https://caddyserver.com/docs",
+        "org.opencontainers.image.licenses": "Apache-2.0",
+        "org.opencontainers.image.source": "https://github.com/caddyserver/caddy-docker",
+        "org.opencontainers.image.title": "Caddy",
+        "org.opencontainers.image.url": "https://caddyserver.com",
+        "org.opencontainers.image.vendor": "Light Code Labs",
+        "org.opencontainers.image.version": "v2.11.7"
+       }
+      }
+     },
+     "stack_files": {
+      "caddy": {
+       "docker-compose.yml": "b04e940cefeccdd6aaaa9de6b54c7c238d0c444d541a2775b236cae1220f55f7",
+       "Caddyfile": "d12f7f3209aedd68600633187d0a6f8c227a082714518234afabb234cdafb62f"
+      },
+      "copyparty": {
+       "copyparty.conf": "e9d169c2c2d0807f08d2ca7e69f57ab1ee83c923508965684cfa25176cc90d87",
+       "docker-compose.yml": "b6c6784f9c2762332cd17ca885ba596cd4908c573ae3fbc6b21346c3379070b5",
+       ".env": "256b23bc974f1f8270e7c5d1114d23257b643a4d26b146b3556cdb230377910d",
+       "config/copyparty.conf": "6881771b3ea601b8e29e09067cfa5ce55208cf75e890cb990e231301c359be0a",
+       "config/copyparty/fk-salt.txt": "52686118ecd3f4369827ed244ff054f5b09eef337efc9b10e52f245ac159edbd",
+       "config/copyparty/sessions.db": "2b3084aed88e3ff663977f2a6569888bdf1712a1ad1afc76bfd5cf9b40aef4f0",
+       "config/copyparty/iphash": "32f42d20b60e8f21625d7b8132947bb1ebe390b0b7e9c8048ba255d3e3fd8ea9",
+       "config/copyparty/ah-salt.txt": "68fb4f2e236917a44c0abd9dd5df8a61410c3e761473520e126fc6ae63a344e9",
+       "config/copyparty/dk-salt.txt": "d12d6de11a55c6e0e3e3706b54745c312b0a473fdc4ee4de6e5301f50ca3f127",
+       "config/copyparty/sessions.db.lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+       "data/cert.pem": "144b7b8e0ae7e991d3945a29abf2c500dd36ed82286878b41d01416f36271307",
+       "data/fk-salt.txt": "9ab434781615df39f8b08ac49c2157d01a38c4709522b111272b5f22ebded8a0",
+       "data/sessions.db": "89121e2389b9854cf98ef4d01462c8bf0e6a9aa39cd96bca500f621564f5f95a",
+       "data/iphash": "a062767064a82147f7f86aa5d3ea4fc565c1ca1d68c2e9323ebcc7812af265b8",
+       "data/ah-salt.txt": "305664d802da8ad445290bb973729d9d4e661adec44dcc2a62cef5c4d178ec70",
+       "data/dk-salt.txt": "1e248ded126c24f3821708bb5f49851371f2896bdf149da6d836377f7d4e678c",
+       "data/sessions.db.lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "gitea": {
+       "docker-compose.yml": "60708fa06ae52c58adb037921519c385df387fec0b79c841c22b76e94821022d"
+      },
+      "immich": {
+       "docker-compose.yml": "5bc42e5d3823d1dc1100b3b6ec01625af338870a7c11015f6aaf25fe01239930",
+       ".env": "0a2c73dbf0e8ae99b5d9b31ff31718011eda6caee704348bd160730a23dee1f7"
+      },
+      "searxng": {
+       "docker-compose.yml": "2418a6cf8bdda5b51e989864dcb53d00df61f977c33372560fa8b1e862c1f967",
+       ".env": "ccd97f2d8f9e4363f0aff3b93c76f8c172d03cb93dbd7670ff8265eff18ee786",
+       "core-config/settings.yml": "27d404ff923b20e94c113a55357cf0bd0d198166602a1c7e2d71fb5265fdf1e8"
+      }
+     },
+     "listeners": [
+      "*:443",
+      "*:80",
+      "0.0.0.0:22",
+      "100.64.0.12:46320",
+      "127.0.0.1:2019",
+      "127.0.0.1:2283",
+      "127.0.0.1:3000",
+      "127.0.0.1:3923",
+      "127.0.0.1:8080",
+      "[::]:22",
+      "[fd7a:115c:a1e0::723b:2941]:48526"
+     ],
+     "failed_units": [],
+     "tailscale": {
+      "installed": true,
+      "online": true,
+      "ip": "100.64.0.12",
+      "dns_name": "nas-a.example.ts.net",
+      "version": "1.102.4"
+     },
+     "time": {
+      "ntp_synced": true,
+      "boot_epoch": 1789565655.7288592,
+      "reboot_required": false
+     },
+     "collected_epoch": 1793761251.6788833
+    },
+    "summary": {
+     "hostname": "nas-a",
+     "model": "Raspberry Pi 5 Model B Rev 1.0",
+     "os": "Debian GNU/Linux 13 (trixie)",
+     "kernel": "6.18.39+rpt-rpi-2712",
+     "arch": "aarch64",
+     "uptime_s": 4195595.9,
+     "uptime": "48d 13h",
+     "temp_c": 40.0,
+     "throttled": {
+      "supported": true,
+      "raw": "0x0",
+      "value": 0,
+      "now": [],
+      "since_boot": [],
+      "ok": true
+     },
+     "load": [
+      0.17,
+      0.07,
+      0.01
+     ],
+     "mem_pct": 27.4,
+     "mem_used": 2320236544,
+     "mem_total": 8454012928,
+     "disk_pct": 6.0,
+     "containers_running": 1,
+     "containers_total": 1,
+     "containers_bad": 0,
+     "updates": 0,
+     "docker_version": "29.8.0",
+     "compose_version": "5.5.1",
+     "tailscale": {
+      "installed": true,
+      "hostname": "nas-a",
+      "ipv4": "100.64.0.12",
+      "ips": [
+       "100.64.0.12",
+       "fd7a:115c:a1e0::723b:2941"
+      ],
+      "backend": "Running",
+      "version": "1.102.4-t3caf7d9e7-g084ee3b64",
+      "online": true,
+      "peers_total": 4,
+      "peers_online": 2
+     },
+     "reboot_required": false,
+     "ntp_synced": true,
+     "failed_units": [],
+     "raid": [
+      {
+       "name": "md0",
+       "status": "active raid1 nvme0n1[0] nvme1n1[1]",
+       "flags": "UU",
+       "degraded": false
+      }
+     ]
+    },
+    "stacks": [
+     {
+      "name": "immich",
+      "status": "up",
+      "sync": "synced",
+      "updates": 0
+     }
+    ],
+    "history": {
+     "uptime_pct": 95.58,
+     "last_ts": 1793761251
+    },
+    "history_points": [
+     {
+      "ts": 1793739288,
+      "reachable": 1,
+      "uptime_s": 4173631,
+      "temp_c": 38.4,
+      "throttled": 0,
+      "load1": 0.08,
+      "mem_pct": 27.4,
+      "disk_pct": 6.0,
+      "containers_up": 8,
+      "containers_total": 8
+     },
+     {
+      "ts": 1793739648,
+      "reachable": 1,
+      "uptime_s": 4173991,
+      "temp_c": 38.4,
+      "throttled": 0,
+      "load1": 0.01,
+      "mem_pct": 27.5,
+      "disk_pct": 6.0,
+      "containers_up": 8,
+      "containers_total": 8
+     },
+     {
+      "ts": 1793740008,
+      "reachable": 1,
+      "uptime_s": 4174352,
+      "temp_c": 38.9,
+      "throttled": 0,
+      "load1": 0.87,
+      "mem_pct": 27.6,
+      "disk_pct": 6.0,
+      "containers_up": 8,
+      "containers_total": 8
+     },
+     {
+      "ts": 1793740368,
+      "reachable": 1,
+      "uptime_s": 4174712,
+      "temp_c": 38.4,
+      "throttled": 0,
+      "load1": 0.84,
+      "mem_pct": 27.3,
+      "disk_pct": 6.0,
+      "containers_up": 8,
+      "containers_total": 8
+     },
+     {
+      "ts": 1793740728,
+      "reachable": 1,
+      "uptime_s": 4175072,
+      "temp_c": 38.4,
+      "throttled": 0,
+      "load1": 0.16,
+      "mem_pct": 27.4,
+      "disk_pct": 6.0,
+      "containers_up": 8,
+      "containers_total": 8
+     },
+     {
+      "ts": 1793741088,
+      "reachable": 1,
+      "uptime_s": 4175432,
+      "temp_c": 38.9,
+      "throttled": 0,
+      "load1": 0.08,
+      "mem_pct": 27.6,
+      "disk_pct": 6.0,
+      "containers_up": 8,
+      "containers_total": 8
+     },
+     {
+      "ts": 1793741448,
+      "reachable": 1,
+      "uptime_s": 4175792,
+      "temp_c": 39.5,
+      "throttled": 0,
+      "load1": 0.03,
+      "mem_pct": 27.8,
+      "disk_pct": 6.0,
+      "containers_up": 8,
+      "containers_total": 8
+     },
+     {
+      "ts": 1793741809,
+      "reachable": 1,
+      "uptime_s": 4176152,
+      "temp_c": 39.5,
+      "throttled": 0,
+      "load1": 0.08,
+      "mem_pct": 27.5,
+      "disk_pct": 6.0,
+      "containers_up": 8,
+      "containers_total": 8
+     },
+     {
+      "ts": 1793742169,
+      "reachable": 1,
+      "uptime_s": 4176512,
+      "temp_c": 39.5,
+      "throttled": 0,
+      "load1": 0.0,
+      "mem_pct": 27.6,
+      "disk_pct": 6.0,
+      "containers_up": 8,
+      "containers_total": 8
+     },
+     {
+      "ts": 1793742529,
+      "reachable": 1,
+      "uptime_s": 4176872,
+      "temp_c": 39.5,
+      "throttled": 0,
+      "load1": 0.02,
+      "mem_pct": 27.7,
+      "disk_pct": 6.0,
+      "containers_up": 8,
+      "containers_total": 8
+     },
+     {
+      "ts": 1793742889,
+      "reachable": 1,
+      "uptime_s": 4177233,
+      "temp_c": 37.8,
+      "throttled": 0,
+      "load1": 0.1,
+      "mem_pct": 27.5,
+      "disk_pct": 6.0,
+      "containers_up": 8,
+      "containers_total": 8
+     },
+     {
+      "ts": 1793743249,
+      "reachable": 1,
+      "uptime_s": 4177593,
+      "temp_c": 38.4,
+      "throttled": 0,
+      "load1": 0.0,
+      "mem_pct": 27.5,
+      "disk_pct": 6.0,
+      "containers_up": 8,
+      "containers_total": 8
+     },
+     {
+      "ts": 1793743609,
+      "reachable": 1,
+      "uptime_s": 4177953,
+      "temp_c": 39.5,
+      "throttled": 0,
+      "load1": 0.01,
+      "mem_pct": 27.4,
+      "disk_pct": 6.0,
+      "containers_up": 8,
+      "containers_total": 8
+     },
+     {
+      "ts": 1793743965,
+      "reachable": 1,
+      "uptime_s": 4178309,
+      "temp_c": 38.4,
+      "throttled": 0,
+      "load1": 0.05,
+      "mem_pct": 27.5,
+      "disk_pct": 6.0,
+      "containers_up": 8,
+      "containers_total": 8
+     },
+     {
+      "ts": 1793744325,
+      "reachable": 1,
+      "uptime_s": 4178669,
+      "temp_c": 38.4,
+      "throttled": 0,
+      "load1": 0.0,
+      "mem_pct": 27.5,
+      "disk_pct": 6.0,
+      "containers_up": 8,
+      "containers_total": 8
+     },
+     {
+      "ts": 1793744685,
+      "reachable": 1,
+      "uptime_s": 4179029,
+      "temp_c": 39.5,
+      "throttled": 0,
+      "load1": 0.04,
+      "mem_pct": 27.5,
+      "disk_pct": 6.0,
+      "containers_up": 8,
+      "containers_total": 8
+     },
+     {
+      "ts": 1793745045,
+      "reachable": 1,
+      "uptime_s": 4179389,
+      "temp_c": 38.9,
+      "throttled": 0,
+      "load1": 0.08,
+      "mem_pct": 27.8,
+      "disk_pct": 6.0,
+      "containers_up": 8,
+      "containers_total": 8
+     },
+     {
+      "ts": 1793745405,
+      "reachable": 1,
+      "uptime_s": 4179749,
+      "temp_c": 38.9,
+      "throttled": 0,
+      "load1": 0.02,
+      "mem_pct": 27.5,
+      "disk_pct": 6.0,
+      "containers_up": 8,
+      "containers_total": 8
+     },
+     {
+      "ts": 1793745913,
+      "reachable": 1,
+      "uptime_s": 4180257,
+      "temp_c": 37.8,
+      "throttled": 0,
+      "load1": 0.0,
+      "mem_pct": 27.5,
+      "disk_pct": 6.0,
+      "containers_up": 8,
+      "containers_total": 8
+     },
+     {
+      "ts": 1793746306,
+      "reachable": 1,
+      "uptime_s": 4180650,
+      "temp_c": 38.4,
+      "throttled": 0,
+      "load1": 0.09,
+      "mem_pct": 27.7,
+      "disk_pct": 6.0,
+      "containers_up": 8,
+      "containers_total": 8
+     },
+     {
+      "ts": 1793746685,
+      "reachable": 1,
+      "uptime_s": 4181014,
+      "temp_c": 40.0,
+      "throttled": 0,
+      "load1": 0.14,
+      "mem_pct": 27.5,
+      "disk_pct": 6.0,
+      "containers_up": 8,
+      "containers_total": 8
+     },
+     {
+      "ts": 1793747060,
+      "reachable": 1,
+      "uptime_s": 4181404,
+      "temp_c": 38.9,
+      "throttled": 0,
+      "load1": 0.07,
+      "mem_pct": 27.3,
+      "disk_pct": 6.0,
+      "containers_up": 8,
+      "containers_total": 8
+     },
+     {
+      "ts": 1793747420,
+      "reachable": 1,
+      "uptime_s": 4181764,
+      "temp_c": 38.9,
+      "throttled": 0,
+      "load1": 0.04,
+      "mem_pct": 27.5,
+      "disk_pct": 6.0,
+      "containers_up": 8,
+      "containers_total": 8
+     },
+     {
+      "ts": 1793747780,
+      "reachable": 1,
+      "uptime_s": 4182124,
+      "temp_c": 40.0,
+      "throttled": 0,
+      "load1": 0.03,
+      "mem_pct": 27.6,
+      "disk_pct": 6.0,
+      "containers_up": 8,
+      "containers_total": 8
+     },
+     {
+      "ts": 1793748140,
+      "reachable": 1,
+      "uptime_s": 4182484,
+      "temp_c": 39.5,
+      "throttled": 0,
+      "load1": 0.0,
+      "mem_pct": 27.4,
+      "disk_pct": 6.0,
+      "containers_up": 8,
+      "containers_total": 8
+     },
+     {
+      "ts": 1793748500,
+      "reachable": 1,
+      "uptime_s": 4182844,
+      "temp_c": 37.8,
+      "throttled": 0,
+      "load1": 0.01,
+      "mem_pct": 27.6,
+      "disk_pct": 6.0,
+      "containers_up": 8,
+      "containers_total": 8
+     },
+     {
+      "ts": 1793748860,
+      "reachable": 1,
+      "uptime_s": 4183204,
+      "temp_c": 38.9,
+      "throttled": 0,
+      "load1": 0.04,
+      "mem_pct": 27.5,
+      "disk_pct": 6.0,
+      "containers_up": 8,
+      "containers_total": 8
+     },
+     {
+      "ts": 1793749221,
+      "reachable": 1,
+      "uptime_s": 4183564,
+      "temp_c": 38.9,
+      "throttled": 0,
+      "load1": 0.01,
+      "mem_pct": 27.9,
+      "disk_pct": 6.0,
+      "containers_up": 8,
+      "containers_total": 8
+     },
+     {
+      "ts": 1793749581,
+      "reachable": 1,
+      "uptime_s": 4183924,
+      "temp_c": 38.4,
+      "throttled": 0,
+      "load1": 0.51,
+      "mem_pct": 27.7,
+      "disk_pct": 6.0,
+      "containers_up": 8,
+      "containers_total": 8
+     },
+     {
+      "ts": 1793749941,
+      "reachable": 1,
+      "uptime_s": 4184284,
+      "temp_c": 39.5,
+      "throttled": 0,
+      "load1": 0.48,
+      "mem_pct": 27.5,
+      "disk_pct": 6.0,
+      "containers_up": 8,
+      "containers_total": 8
+     },
+     {
+      "ts": 1793750301,
+      "reachable": 1,
+      "uptime_s": 4184645,
+      "temp_c": 39.5,
+      "throttled": 0,
+      "load1": 0.33,
+      "mem_pct": 27.6,
+      "disk_pct": 6.0,
+      "containers_up": 8,
+      "containers_total": 8
+     },
+     {
+      "ts": 1793750661,
+      "reachable": 1,
+      "uptime_s": 4185005,
+      "temp_c": 37.8,
+      "throttled": 0,
+      "load1": 0.09,
+      "mem_pct": 27.5,
+      "disk_pct": 6.0,
+      "containers_up": 8,
+      "containers_total": 8
+     },
+     {
+      "ts": 1793751021,
+      "reachable": 1,
+      "uptime_s": 4185365,
+      "temp_c": 39.5,
+      "throttled": 0,
+      "load1": 0.01,
+      "mem_pct": 27.7,
+      "disk_pct": 6.0,
+      "containers_up": 8,
+      "containers_total": 8
+     },
+     {
+      "ts": 1793751381,
+      "reachable": 1,
+      "uptime_s": 4185725,
+      "temp_c": 38.9,
+      "throttled": 0,
+      "load1": 0.07,
+      "mem_pct": 27.5,
+      "disk_pct": 6.0,
+      "containers_up": 8,
+      "containers_total": 8
+     },
+     {
+      "ts": 1793751741,
+      "reachable": 1,
+      "uptime_s": 4186085,
+      "temp_c": 38.4,
+      "throttled": 0,
+      "load1": 0.05,
+      "mem_pct": 27.6,
+      "disk_pct": 6.0,
+      "containers_up": 8,
+      "containers_total": 8
+     },
+     {
+      "ts": 1793752101,
+      "reachable": 1,
+      "uptime_s": 4186445,
+      "temp_c": 38.9,
+      "throttled": 0,
+      "load1": 0.0,
+      "mem_pct": 27.5,
+      "disk_pct": 6.0,
+      "containers_up": 8,
+      "containers_total": 8
+     },
+     {
+      "ts": 1793752461,
+      "reachable": 1,
+      "uptime_s": 4186805,
+      "temp_c": 38.9,
+      "throttled": 0,
+      "load1": 0.04,
+      "mem_pct": 27.6,
+      "disk_pct": 6.0,
+      "containers_up": 8,
+      "containers_total": 8
+     },
+     {
+      "ts": 1793752777,
+      "reachable": 1,
+      "uptime_s": 4187121,
+      "temp_c": 39.5,
+      "throttled": 0,
+      "load1": 0.0,
+      "mem_pct": 27.5,
+      "disk_pct": 6.0,
+      "containers_up": 8,
+      "containers_total": 8
+     },
+     {
+      "ts": 1793753140,
+      "reachable": 1,
+      "uptime_s": 4187483,
+      "temp_c": 40.6,
+      "throttled": 0,
+      "load1": 0.06,
+      "mem_pct": 27.4,
+      "disk_pct": 6.0,
+      "containers_up": 8,
+      "containers_total": 8
+     },
+     {
+      "ts": 1793753500,
+      "reachable": 1,
+      "uptime_s": 4187843,
+      "temp_c": 38.4,
+      "throttled": 0,
+      "load1": 0.17,
+      "mem_pct": 27.4,
+      "disk_pct": 6.0,
+      "containers_up": 8,
+      "containers_total": 8
+     },
+     {
+      "ts": 1793753860,
+      "reachable": 1,
+      "uptime_s": 4188204,
+      "temp_c": 40.0,
+      "throttled": 0,
+      "load1": 0.01,
+      "mem_pct": 27.8,
+      "disk_pct": 6.0,
+      "containers_up": 8,
+      "containers_total": 8
+     },
+     {
+      "ts": 1793754220,
+      "reachable": 1,
+      "uptime_s": 4188564,
+      "temp_c": 38.9,
+      "throttled": 0,
+      "load1": 0.03,
+      "mem_pct": 27.5,
+      "disk_pct": 6.0,
+      "containers_up": 8,
+      "containers_total": 8
+     },
+     {
+      "ts": 1793754580,
+      "reachable": 1,
+      "uptime_s": 4188924,
+      "temp_c": 38.9,
+      "throttled": 0,
+      "load1": 0.0,
+      "mem_pct": 27.5,
+      "disk_pct": 6.0,
+      "containers_up": 8,
+      "containers_total": 8
+     },
+     {
+      "ts": 1793754940,
+      "reachable": 1,
+      "uptime_s": 4189284,
+      "temp_c": 40.6,
+      "throttled": 0,
+      "load1": 0.01,
+      "mem_pct": 27.5,
+      "disk_pct": 6.0,
+      "containers_up": 8,
+      "containers_total": 8
+     },
+     {
+      "ts": 1793755300,
+      "reachable": 1,
+      "uptime_s": 4189644,
+      "temp_c": 40.0,
+      "throttled": 0,
+      "load1": 0.05,
+      "mem_pct": 27.8,
+      "disk_pct": 6.0,
+      "containers_up": 8,
+      "containers_total": 8
+     },
+     {
+      "ts": 1793755660,
+      "reachable": 1,
+      "uptime_s": 4190004,
+      "temp_c": 40.0,
+      "throttled": 0,
+      "load1": 0.53,
+      "mem_pct": 27.6,
+      "disk_pct": 6.0,
+      "containers_up": 8,
+      "containers_total": 8
+     },
+     {
+      "ts": 1793756021,
+      "reachable": 1,
+      "uptime_s": 4190364,
+      "temp_c": 40.6,
+      "throttled": 0,
+      "load1": 0.46,
+      "mem_pct": 27.6,
+      "disk_pct": 6.0,
+      "containers_up": 8,
+      "containers_total": 8
+     },
+     {
+      "ts": 1793756494,
+      "reachable": 1,
+      "uptime_s": 4190837,
+      "temp_c": 40.6,
+      "throttled": 0,
+      "load1": 0.3,
+      "mem_pct": 27.6,
+      "disk_pct": 6.0,
+      "containers_up": 8,
+      "containers_total": 8
+     }
+    ],
+    "update_count": 0,
+    "key": "",
+    "key_info": null,
+    "last_commit": null
+   }
+  ],
+  "stacks": [
+   {
+    "host": "pi-a",
+    "name": "caddy",
+    "path": "/Users/you/code/homelab/workspace/stacks/pi-a/caddy",
+    "compose_file": "docker-compose.yml",
+    "project": "caddy",
+    "parse_error": "",
+    "services": [
+     {
+      "name": "caddy",
+      "image": "caddy:2.8.4",
+      "ports": [
+       "127.0.0.1:443:443"
+      ]
+     }
+    ],
+    "files": [],
+    "env": {},
+    "hashes": {},
+    "runtime": {
+     "status": "up",
+     "sync": {
+      "state": "synced"
+     },
+     "containers": []
+    },
+    "updates": [],
+    "unpinned": []
+   },
+   {
+    "host": "pi-a",
+    "name": "pihole",
+    "path": "/Users/you/code/homelab/workspace/stacks/pi-a/pihole",
+    "compose_file": "docker-compose.yml",
+    "project": "pihole",
+    "parse_error": "",
+    "services": [
+     {
+      "name": "pihole",
+      "image": "pihole/pihole:2026.10.0",
+      "ports": [
+       "127.0.0.1:8053:8053"
+      ]
+     }
+    ],
+    "files": [],
+    "env": {},
+    "hashes": {},
+    "runtime": {
+     "status": "up",
+     "sync": {
+      "state": "synced"
+     },
+     "containers": []
+    },
+    "updates": [],
+    "unpinned": []
+   },
+   {
+    "host": "nas-a",
+    "name": "immich",
+    "path": "/Users/you/code/homelab/workspace/stacks/nas-a/immich",
+    "compose_file": "docker-compose.yml",
+    "project": "immich",
+    "parse_error": "",
+    "services": [
+     {
+      "name": "immich",
+      "image": "ghcr.io/immich-app/immich-server:v1.141.1",
+      "ports": [
+       "127.0.0.1:2283:2283"
+      ]
+     }
+    ],
+    "files": [],
+    "env": {},
+    "hashes": {},
+    "runtime": {
+     "status": "up",
+     "sync": {
+      "state": "synced"
+     },
+     "containers": []
+    },
+    "updates": [],
+    "unpinned": []
+   },
+   {
+    "host": "pi-b",
+    "name": "n8n",
+    "path": "/Users/you/code/homelab/workspace/stacks/pi-b/n8n",
+    "compose_file": "docker-compose.yml",
+    "project": "n8n",
+    "parse_error": "",
+    "services": [
+     {
+      "name": "n8n",
+      "image": "docker.n8n.io/n8nio/n8n:1.114.4",
+      "ports": [
+       "127.0.0.1:5678:5678"
+      ]
+     }
+    ],
+    "files": [],
+    "env": {},
+    "hashes": {},
+    "runtime": {
+     "status": "up",
+     "sync": {
+      "state": "synced"
+     },
+     "containers": []
+    },
+    "updates": [],
+    "unpinned": []
+   },
+   {
+    "host": "pi-b",
+    "name": "uptime-kuma",
+    "path": "/Users/you/code/homelab/workspace/stacks/pi-b/uptime-kuma",
+    "compose_file": "docker-compose.yml",
+    "project": "uptime-kuma",
+    "parse_error": "",
+    "services": [
+     {
+      "name": "uptime-kuma",
+      "image": "louislam/uptime-kuma:1.23.16",
+      "ports": [
+       "127.0.0.1:3001:3001"
+      ]
+     }
+    ],
+    "files": [],
+    "env": {},
+    "hashes": {},
+    "runtime": {
+     "status": "up",
+     "sync": {
+      "state": "synced"
+     },
+     "containers": []
+    },
+    "updates": [],
+    "unpinned": []
+   }
+  ],
+  "remote_stacks": [],
+  "updates": [],
+  "exceptions": [],
+  "summary": {
+   "hosts_total": 3,
+   "hosts_online": 3,
+   "hosts_offline": [],
+   "hosts_degraded": [],
+   "containers_running": 5,
+   "containers_total": 5,
+   "stacks_total": 5,
+   "stacks_up": 5,
+   "stacks_degraded": [],
+   "stacks_down": [],
+   "stacks_not_deployed": [],
+   "drift": [],
+   "remote_extra": [],
+   "updates_available": 0,
+   "unpinned": 0,
+   "exceptions": 0,
+   "remote_only": [],
+   "remote_empty_dirs": [],
+   "releases": {
+    "checked_at": 1793761300,
+    "checked_iso": "2026-11-03T22:00:00-05:00",
+    "sources": 4,
+    "errors": 0
+   },
+   "attention": 0
+  },
+  "age_s": 4,
+  "poll_interval_s": 30,
+  "release_check": {
+   "checked_at": 1793760711,
+   "due": false,
+   "state": "done"
+  },
+  "git": {
+   "dirty": false,
+   "entries": [],
+   "branch": "main",
+   "last_commit": "a1b2c3d 2026-11-03 21:40 workspace: seed example fleet"
+  },
+  "policies": [],
+  "runs": [],
+  "activity": [],
+  "auto_update_enabled": false,
+  "repos": {
+   "root": "/Users/you/code",
+   "root_configured": true,
+   "root_error": "",
+   "gitea_config_error": "",
+   "repos": [
+    {
+     "id": "homelab-app",
+     "name": "homelab-app",
+     "rel": "homelab-app",
+     "container": "",
+     "path": "/Users/you/code/homelab-app",
+     "error": "",
+     "branch": "main",
+     "detached": false,
+     "head": "dce69a87fd92583c30e1ec31b4189a273b0174b6305fe00b7f43f4fcdd129e57",
+     "upstream": "origin/main",
+     "tracking": true,
+     "ahead": 0,
+     "behind": 0,
+     "new_branch": false,
+     "dirty": false,
+     "dirty_count": 0,
+     "ignored_count": 0,
+     "entries": [],
+     "entries_truncated": false,
+     "entries_total": 0,
+     "last_commit": {
+      "sha": "dce69a8",
+      "at": 1793750759,
+      "date": "2026-11-03 09:10",
+      "subject": "app shell and console"
+     },
+     "origin": "https://github.com/you/homelab-app.git",
+     "github": {
+      "owner": "you",
+      "repo": "homelab-app",
+      "url": "https://github.com/you/homelab-app"
+     },
+     "lfs": false,
+     "gitea": {
+      "status": "synced",
+      "detail": "in sync",
+      "target": "https://gitea.example.com/you/homelab-app.git",
+      "checked_at": 1793761559,
+      "counts": {
+       "local": 1,
+       "remote": 1,
+       "push": 0,
+       "prune": 0,
+       "changed": 0
+      }
+     },
+     "needs": {
+      "commit": false,
+      "push": false,
+      "gitea": false
+     }
+    },
+    {
+     "id": "homelab-workspace",
+     "name": "homelab-workspace",
+     "rel": "homelab-workspace",
+     "container": "",
+     "path": "/Users/you/code/homelab-workspace",
+     "error": "",
+     "branch": "main",
+     "detached": false,
+     "head": "4f97a0254ac6f27962f90766ec49cecaa60facf879f166933e0bca55857e6b5d",
+     "upstream": "origin/main",
+     "tracking": true,
+     "ahead": 0,
+     "behind": 0,
+     "new_branch": false,
+     "dirty": false,
+     "dirty_count": 0,
+     "ignored_count": 0,
+     "entries": [],
+     "entries_truncated": false,
+     "entries_total": 0,
+     "last_commit": {
+      "sha": "4f97a02",
+      "at": 1793747159,
+      "date": "2026-11-02 10:11",
+      "subject": "fleet inventory and stacks"
+     },
+     "origin": "https://github.com/you/homelab-workspace.git",
+     "github": {
+      "owner": "you",
+      "repo": "homelab-workspace",
+      "url": "https://github.com/you/homelab-workspace"
+     },
+     "lfs": false,
+     "gitea": {
+      "status": "synced",
+      "detail": "in sync",
+      "target": "https://gitea.example.com/you/homelab-workspace.git",
+      "checked_at": 1793761559,
+      "counts": {
+       "local": 1,
+       "remote": 1,
+       "push": 0,
+       "prune": 0,
+       "changed": 0
+      }
+     },
+     "needs": {
+      "commit": false,
+      "push": false,
+      "gitea": false
+     }
+    },
+    {
+     "id": "personal-site",
+     "name": "personal-site",
+     "rel": "personal-site",
+     "container": "",
+     "path": "/Users/you/code/personal-site",
+     "error": "",
+     "branch": "main",
+     "detached": false,
+     "head": "d22ba8d0182cc6896e41ea1296f47645fd434f6c4d2db8841ba3dc8d9e7daf9c",
+     "upstream": "origin/main",
+     "tracking": true,
+     "ahead": 0,
+     "behind": 0,
+     "new_branch": false,
+     "dirty": false,
+     "dirty_count": 0,
+     "ignored_count": 0,
+     "entries": [],
+     "entries_truncated": false,
+     "entries_total": 0,
+     "last_commit": {
+      "sha": "d22ba8d",
+      "at": 1793743559,
+      "date": "2026-11-01 11:12",
+      "subject": "personal website"
+     },
+     "origin": "https://github.com/you/personal-site.git",
+     "github": {
+      "owner": "you",
+      "repo": "personal-site",
+      "url": "https://github.com/you/personal-site"
+     },
+     "lfs": false,
+     "gitea": {
+      "status": "synced",
+      "detail": "in sync",
+      "target": "https://gitea.example.com/you/personal-site.git",
+      "checked_at": 1793761559,
+      "counts": {
+       "local": 1,
+       "remote": 1,
+       "push": 0,
+       "prune": 0,
+       "changed": 0
+      }
+     },
+     "needs": {
+      "commit": false,
+      "push": false,
+      "gitea": false
+     }
+    },
+    {
+     "id": "notes",
+     "name": "notes",
+     "rel": "notes",
+     "container": "",
+     "path": "/Users/you/code/notes",
+     "error": "",
+     "branch": "main",
+     "detached": false,
+     "head": "ab5aa97074c454a0632057e704220d9a6678fbf773a0a5806fc09b8173b07309",
+     "upstream": "origin/main",
+     "tracking": true,
+     "ahead": 0,
+     "behind": 0,
+     "new_branch": false,
+     "dirty": false,
+     "dirty_count": 0,
+     "ignored_count": 0,
+     "entries": [],
+     "entries_truncated": false,
+     "entries_total": 0,
+     "last_commit": {
+      "sha": "ab5aa97",
+      "at": 1793739959,
+      "date": "2026-11-03 12:13",
+      "subject": "notes and runbooks"
+     },
+     "origin": "https://github.com/you/notes.git",
+     "github": {
+      "owner": "you",
+      "repo": "notes",
+      "url": "https://github.com/you/notes"
+     },
+     "lfs": false,
+     "gitea": {
+      "status": "synced",
+      "detail": "in sync",
+      "target": "https://gitea.example.com/you/notes.git",
+      "checked_at": 1793761559,
+      "counts": {
+       "local": 1,
+       "remote": 1,
+       "push": 0,
+       "prune": 0,
+       "changed": 0
+      }
+     },
+     "needs": {
+      "commit": false,
+      "push": false,
+      "gitea": false
+     }
+    },
+    {
+     "id": "budget",
+     "name": "budget",
+     "rel": "budget",
+     "container": "",
+     "path": "/Users/you/code/budget",
+     "error": "",
+     "branch": "main",
+     "detached": false,
+     "head": "0af96a8ed622a394e8b2a239284ee46e9a7a7b0ec38191bbd08571b171118dd6",
+     "upstream": "origin/main",
+     "tracking": true,
+     "ahead": 0,
+     "behind": 0,
+     "new_branch": false,
+     "dirty": false,
+     "dirty_count": 0,
+     "ignored_count": 0,
+     "entries": [],
+     "entries_truncated": false,
+     "entries_total": 0,
+     "last_commit": {
+      "sha": "0af96a8",
+      "at": 1793736359,
+      "date": "2026-11-02 13:14",
+      "subject": "finance tracker"
+     },
+     "origin": "https://github.com/you/budget.git",
+     "github": {
+      "owner": "you",
+      "repo": "budget",
+      "url": "https://github.com/you/budget"
+     },
+     "lfs": false,
+     "gitea": {
+      "status": "synced",
+      "detail": "in sync",
+      "target": "https://gitea.example.com/you/budget.git",
+      "checked_at": 1793761559,
+      "counts": {
+       "local": 1,
+       "remote": 1,
+       "push": 0,
+       "prune": 0,
+       "changed": 0
+      }
+     },
+     "needs": {
+      "commit": false,
+      "push": false,
+      "gitea": false
+     }
+    },
+    {
+     "id": "tools/agent-docs",
+     "name": "agent-docs",
+     "rel": "tools/agent-docs",
+     "container": "tools",
+     "path": "/Users/you/code/tools/agent-docs",
+     "error": "",
+     "branch": "main",
+     "detached": false,
+     "head": "cdfc9bed27185ecb8170652d690fe10ecd8889079e90649e5bca9b5b3ddcafcc",
+     "upstream": "origin/main",
+     "tracking": true,
+     "ahead": 0,
+     "behind": 0,
+     "new_branch": false,
+     "dirty": false,
+     "dirty_count": 0,
+     "ignored_count": 0,
+     "entries": [],
+     "entries_truncated": false,
+     "entries_total": 0,
+     "last_commit": {
+      "sha": "cdfc9be",
+      "at": 1793732759,
+      "date": "2026-11-01 14:15",
+      "subject": "shared agent docs"
+     },
+     "origin": "https://github.com/you/agent-docs.git",
+     "github": {
+      "owner": "you",
+      "repo": "agent-docs",
+      "url": "https://github.com/you/agent-docs"
+     },
+     "lfs": false,
+     "gitea": {
+      "status": "synced",
+      "detail": "in sync",
+      "target": "https://gitea.example.com/you/agent-docs.git",
+      "checked_at": 1793761559,
+      "counts": {
+       "local": 1,
+       "remote": 1,
+       "push": 0,
+       "prune": 0,
+       "changed": 0
+      }
+     },
+     "needs": {
+      "commit": false,
+      "push": false,
+      "gitea": false
+     }
+    },
+    {
+     "id": "tools/watch",
+     "name": "watch",
+     "rel": "tools/watch",
+     "container": "tools",
+     "path": "/Users/you/code/tools/watch",
+     "error": "",
+     "branch": "main",
+     "detached": false,
+     "head": "a2366bbbef8a9f0a63873c10772d4cb7da11ef71023d2ee0909fe3021698a1cf",
+     "upstream": "origin/main",
+     "tracking": true,
+     "ahead": 0,
+     "behind": 0,
+     "new_branch": false,
+     "dirty": false,
+     "dirty_count": 0,
+     "ignored_count": 0,
+     "entries": [],
+     "entries_truncated": false,
+     "entries_total": 0,
+     "last_commit": {
+      "sha": "a2366bb",
+      "at": 1793729159,
+      "date": "2026-11-03 15:16",
+      "subject": "watch scripts"
+     },
+     "origin": "https://github.com/you/watch.git",
+     "github": {
+      "owner": "you",
+      "repo": "watch",
+      "url": "https://github.com/you/watch"
+     },
+     "lfs": false,
+     "gitea": {
+      "status": "synced",
+      "detail": "in sync",
+      "target": "https://gitea.example.com/you/watch.git",
+      "checked_at": 1793761559,
+      "counts": {
+       "local": 1,
+       "remote": 1,
+       "push": 0,
+       "prune": 0,
+       "changed": 0
+      }
+     },
+     "needs": {
+      "commit": false,
+      "push": false,
+      "gitea": false
+     }
+    },
+    {
+     "id": "gitea-tools",
+     "name": "gitea-tools",
+     "rel": "gitea-tools",
+     "container": "",
+     "path": "/Users/you/code/gitea-tools",
+     "error": "",
+     "branch": "main",
+     "detached": false,
+     "head": "75a8d3fa8324442e1c93996104091cc44eb08fe514baa5f72eaf91329106de55",
+     "upstream": "origin/main",
+     "tracking": true,
+     "ahead": 0,
+     "behind": 0,
+     "new_branch": false,
+     "dirty": false,
+     "dirty_count": 0,
+     "ignored_count": 0,
+     "entries": [],
+     "entries_truncated": false,
+     "entries_total": 0,
+     "last_commit": {
+      "sha": "75a8d3f",
+      "at": 1793725559,
+      "date": "2026-11-02 16:17",
+      "subject": "backup tooling"
+     },
+     "origin": "https://github.com/you/gitea-tools.git",
+     "github": {
+      "owner": "you",
+      "repo": "gitea-tools",
+      "url": "https://github.com/you/gitea-tools"
+     },
+     "lfs": false,
+     "gitea": {
+      "status": "synced",
+      "detail": "in sync",
+      "target": "https://gitea.example.com/you/gitea-tools.git",
+      "checked_at": 1793761559,
+      "counts": {
+       "local": 1,
+       "remote": 1,
+       "push": 0,
+       "prune": 0,
+       "changed": 0
+      }
+     },
+     "needs": {
+      "commit": false,
+      "push": false,
+      "gitea": false
+     }
+    },
+    {
+     "id": "pipeline",
+     "name": "pipeline",
+     "rel": "pipeline",
+     "container": "",
+     "path": "/Users/you/code/pipeline",
+     "error": "",
+     "branch": "main",
+     "detached": false,
+     "head": "23bf0d244a4cb62c85fc3aa0e8ebf8eb7eb970522a51326adf1ac015fc738c7c",
+     "upstream": "origin/main",
+     "tracking": true,
+     "ahead": 0,
+     "behind": 0,
+     "new_branch": false,
+     "dirty": false,
+     "dirty_count": 0,
+     "ignored_count": 0,
+     "entries": [],
+     "entries_truncated": false,
+     "entries_total": 0,
+     "last_commit": {
+      "sha": "23bf0d2",
+      "at": 1793721959,
+      "date": "2026-11-01 09:18",
+      "subject": "data pipeline"
+     },
+     "origin": "https://github.com/you/pipeline.git",
+     "github": {
+      "owner": "you",
+      "repo": "pipeline",
+      "url": "https://github.com/you/pipeline"
+     },
+     "lfs": false,
+     "gitea": {
+      "status": "synced",
+      "detail": "in sync",
+      "target": "https://gitea.example.com/you/pipeline.git",
+      "checked_at": 1793761559,
+      "counts": {
+       "local": 1,
+       "remote": 1,
+       "push": 0,
+       "prune": 0,
+       "changed": 0
+      }
+     },
+     "needs": {
+      "commit": false,
+      "push": false,
+      "gitea": false
+     }
+    },
+    {
+     "id": "cost-model",
+     "name": "cost-model",
+     "rel": "cost-model",
+     "container": "",
+     "path": "/Users/you/code/cost-model",
+     "error": "",
+     "branch": "main",
+     "detached": false,
+     "head": "7ceff1a68ddd995b2e87790bad3d75edd4bd42da19cf19039af8888851a7f520",
+     "upstream": "origin/main",
+     "tracking": true,
+     "ahead": 0,
+     "behind": 0,
+     "new_branch": false,
+     "dirty": false,
+     "dirty_count": 0,
+     "ignored_count": 0,
+     "entries": [],
+     "entries_truncated": false,
+     "entries_total": 0,
+     "last_commit": {
+      "sha": "7ceff1a",
+      "at": 1793718359,
+      "date": "2026-11-03 10:19",
+      "subject": "cost model"
+     },
+     "origin": "https://github.com/you/cost-model.git",
+     "github": {
+      "owner": "you",
+      "repo": "cost-model",
+      "url": "https://github.com/you/cost-model"
+     },
+     "lfs": false,
+     "gitea": {
+      "status": "synced",
+      "detail": "in sync",
+      "target": "https://gitea.example.com/you/cost-model.git",
+      "checked_at": 1793761559,
+      "counts": {
+       "local": 1,
+       "remote": 1,
+       "push": 0,
+       "prune": 0,
+       "changed": 0
+      }
+     },
+     "needs": {
+      "commit": false,
+      "push": false,
+      "gitea": false
+     }
+    },
+    {
+     "id": "classifier",
+     "name": "classifier",
+     "rel": "classifier",
+     "container": "",
+     "path": "/Users/you/code/classifier",
+     "error": "",
+     "branch": "main",
+     "detached": false,
+     "head": "fe1991a9d8b6abd7ff7c58d5e22b4538a75dadae9f33dcca784e7a87c2d0f6ae",
+     "upstream": "origin/main",
+     "tracking": true,
+     "ahead": 0,
+     "behind": 0,
+     "new_branch": false,
+     "dirty": false,
+     "dirty_count": 0,
+     "ignored_count": 0,
+     "entries": [],
+     "entries_truncated": false,
+     "entries_total": 0,
+     "last_commit": {
+      "sha": "fe1991a",
+      "at": 1793714759,
+      "date": "2026-11-02 11:20",
+      "subject": "document classifier"
+     },
+     "origin": "https://github.com/you/classifier.git",
+     "github": {
+      "owner": "you",
+      "repo": "classifier",
+      "url": "https://github.com/you/classifier"
+     },
+     "lfs": false,
+     "gitea": {
+      "status": "synced",
+      "detail": "in sync",
+      "target": "https://gitea.example.com/you/classifier.git",
+      "checked_at": 1793761559,
+      "counts": {
+       "local": 1,
+       "remote": 1,
+       "push": 0,
+       "prune": 0,
+       "changed": 0
+      }
+     },
+     "needs": {
+      "commit": false,
+      "push": false,
+      "gitea": false
+     }
+    },
+    {
+     "id": "dotfiles",
+     "name": "dotfiles",
+     "rel": "dotfiles",
+     "container": "",
+     "path": "/Users/you/code/dotfiles",
+     "error": "",
+     "branch": "main",
+     "detached": false,
+     "head": "f40cc1299629259447e388440ce62167fc6caa3b9dc387640bf2e9621293a73e",
+     "upstream": "origin/main",
+     "tracking": true,
+     "ahead": 0,
+     "behind": 0,
+     "new_branch": false,
+     "dirty": false,
+     "dirty_count": 0,
+     "ignored_count": 0,
+     "entries": [],
+     "entries_truncated": false,
+     "entries_total": 0,
+     "last_commit": {
+      "sha": "f40cc12",
+      "at": 1793711159,
+      "date": "2026-11-01 12:21",
+      "subject": "shell and editor config"
+     },
+     "origin": "https://github.com/you/dotfiles.git",
+     "github": {
+      "owner": "you",
+      "repo": "dotfiles",
+      "url": "https://github.com/you/dotfiles"
+     },
+     "lfs": false,
+     "gitea": {
+      "status": "synced",
+      "detail": "in sync",
+      "target": "https://gitea.example.com/you/dotfiles.git",
+      "checked_at": 1793761559,
+      "counts": {
+       "local": 1,
+       "remote": 1,
+       "push": 0,
+       "prune": 0,
+       "changed": 0
+      }
+     },
+     "needs": {
+      "commit": false,
+      "push": false,
+      "gitea": false
+     }
+    }
+   ],
+   "summary": {
+    "total": 12,
+    "github": 12,
+    "dirty_repos": 0,
+    "dirty_files": 0,
+    "ignored_files": 0,
+    "ahead_repos": 0,
+    "ahead_commits": 0,
+    "behind_repos": 0,
+    "behind_commits": 0,
+    "gitea_checked": 12,
+    "gitea_behind": 0,
+    "gitea_errors": 0,
+    "gitea_unknown": 0,
+    "attention": 0,
+    "clean": 12
+   },
+   "generated_at": 1793761311,
+   "scanning": false,
+   "gitea": {
+    "state": "done",
+    "checked_at": 1793761311,
+    "checked": 12,
+    "errors": 0,
+    "message": "12 repo(s) checked"
+   },
+   "connectivity": {
+    "state": "done",
+    "checked_at": 1793761311,
+    "github": {
+     "state": "up",
+     "checked_at": 1793761311,
+     "latency_ms": 175,
+     "detail": "HTTP 200"
+    },
+    "gitea": {
+     "state": "up",
+     "checked_at": 1793761311,
+     "latency_ms": 20,
+     "version": "1.23.4",
+     "detail": "HTTP 200"
+    }
+   },
+   "queue": null,
+   "vscode": {
+    "available": true
+   },
+   "gitea_configured": true
+  },
+  "warmup": {
+   "state": "ready",
+   "started_at": 1793761372,
+   "elapsed_s": 4.0,
+   "deadline_s": 12.0,
+   "tasks": [
+    {
+     "id": "fleet",
+     "label": "Probing the fleet",
+     "state": "done",
+     "detail": "3/3 hosts online"
+    },
+    {
+     "id": "repos",
+     "label": "Scanning repositories",
+     "state": "done",
+     "detail": "12 repositories"
+    },
+    {
+     "id": "gitea",
+     "label": "Checking the Gitea backup",
+     "state": "done",
+     "detail": "12 repositories compared"
+    }
+   ]
+  }
+ },
+ "activity": [],
+ "runs": [],
+ "policies": [],
+ "stats": {
+  "host_samples": 4769,
+  "stack_samples": 20403,
+  "events": 128,
+  "runs": 12,
+  "db_bytes": 1880064,
+  "stacks": 5,
+  "hosts": 3
+ },
+ "templates": [
+  {
+   "id": "blank",
+   "name": "Blank stack",
+   "description": "An empty compose file with the fleet conventions in comments.",
+   "compose": "# New stack \u2014 a file in this repo is the source of truth.\n# deploy.py / Homelab Console push this to /opt/stacks/<name>/.\n#\n# Exposure rule: publish on loopback only; put a vhost in this host's\n# Caddyfile if humans need a name for it.\nservices:\n  example:\n    image: nginx:1.29.0\n    container_name: example\n    restart: unless-stopped\n    ports:\n      - \"127.0.0.1:8088:80\"\n",
+   "env": ""
+  },
+  {
+   "id": "whoami",
+   "name": "Whoami (diagnostic)",
+   "description": "Tiny HTTP echo service \u2014 useful to prove push + recreate end to end.",
+   "compose": "# whoami \u2014 disposable diagnostic endpoint on loopback :9180.\nservices:\n  whoami:\n    image: traefik/whoami:v1.11.0\n    container_name: whoami\n    restart: unless-stopped\n    ports:\n      - \"127.0.0.1:9180:80\"\n",
+   "env": ""
+  },
+  {
+   "id": "uptime-kuma",
+   "name": "Uptime Kuma",
+   "description": "Self-hosted uptime monitor. Data lives at /srv/uptime-kuma.",
+   "compose": "# Uptime Kuma \u2014 loopback :3001, front it with Caddy if wanted.\nservices:\n  uptime-kuma:\n    image: louislam/uptime-kuma:1.23.16\n    container_name: uptime-kuma\n    restart: unless-stopped\n    ports:\n      - \"127.0.0.1:3001:3001\"\n    volumes:\n      - /srv/uptime-kuma:/app/data\n",
+   "env": ""
+  },
+  {
+   "id": "dozzle",
+   "name": "Dozzle (log viewer)",
+   "description": "Container log viewer. Read-only docker socket mount; loopback :9999.",
+   "compose": "# Dozzle \u2014 loopback :9999. The docker socket is powerful: keep this local.\nservices:\n  dozzle:\n    image: amir20/dozzle:v8.12.8\n    container_name: dozzle\n    restart: unless-stopped\n    ports:\n      - \"127.0.0.1:9999:8080\"\n    volumes:\n      - /var/run/docker.sock:/var/run/docker.sock:ro\n",
+   "env": ""
+  }
+ ],
+ "limits": {
+  "max_body": 2097152,
+  "history_days": 30
+ }
+}
