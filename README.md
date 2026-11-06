@@ -7,7 +7,7 @@ the Pis keep their containers running, and your fleet files stay in git.
 
 ## What it is
 
-Homelab Console is a macOS app for one person and a handful of Pis. It shows
+Homelab Console is a personal macOS app for management of Raspberry Pis. It shows
 what is running, lets you review changes before they go to a Pi, and keeps the
 stack files in git. There is no cloud account, no agent on the Pis, and no
 telemetry.
@@ -22,7 +22,7 @@ manager. You own the files; the Pis are replaceable.
 
 ## What it does
 
-- **Fleet** — uptime, temperature, throttling, containers, disks, RAID,
+- **Pi fleet** — uptime, temperature, throttling, containers, disks, RAID,
   Tailscale and failed services for every Pi.
 - **Stacks** — review a diff, push a stack to a Pi, and check it stays healthy.
 - **Updates** — check for new versions, apply them one at a time, snapshot
