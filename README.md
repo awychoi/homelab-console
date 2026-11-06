@@ -20,20 +20,6 @@ empty folder; keep it in a private repo or back it up. The checkout includes
 It is deliberately **not** a hosted service, a Portainer clone, or a Kubernetes
 manager. You own the files; the Pis are replaceable.
 
-## What it does
-
-- **Pi fleet** — uptime, temperature, throttling, containers, disks, RAID,
-  Tailscale and failed services for every Pi.
-- **Stacks** — review a diff, push a stack to a Pi, and check it stays healthy.
-- **Updates** — check for new versions, apply them one at a time, snapshot
-  first, and roll back if health checks fail.
-- **Repo street** — find local git repos, commit selected files, push to
-  GitHub, and mirror to Gitea as a backup.
-- **Safety** — mark a stack critical, record what to back up, and review every
-  change before it is applied.
-- **Backup & restore** — one archive of hosts, stacks, repo folders and
-  non-secret settings; restore writes a safety backup first.
-
 ## Quick start
 
 1. **Run or build the console** (commands below), then open it.
