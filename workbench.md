@@ -1,6 +1,6 @@
 ---
 treatment: hero
-order: 30
+order: 20
 kicker: Dashboard · Raspberry Pi · Git Repos
 banner: docs/assets/screenshots/fleet.png
 banner_alt: Homelab Console fleet dashboard, status, and container counts.
