@@ -76,8 +76,8 @@ desktop/build_app.sh
 
 Building needs Xcode or the Command Line Tools. The script targets macOS 13 and
 the current architecture, so build on Apple Silicon for arm64 and on Intel for
-x86_64. The bundle ships `LICENSE`, `THIRD_PARTY_NOTICES.md`, `BUILD_INFO.txt`
-and `licenses/`.
+x86_64. The bundle ships `LICENSE`, `NOTICE`, `THIRD_PARTY_NOTICES.md`,
+`BUILD_INFO.txt` and `licenses/`.
 
 See [Build and sign it yourself](docs/building.md) for the full path, and the
 [macOS app bundle](docs/macos-app.md) reference for signing internals,
@@ -121,10 +121,15 @@ no notarized installer or auto-update; build and sign a copy you trust.
 
 ## License
 
-MIT — see [LICENSE](LICENSE). Copyright (c) 2026 awychoi.
+Homelab Console is licensed under the
+[Apache License, Version 2.0](LICENSE). Copyright 2026 awychoi; see
+[NOTICE](NOTICE) for attribution.
 
 The macOS bundle embeds Python and native libraries; their notices and full
 license texts are in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) and
 [`licenses/`](licenses/), and are copied into the app bundle by the build.
 
-Provided as is, without warranty of any kind. Use at your own risk.
+Unless required by applicable law or agreed to in writing, software distributed
+under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
+CONDITIONS OF ANY KIND, either express or implied. See the License for the
+specific language governing permissions and limitations under the License.

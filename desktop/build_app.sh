@@ -95,6 +95,10 @@ xcrun swiftc \
     echo "error: THIRD_PARTY_NOTICES.md is missing" >&2
     exit 2
 }
+[ -f "$REPO/NOTICE" ] || {
+    echo "error: NOTICE is missing" >&2
+    exit 2
+}
 [ -d "$REPO/licenses" ] || {
     echo "error: licenses/ is missing" >&2
     exit 2
@@ -104,8 +108,10 @@ echo "==> bundle"
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$REPO/desktop/macos/Resources/Info.plist" "$APP/Contents/Info.plist"
-# MIT requires the notice in every distributed copy, including the .app.
+# Apache-2.0 requires the license and notices in every distributed copy,
+# including the .app.
 cp "$REPO/LICENSE" "$APP/Contents/Resources/LICENSE"
+cp "$REPO/NOTICE" "$APP/Contents/Resources/NOTICE"
 # The bundle embeds Python and native libraries; ship their notices with it.
 cp "$REPO/THIRD_PARTY_NOTICES.md" "$APP/Contents/Resources/THIRD_PARTY_NOTICES.md"
 cp -R "$REPO/licenses" "$APP/Contents/Resources/licenses"

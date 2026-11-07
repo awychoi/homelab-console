@@ -108,9 +108,10 @@ Use **Homelab Console → Choose Workspace…** to pick an existing workspace; t
 shell writes the pointer and restarts the backend. `HLC_WORKSPACE` and
 `HLC_REPO` do the same from a terminal.
 
-The bundle carries its own [third-party notices](../THIRD_PARTY_NOTICES.md) and
-full license texts under `Contents/Resources/licenses/`, plus `BUILD_INFO.txt`
-with the build's Python/OpenSSL/SQLite/PyInstaller versions.
+The bundle carries `LICENSE`, `NOTICE`, its own
+[third-party notices](../THIRD_PARTY_NOTICES.md) and full license texts under
+`Contents/Resources/licenses/`, plus `BUILD_INFO.txt` with the build's
+Python/OpenSSL/SQLite/PyInstaller versions.
 
 </details>
 
@@ -827,9 +828,15 @@ are:
 
 ## License
 
-MIT. See [LICENSE](../LICENSE). The bundle embeds Python and native libraries;
-their notices and full texts are in
-[THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md) and
+Homelab Console is licensed under the
+[Apache License, Version 2.0](../LICENSE). Copyright 2026 awychoi; see
+[NOTICE](../NOTICE).
+
+The bundle embeds Python and native libraries; their notices and full texts are
+in [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md) and
 [`licenses/`](../licenses/).
 
-Provided as is, without warranty of any kind.
+Unless required by applicable law or agreed to in writing, software distributed
+under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
+CONDITIONS OF ANY KIND, either express or implied. See the License for the
+specific language governing permissions and limitations under the License.

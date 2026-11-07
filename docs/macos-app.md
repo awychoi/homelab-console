@@ -64,7 +64,7 @@ open "dist/Homelab Console.app"
 Output: `dist/Homelab Console.app`. `dist/` and `build/` are gitignored. The
 script keeps PyInstaller's cache under `build/` and the Swift module cache
 there too, so it never needs to write to Application Support. The bundle
-includes `Contents/Resources/LICENSE`, `THIRD_PARTY_NOTICES.md`,
+includes `Contents/Resources/LICENSE`, `NOTICE`, `THIRD_PARTY_NOTICES.md`,
 `BUILD_INFO.txt` and `licenses/`; keep those files with any copy you
 redistribute.
 

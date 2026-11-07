@@ -1,6 +1,7 @@
 # Third-party notices
 
-Homelab Console itself is MIT-licensed; see [LICENSE](LICENSE).
+Homelab Console itself is licensed under the Apache License 2.0; see
+[LICENSE](LICENSE) and [NOTICE](NOTICE).
 
 The macOS app bundle embeds a Python runtime and several native libraries so
 that recipients do not need Python installed. This file lists those components,
@@ -9,7 +10,8 @@ built, the same files are copied into the bundle:
 
 ```text
 Homelab Console.app/Contents/Resources/
-├── LICENSE                      # the app's MIT license
+├── LICENSE                      # the app's Apache-2.0 license
+├── NOTICE                       # copyright and attribution notice
 ├── THIRD_PARTY_NOTICES.md       # this file
 ├── BUILD_INFO.txt               # versions captured by build_app.sh
 └── licenses/                    # full texts for every component below
@@ -57,6 +59,8 @@ redistribute the bundle.
   make the console subject to the GPL.
 - Apple frameworks (AppKit, WebKit, Foundation and `libSystem`) are provided by
   macOS and are linked, not redistributed, so they are not listed here.
+- **Homelab Console** is licensed under Apache 2.0. `LICENSE` and `NOTICE`
+  cover the app itself; the component licenses above cover the bundled runtime.
 - If you add another bundled library, add its license to `licenses/` and a row
   to this file. `desktop/build_app.sh` copies the directory into the bundle, and
   CI checks that the notices are present.

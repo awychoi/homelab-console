@@ -91,6 +91,7 @@ builds are not notarized.
 ```text
 Homelab Console.app/Contents/Resources/
 ├── LICENSE
+├── NOTICE
 ├── THIRD_PARTY_NOTICES.md
 ├── BUILD_INFO.txt
 └── licenses/

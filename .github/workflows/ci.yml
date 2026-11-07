@@ -41,6 +41,7 @@ jobs:
         run: |
           file "dist/Homelab Console.app/Contents/MacOS/Homelab Console"
           test -f "dist/Homelab Console.app/Contents/Resources/LICENSE"
+          test -f "dist/Homelab Console.app/Contents/Resources/NOTICE"
           test -f "dist/Homelab Console.app/Contents/Resources/THIRD_PARTY_NOTICES.md"
           test -f "dist/Homelab Console.app/Contents/Resources/licenses/Python-3.14.8.txt"
           test -f "dist/Homelab Console.app/Contents/Resources/licenses/OpenSSL-4.0.3.txt"
