@@ -160,7 +160,7 @@ The app menu has two entries that live entirely in the shell:
   restarts the backend against it. An empty folder is seeded with the minimum
   layout and a `.gitignore`.
 - The web UI also asks the shell for folder/file dialogs (`hlcPick` message
-  handler) so **Choose folders…** can select several repo roots and backup
+  handler) so **Choose folders…** can select several project folders and backup
   save/restore can use real paths instead of typed ones.
 
 The app is **foreground-only**. Closing the console window quits the app,

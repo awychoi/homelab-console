@@ -101,7 +101,7 @@ workspace resolution and logs.
 | Start here | |
 |---|---|
 | [First-time setup](docs/getting-started.md) | Prerequisites, workspace, first host and first deploy. |
-| [Using the console](docs/operations.md) | Settings, update sources, safety profiles, updates, Repo street and backups. |
+| [Using the console](docs/operations.md) | Settings, update sources, safety profiles, updates, Repos and backups. |
 | [Troubleshooting](docs/troubleshooting.md) | Common failures and current limits. |
 | [Build and sign](docs/building.md) | Build the `.app` yourself, sign it, and share it. |
 

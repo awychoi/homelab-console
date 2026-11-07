@@ -10,7 +10,7 @@ const SETTINGS_SECTIONS = [
   { id: 'collection', label: 'Collection' },
   { id: 'sources', label: 'Sources' },
   { id: 'console', label: 'Console' },
-  { id: 'repo-fleet', label: 'Repo fleet' },
+  { id: 'repo-fleet', label: 'Repos' },
   { id: 'backup', label: 'Backup' },
   { id: 'safety', label: 'Safety' },
   { id: 'maintenance', label: 'Maintenance' },
@@ -53,21 +53,21 @@ function repoSettingsHtml(ctx) {
   const vscode = repoState.vscode || {};
   const roots = rootsFromSettings(settings);
   return `<div class="section settings-section" id="repo-fleet" data-settings-section="repo-fleet">
-    <div class="section-head"><div class="section-title">Repo fleet</div><div class="section-sub">local GitHub checkouts and the Gitea backup</div></div>
+    <div class="section-head"><div class="section-title">Repos</div><div class="section-sub">local project folders and the Gitea backup</div></div>
     <div class="grid cols-2">
       <div class="card">
-        <div class="card-head"><div class="card-title">Discovery & mirror</div><div class="card-sub">${ui.plural(summary.total || 0, 'repository')} · ${esc(rootsLabel(repoState.roots || roots))}</div></div>
+        <div class="card-head"><div class="card-title">Discovery & mirror</div><div class="card-sub">${ui.plural(summary.total || 0, 'project')} · ${esc(rootsLabel(repoState.roots || roots))}</div></div>
         <div class="card-body">
           <div class="field">
-            <label>Repo folders</label>
+            <label>Project folders</label>
             <div id="repo-roots-list" class="root-list">${rootsHtml(roots)}</div>
             <div class="field-row mt-1">
-              <label class="sr-only" for="set-repo-root-manual">Add a repo folder path</label>
+              <label class="sr-only" for="set-repo-root-manual">Add a project folder path</label>
               <input id="set-repo-root-manual" placeholder="/Users/you/code" autocomplete="off" spellcheck="false">
               <button class="btn ghost sm" type="button" data-action="add-repo-root">Add path</button>
               <button class="btn sm" type="button" data-action="pick-repo-roots">Choose folders…</button>
             </div>
-            <div class="hint">Each folder is scanned recursively for git repositories. Hidden and dependency/build folders are skipped. Use <strong>Manage repos…</strong> to hide checkouts you do not want in Repo street.</div>
+            <div class="hint">Each folder is scanned recursively for git projects. Hidden and dependency/build folders are skipped. Use <strong>Manage projects…</strong> to hide checkouts you do not want in Repos.</div>
           </div>
           <div class="field-row">
             <div class="field"><label for="set-gitea-url">Gitea URL</label><input id="set-gitea-url" value="${esc(settings.gitea_url || '')}" placeholder="https://gitea.example.com" autocomplete="off"><div class="hint">Leave URL and owner empty to disable the Gitea backup.</div></div>
@@ -79,8 +79,8 @@ function repoSettingsHtml(ctx) {
           </div>
           <label class="check"><input type="checkbox" id="set-gitea-prune" ${settings.gitea_prune !== false ? 'checked' : ''}><span><strong>Prune Gitea refs.</strong> Delete branches and tags on Gitea that no longer exist locally. This is the exact-mirror mode used by gitea-tools.</span></label>
           <label class="check"><input type="checkbox" id="set-gitea-force" ${settings.gitea_force !== false ? 'checked' : ''}><span><strong>Force-update Gitea refs.</strong> Allow a rewritten local history to replace the Gitea backup. Never applies to GitHub.</span></label>
-          <label class="check"><input type="checkbox" id="set-gitea-startup" ${settings.gitea_check_on_start !== false ? 'checked' : ''}><span><strong>Check Gitea automatically.</strong> One ref comparison at startup, plus the affected repo after a commit or GitHub push. No timer; <strong>Check Gitea</strong> still works at any time.</span></label>
-          <div class="btn-group mt-1"><button class="btn primary" data-action="save-repo-settings">Save repo settings</button><button class="btn ghost" type="button" data-action="manage-repos">Manage repos…</button><a class="btn ghost" href="#/repos">Open Repos</a></div>
+          <label class="check"><input type="checkbox" id="set-gitea-startup" ${settings.gitea_check_on_start !== false ? 'checked' : ''}><span><strong>Check Gitea automatically.</strong> One ref comparison at startup, plus the affected project after a commit or GitHub push. No timer; <strong>Check Gitea</strong> still works at any time.</span></label>
+          <div class="btn-group mt-1"><button class="btn primary" data-action="save-repo-settings">Save project settings</button><button class="btn ghost" type="button" data-action="manage-repos">Manage projects…</button><a class="btn ghost" href="#/repos">Open Projects</a></div>
         </div>
       </div>
       <div class="card">
@@ -95,10 +95,10 @@ function repoSettingsHtml(ctx) {
           ${appManaged
             ? `<div class="info-box">${icon('info')}<div><strong>Managed by the macOS app.</strong> Open <strong>Homelab Console → Settings… (⌘,)</strong> from the menu bar and paste a token. It is stored in the macOS Keychain, never in <span class="mono">.hlc/config.json</span>. Saving restarts the console and checks Gitea automatically.</div></div>
           <div class="btn-group mt-1"><a class="btn primary" href="homelab-console://settings">${icon('key', 12)} Open app Settings…</a><span class="hint">Gitea → Settings → Applications → Generate Token (repository: Read and Write)</span></div>`
-            : `<div class="field"><label for="set-gitea-token">Gitea access token</label><input id="set-gitea-token" type="password" placeholder="${tokenSet ? '•••••• configured — enter to replace' : 'token with repo write access'}" autocomplete="off"><div class="hint">Stored locally in <span class="mono">.hlc/config.json</span> (mode 600) and never returned by the API. <span class="mono">GITEA_TOKEN</span> / <span class="mono">HLC_GITEA_TOKEN</span> override it.</div></div>
+            : `<div class="field"><label for="set-gitea-token">Gitea access token</label><input id="set-gitea-token" type="password" placeholder="${tokenSet ? '•••••• configured — enter to replace' : 'token with project write access'}" autocomplete="off"><div class="hint">Stored locally in <span class="mono">.hlc/config.json</span> (mode 600) and never returned by the API. <span class="mono">GITEA_TOKEN</span> / <span class="mono">HLC_GITEA_TOKEN</span> override it.</div></div>
           <div class="btn-group"><button class="btn primary" data-action="save-gitea-token">Save token</button><button class="btn ghost" data-action="clear-gitea-token">Clear token</button></div>`}
           <div class="sep-line"></div>
-          <div class="info-box">${icon('info')}<div>Gitea refs are compared at startup, after a commit or GitHub push for that repo, and when you press <strong>Check Gitea</strong>. There is no timer, so a Gitea outage cannot slow local status.</div></div>
+          <div class="info-box">${icon('info')}<div>Gitea refs are compared at startup, after a commit or GitHub push for that project, and when you press <strong>Check Gitea</strong>. There is no timer, so a Gitea outage cannot slow local status.</div></div>
           <div class="btn-group mt-2"><button class="btn ghost" data-action="check-gitea-settings" ${!giteaConfigured || gitea.state === 'checking' ? 'disabled' : ''}>${icon('git', 12)} Check Gitea now</button><span class="hint">read-only; compares refs, never pushes</span></div>
         </div>
       </div>
@@ -110,12 +110,12 @@ function backupCard() {
   const stamp = new Date().toISOString().replace(/[-:]/g, '').slice(0, 15);
   const defaultPath = `~/Homelab Backups/hlc-backup-${stamp}.zip`;
   return `<div class="section settings-section" id="backup" data-settings-section="backup">
-    <div class="section-head"><div class="section-title">Backup &amp; restore</div><div class="section-sub">fleet inventory, stacks and repo folders in one archive</div></div>
+    <div class="section-head"><div class="section-title">Backup &amp; restore</div><div class="section-sub">fleet inventory, stacks and project folders in one archive</div></div>
     <div class="grid cols-2">
       <div class="card">
         <div class="card-head"><div class="card-title">Create a backup</div><div class="card-sub">.hlc/ state, logs and tokens are excluded</div></div>
         <div class="card-body">
-          <div class="field"><label for="backup-path">Archive path</label><input id="backup-path" value="${esc(defaultPath)}" autocomplete="off" spellcheck="false"><div class="hint">Absolute path or <span class="mono">~/…</span>. Contains <span class="mono">hosts.json</span>, every stack file (including <span class="mono">.env</span> secrets) and non-secret settings, including all repo folders.</div></div>
+          <div class="field"><label for="backup-path">Archive path</label><input id="backup-path" value="${esc(defaultPath)}" autocomplete="off" spellcheck="false"><div class="hint">Absolute path or <span class="mono">~/…</span>. Contains <span class="mono">hosts.json</span>, every stack file (including <span class="mono">.env</span> secrets) and non-secret settings, including all project folders.</div></div>
           <div class="btn-group"><button class="btn primary" data-action="create-backup">Create backup</button><button class="btn ghost" data-action="pick-backup-save">Choose file…</button></div>
           <div id="backup-status" class="hint mt-1"></div>
         </div>
@@ -333,7 +333,7 @@ function contentHtml(ctx) {
   const autoEnabled = Boolean(ctx.state?.auto_update_enabled);
   return `${pageHead({
     title: 'Settings',
-    subtitle: 'console behaviour, update sources and repository hygiene',
+    subtitle: 'console behaviour, update sources and project hygiene',
   })}
   ${stateBanner(ctx)}
   ${settingsNavHtml()}
@@ -374,7 +374,7 @@ function contentHtml(ctx) {
 
   <div class="grid cols-2 section settings-section" id="console-info" data-settings-section="console">
     <div class="card">
-      <div class="card-head"><div class="card-title">Repository</div><div class="card-sub">desired state stays in git</div>${git.dirty ? `<div class="card-actions"><button class="btn ghost sm" data-open-commit>${icon('git', 12)} Review &amp; commit</button></div>` : ''}</div>
+      <div class="card-head"><div class="card-title">Workspace repository</div><div class="card-sub">desired state stays in git</div>${git.dirty ? `<div class="card-actions"><button class="btn ghost sm" data-open-commit>${icon('git', 12)} Review &amp; commit</button></div>` : ''}</div>
       <div class="card-body"><div class="kv">
         <div class="kv-row"><div class="kv-key">Branch</div><div class="kv-val mono">${esc(git.branch || '—')}</div></div>
         <div class="kv-row"><div class="kv-key">Last commit</div><div class="kv-val mono tiny">${esc(git.last_commit || '—')}</div></div>
@@ -775,9 +775,9 @@ export default {
           });
           await ctx.reloadBootstrap();
           await ctx.refreshState({ force: true });
-          ui.toast('Repo fleet settings saved', 'ok');
+          ui.toast('Project settings saved', 'ok');
         } catch (error) {
-          ui.toast('Could not save repo settings', 'err', ui.errorText(error));
+          ui.toast('Could not save project settings', 'err', ui.errorText(error));
         } finally {
           button.disabled = false;
         }
@@ -821,7 +821,7 @@ export default {
         button.disabled = true;
         try {
           await ctx.api.post('/api/repos/gitea/check');
-          ui.toast('Checking Gitea refs', 'ok', 'Open Repos to watch the column fill.');
+          ui.toast('Checking Gitea refs', 'ok', 'Open Projects to watch the column fill.');
           setTimeout(() => ctx.refreshState({ force: true }), 1200);
           setTimeout(() => ctx.refreshState({ force: true }), 4000);
         } catch (error) {

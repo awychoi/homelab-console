@@ -44,7 +44,7 @@ MAX_REPO_EXCLUSIONS = 500
 
 
 def normalize_repo_exclusions(raw: Any) -> dict[str, list[str]]:
-    """Validate the per-root list of repositories hidden from Repo street."""
+    """Validate the per-root list of projects hidden from Repos."""
     if not isinstance(raw, dict):
         return {}
     cleaned: dict[str, list[str]] = {}

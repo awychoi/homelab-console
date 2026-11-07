@@ -107,7 +107,7 @@ function giteaCell(repo) {
     return `<span class="chip good">in sync</span>${gitea.checked_at ? `<span class="sub">checked ${esc(ui.ago(gitea.checked_at))}</span>` : ''}`;
   }
   if (status === 'missing') {
-    return `<button type="button" class="chip chip-action warn" data-repo-action="gitea" title="Create this repo in Gitea and push the backup" aria-label="Create ${esc(repo.rel)} in Gitea">${icon('git', 11)} missing · create</button><span class="sub">${gitea.checked_at ? `checked ${esc(ui.ago(gitea.checked_at))}` : 'sync will create it'}</span>`;
+    return `<button type="button" class="chip chip-action warn" data-repo-action="gitea" title="Create this project in Gitea and push the backup" aria-label="Create ${esc(repo.rel)} in Gitea">${icon('git', 11)} missing · create</button><span class="sub">${gitea.checked_at ? `checked ${esc(ui.ago(gitea.checked_at))}` : 'sync will create it'}</span>`;
   }
   if (status === 'behind') {
     const push = gitea.counts?.push || 0;
@@ -117,7 +117,7 @@ function giteaCell(repo) {
       <span class="sub">checked ${esc(ui.ago(gitea.checked_at))}</span>`;
   }
   if (status === 'auth') {
-    return `<span class="chip bad">token needed</span><span class="sub"><a href="#/settings">Open Settings → Repo fleet</a></span>`;
+    return `<span class="chip bad">token needed</span><span class="sub"><a href="#/settings">Open Settings → Repos</a></span>`;
   }
   if (status === 'unreachable' || status === 'error') {
     return `<span class="chip bad">${status === 'unreachable' ? 'unreachable' : 'check failed'}</span><span class="sub" title="${esc(gitea.detail || '')}">${esc(short(gitea.detail, 44))}</span>`;
@@ -216,8 +216,8 @@ function rowsHtml(ctx) {
     const state = initUi(ctx);
     const filtered = state.q.trim() || state.filter !== 'all';
     return `<tr><td colspan="6"><div class="empty empty-inline">
-      <strong>No repos match</strong>
-      <p>${filtered ? 'Clear the filters to see the whole repo fleet again.' : 'No git repositories were found under the configured root.'}</p>
+      <strong>No projects match</strong>
+      <p>${filtered ? 'Clear the filters to see the whole project list again.' : 'No git projects were found under the configured root.'}</p>
       ${filtered ? '<button class="btn primary mt-1" data-clear-repo-filters>Clear filters</button>' : '<a class="btn primary mt-1" href="#/settings">Open Settings</a>'}
     </div></td></tr>`;
   }
@@ -242,7 +242,7 @@ function queueHtml(ctx) {
       <div class="card-body tight">
         <div class="queue-progress"><div class="bar-track"><div class="bar-fill ${tone}" style="width:${pct}%"></div></div><span class="mono tiny">${pct}%</span></div>
         <div class="table-wrap"><table class="data queue-table">
-          <thead><tr><th>Repository</th><th>GitHub</th><th>Gitea</th><th>Result</th></tr></thead>
+          <thead><tr><th>Project</th><th>GitHub</th><th>Gitea</th><th>Result</th></tr></thead>
           <tbody>${queue.items.map((item) => `<tr>
             <td class="mono">${esc(item.name)}</td>
             <td data-label="GitHub">${ui.pill(item.github === 'ok' ? 'ok' : item.github === 'failed' ? 'bad' : item.github === 'skipped' ? 'neutral' : item.github === 'running' ? 'info' : 'neutral', item.github)}<span class="sub">${esc(short(item.github_detail, 42))}</span></td>
@@ -260,18 +260,18 @@ function repoRootSetup(ctx) {
   if (!ctx.uiState.repoRootsDraft) ctx.uiState.repoRootsDraft = rootsFromSettings(settings);
   const roots = ctx.uiState.repoRootsDraft;
   return `<div class="card">
-    <div class="card-head"><div class="card-title">Choose repo folders</div><div class="card-sub">Repo street is off until you add one</div></div>
+    <div class="card-head"><div class="card-title">Choose project folders</div><div class="card-sub">Projects are off until you add one</div></div>
     <div class="card-body">
       <div class="field">
-        <label>Repo folders</label>
+        <label>Project folders</label>
         <div id="repo-roots-first" class="root-list">${rootsHtml(roots)}</div>
         <div class="field-row mt-1">
-          <label class="sr-only" for="repo-root-first">Repo folder path</label>
+          <label class="sr-only" for="repo-root-first">Project folder path</label>
           <input id="repo-root-first" placeholder="/Users/you/code" autocomplete="off" spellcheck="false">
           <button class="btn ghost sm" type="button" data-add-repo-root-first>Add path</button>
           <button class="btn sm" type="button" data-pick-repo-roots-first>Choose folders…</button>
         </div>
-        <div class="hint">Each folder is scanned recursively for git repositories. Hidden and dependency/build folders are skipped; choose a single repo folder too if that is all you need.</div>
+        <div class="hint">Each folder is scanned recursively for git projects. Hidden and dependency/build folders are skipped; choose a single project folder too if that is all you need.</div>
       </div>
       <div class="btn-group"><button class="btn primary" data-save-repo-root>Use these folders</button><a class="btn ghost" href="#/settings">Other settings</a></div>
       <div id="repo-root-error"></div>
@@ -284,7 +284,7 @@ function contentHtml(ctx) {
   const snapshot = reposState(ctx);
   const configured = Boolean(snapshot?.roots?.length || snapshot?.root) && snapshot.root_configured !== false;
   if (!configured) {
-    return `${pageHead({ title: 'Repositories', subtitle: 'Choose where your git checkouts live' })}
+    return `${pageHead({ title: 'Projects', subtitle: 'Choose where your git checkouts live' })}
       ${stateBanner(ctx)}
       ${repoRootSetup(ctx)}`;
   }
@@ -302,47 +302,47 @@ function contentHtml(ctx) {
   const giteaConfigError = snapshot?.gitea_config_error || '';
   const authErrors = repos.filter((repo) => repo.gitea?.status === 'auth').length;
   const giteaTile = gitea.checked_at
-    ? { value: String(summary.gitea_behind || 0), sub: `${ui.plural(summary.gitea_checked || 0, 'repo')} checked · ${ui.ago(gitea.checked_at)}` }
+    ? { value: String(summary.gitea_behind || 0), sub: `${ui.plural(summary.gitea_checked || 0, 'project')} checked · ${ui.ago(gitea.checked_at)}` }
     : { value: '—', sub: 'not checked yet' };
   const actions = `
-    <button class="btn ghost sm" type="button" data-repo-manage title="Choose which discovered repos Repo street manages">${icon('settings', 12)} Manage</button>
-    <button class="btn ghost sm" type="button" data-repo-refresh title="Rescan local repos" aria-label="Rescan local repos">${icon('refresh', 12)} Rescan</button>
+    <button class="btn ghost sm" type="button" data-repo-manage title="Choose which discovered projects Repos manages">${icon('settings', 12)} Manage</button>
+    <button class="btn ghost sm" type="button" data-repo-refresh title="Rescan local projects" aria-label="Rescan local projects">${icon('refresh', 12)} Rescan</button>
     <button class="btn ghost sm" type="button" data-repo-check-gitea ${checking || !giteaConfigured ? 'disabled' : ''} title="${giteaConfigured ? 'Compare local refs with Gitea' : 'Set a Gitea URL and owner in Settings first'}">${checking ? '<span class="spinner sm"></span> Checking…' : `${icon('git', 12)} Check Gitea`}</button>
     <button class="btn primary sm" type="button" data-repo-push-both ${selected.size ? '' : 'disabled'}>${icon('layers', 12)} Queue both${selected.size ? ` (${selected.size})` : ''}</button>`;
   return `${pageHead({
-    title: 'Repositories',
-    subtitle: `<strong>${summary.total || 0}</strong> repositories<span class="dot">·</span><strong>${summary.attention || 0}</strong> need attention<span class="dot">·</span><span class="mono" title="${esc(roots.join('\n'))}">${esc(rootsLabel(roots))}</span>`,
+    title: 'Projects',
+    subtitle: `<strong>${summary.total || 0}</strong> projects<span class="dot">·</span><strong>${summary.attention || 0}</strong> need attention<span class="dot">·</span><span class="mono" title="${esc(roots.join('\n'))}">${esc(rootsLabel(roots))}</span>`,
     actions,
     badges: gitea.checked_at ? ui.pill('ok', `Gitea checked ${ui.ago(gitea.checked_at)}`) : ui.pill('neutral', 'Gitea on demand'),
   })}
-  ${rootError ? `<div class="banner bad">${icon('alert')}<span><strong>Repo root unavailable.</strong> ${esc(rootError)}</span><a class="btn sm ghost" href="#/settings">Settings</a></div>` : ''}
+  ${rootError ? `<div class="banner bad">${icon('alert')}<span><strong>Project folder unavailable.</strong> ${esc(rootError)}</span><a class="btn sm ghost" href="#/settings">Settings</a></div>` : ''}
   ${giteaConfigError ? `<div class="banner bad">${icon('alert')}<span><strong>Gitea configuration is invalid.</strong> ${esc(giteaConfigError)}</span><a class="btn sm ghost" href="#/settings">Settings</a></div>` : ''}
-  ${queueActive ? `<div class="banner">${icon('layers')}<span><strong>Queue running.</strong> ${snapshot.queue.completed}/${snapshot.queue.total} complete — GitHub then Gitea for each repo.</span>${snapshot.queue.run_id ? `<button class="btn sm ghost" data-repo-queue-log="${esc(snapshot.queue.run_id)}">${icon('terminal', 12)} View log</button>` : ''}</div>` : ''}
+  ${queueActive ? `<div class="banner">${icon('layers')}<span><strong>Queue running.</strong> ${snapshot.queue.completed}/${snapshot.queue.total} complete — GitHub then Gitea for each project.</span>${snapshot.queue.run_id ? `<button class="btn sm ghost" data-repo-queue-log="${esc(snapshot.queue.run_id)}">${icon('terminal', 12)} View log</button>` : ''}</div>` : ''}
   ${giteaAuthBanner(ctx, authErrors)}
-  ${!repos.length && Number(summary.discovered || 0) > 0 ? `<div class="banner">${icon('info')}<span><strong>All discovered repositories are deselected.</strong> They stay on disk; use <strong>Manage</strong> to add them back.</span><button class="btn sm ghost" type="button" data-repo-manage>${icon('settings', 12)} Manage</button></div>` : ''}
+  ${!repos.length && Number(summary.discovered || 0) > 0 ? `<div class="banner">${icon('info')}<span><strong>All discovered projects are deselected.</strong> They stay on disk; use <strong>Manage</strong> to add them back.</span><button class="btn sm ghost" type="button" data-repo-manage>${icon('settings', 12)} Manage</button></div>` : ''}
   <div class="grid cols-4 mb-2">
-    ${statTile({ label: 'Repositories', value: String(summary.total || 0), sub: `${summary.github || 0} with GitHub · ${(summary.total || 0) - (summary.github || 0)} local-only`, iconName: 'git', toneName: '', valueTone: '' })}
-    ${statTile({ label: 'Files to commit', value: String(summary.dirty_files || 0), sub: summary.dirty_repos ? `${ui.plural(summary.dirty_repos, 'repo')} dirty${summary.ignored_files ? ` · ${summary.ignored_files} ignored hidden` : ''}` : 'all working trees clean', iconName: 'commit', toneName: summary.dirty_repos ? 'warn' : 'ok', valueTone: summary.dirty_repos ? 'text-warn' : '' })}
-    ${statTile({ label: 'Commits to push', value: String(summary.ahead_commits || 0), sub: summary.ahead_repos ? `${ui.plural(summary.ahead_repos, 'repo')} ahead of GitHub` : 'GitHub is current', iconName: 'upload', toneName: summary.ahead_repos ? 'warn' : 'ok', valueTone: summary.ahead_repos ? 'text-warn' : '' })}
+    ${statTile({ label: 'Projects', value: String(summary.total || 0), sub: `${summary.github || 0} with GitHub · ${(summary.total || 0) - (summary.github || 0)} local-only`, iconName: 'git', toneName: '', valueTone: '' })}
+    ${statTile({ label: 'Files to commit', value: String(summary.dirty_files || 0), sub: summary.dirty_repos ? `${ui.plural(summary.dirty_repos, 'project')} dirty${summary.ignored_files ? ` · ${summary.ignored_files} ignored hidden` : ''}` : 'all working trees clean', iconName: 'commit', toneName: summary.dirty_repos ? 'warn' : 'ok', valueTone: summary.dirty_repos ? 'text-warn' : '' })}
+    ${statTile({ label: 'Commits to push', value: String(summary.ahead_commits || 0), sub: summary.ahead_repos ? `${ui.plural(summary.ahead_repos, 'project')} ahead of GitHub` : 'GitHub is current', iconName: 'upload', toneName: summary.ahead_repos ? 'warn' : 'ok', valueTone: summary.ahead_repos ? 'text-warn' : '' })}
     ${statTile({ label: 'Gitea backup', value: giteaTile.value, sub: giteaTile.sub, iconName: 'shield', toneName: summary.gitea_behind ? 'warn' : gitea.checked_at ? 'ok' : '', valueTone: summary.gitea_behind ? 'text-warn' : '' })}
   </div>
-  ${!gitea.checked_at && !rootError ? `<div class="banner">${icon('info')}<span><strong>Gitea state refreshes at startup and after repo actions.</strong> Local dirty/ahead status refreshes every 10 seconds. Use <strong>Check Gitea</strong> to compare every eligible repo's refs with the backup.</span></div>` : ''}
+  ${!gitea.checked_at && !rootError ? `<div class="banner">${icon('info')}<span><strong>Gitea state refreshes at startup and after project actions.</strong> Local dirty/ahead status refreshes every 10 seconds. Use <strong>Check Gitea</strong> to compare every eligible project's refs with the backup.</span></div>` : ''}
   <div class="toolbar">
-    <div class="segmented" aria-label="Filter repositories">
-      ${FILTERS.map((item) => `<button type="button" class="${state.filter === item.id ? 'active' : ''}" data-repo-filter="${item.id}" aria-pressed="${state.filter === item.id}" title="${item.id === 'behind' ? 'Repos behind their upstream, based on the last fetch' : ''}">${item.label} <span class="mono">${counts[item.id] || 0}</span></button>`).join('')}
+    <div class="segmented" aria-label="Filter projects">
+      ${FILTERS.map((item) => `<button type="button" class="${state.filter === item.id ? 'active' : ''}" data-repo-filter="${item.id}" aria-pressed="${state.filter === item.id}" title="${item.id === 'behind' ? 'Projects behind their upstream, based on the last fetch' : ''}">${item.label} <span class="mono">${counts[item.id] || 0}</span></button>`).join('')}
     </div>
     <div class="spacer"></div>
-    <div class="search">${icon('search')}<input id="repo-search" type="search" placeholder="Filter repos or paths…" aria-label="Filter repositories" value="${esc(state.q)}" autocomplete="off" spellcheck="false"></div>
+    <div class="search">${icon('search')}<input id="repo-search" type="search" placeholder="Filter projects or paths…" aria-label="Filter projects" value="${esc(state.q)}" autocomplete="off" spellcheck="false"></div>
   </div>
   <div class="card"><div class="table-wrap"><table class="data repo-table">
     <thead><tr>
-      <th class="repo-check"><input type="checkbox" id="repo-select-all" aria-label="Select all visible repos"></th>
-      <th>Repository</th><th>Working tree</th><th>GitHub</th><th>Gitea</th><th class="actions">Open</th>
+      <th class="repo-check"><input type="checkbox" id="repo-select-all" aria-label="Select all visible projects"></th>
+      <th>Project</th><th>Working tree</th><th>GitHub</th><th>Gitea</th><th class="actions">Open</th>
     </tr></thead>
     <tbody id="repo-rows">${rowsHtml(ctx)}</tbody>
   </table></div></div>
   ${queueHtml(ctx)}
-  <div class="hint mt-2">VS Code opens a new window per repo. GitHub links use your browser's existing session, so private repositories work without exposing a token to the console. Gitea is a backup mirror: it is only synced when you ask.</div>`;
+  <div class="hint mt-2">VS Code opens a new window per project. GitHub links use your browser's existing session, so private projects work without exposing a token to the console. Gitea is a backup mirror: it is only synced when you ask.</div>`;
 }
 
 function repoById(ctx, id) {
@@ -420,7 +420,7 @@ export default {
           ctx.uiState.repoRootsDraft = roots;
           await ctx.reloadBootstrap();
           await ctx.refreshState({ force: true });
-          ui.toast('Repo folders saved', 'ok', roots.length === 1 ? roots[0] : `${roots.length} folders`);
+          ui.toast('Project folders saved', 'ok', roots.length === 1 ? roots[0] : `${roots.length} folders`);
           ctx.navigate('#/repos');
         } catch (error) {
           if (errorBox) errorBox.innerHTML = `<div class="danger-box">${esc(ui.errorText(error))}</div>`;
@@ -551,7 +551,7 @@ export default {
       button.innerHTML = '<span class="spinner sm"></span> Checking…';
       try {
         await ctx.api.post('/api/repos/gitea/check');
-        ui.toast('Checking Gitea refs', 'ok', 'The column fills as each repo is compared.');
+        ui.toast('Checking Gitea refs', 'ok', 'The column fills as each project is compared.');
         setTimeout(() => ctx.refreshState({ force: true }), 1200);
         setTimeout(() => ctx.refreshState({ force: true }), 4000);
       } catch (error) {
@@ -567,9 +567,9 @@ export default {
       try {
         await ctx.api.post('/api/repos/refresh');
         await ctx.refreshState({ force: true });
-        ui.toast('Repo status refreshed', 'ok');
+        ui.toast('Project status refreshed', 'ok');
       } catch (error) {
-        ui.toast('Could not rescan repos', 'err', ui.errorText(error));
+        ui.toast('Could not rescan projects', 'err', ui.errorText(error));
       } finally {
         button.disabled = false;
       }
@@ -578,14 +578,14 @@ export default {
     root.querySelector('[data-repo-push-both]')?.addEventListener('click', () => {
       const repos = selectedRepos(ctx);
       if (!repos.length) {
-        ui.toast('Select at least one repo', 'warn', 'Use the row checkboxes to build the queue.');
+        ui.toast('Select at least one project', 'warn', 'Use the row checkboxes to build the queue.');
         return;
       }
       showPushBoth(ctx, repos);
     });
 
     root.querySelectorAll('[data-repo-queue-log]').forEach((button) => {
-      button.addEventListener('click', () => ui.runModal(ctx, button.dataset.repoQueueLog, 'repo fleet: GitHub + Gitea'));
+      button.addEventListener('click', () => ui.runModal(ctx, button.dataset.repoQueueLog, 'Projects: GitHub + Gitea'));
     });
 
     bindRows();

@@ -1149,7 +1149,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
             body = self._body()
             raw = body.get("exclusions", body)
             if not isinstance(raw, dict):
-                raise ApiError(400, "exclusions must be an object keyed by repo root")
+                raise ApiError(400, "exclusions must be an object keyed by project folder")
             result = self.app.repos.set_repo_exclusions(raw)
             return self._send_json(200, {"ok": True, **result})
         if rest == ["gitea", "check"]:
@@ -1450,7 +1450,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
                         continue
                     path = Path(raw).expanduser()
                     if not path.is_absolute() or not path.is_dir() or len(str(path)) > 400:
-                        raise ApiError(400, "each repo root must be an existing absolute directory")
+                        raise ApiError(400, "each project folder must be an existing absolute directory")
                     resolved = str(path.resolve())
                     if resolved not in roots:
                         roots.append(resolved)

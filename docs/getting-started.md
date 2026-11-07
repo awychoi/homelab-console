@@ -2,7 +2,7 @@
 
 This is the shortest path from a fresh checkout to one Pi running one stack.
 It covers what you do **outside the app** and the first few steps **inside it**.
-Day-to-day settings, updates, Repo street and backups are in
+Day-to-day settings, updates, Repos and backups are in
 [Using the console](operations.md).
 
 ## The flow at a glance
@@ -229,7 +229,7 @@ gitignored. The repo remains the source of truth.
 ### 1. Wait for the first paint
 
 The console shows a short warm-up screen while it probes the fleet, scans local
-repositories and (if configured) checks Gitea. The gate releases when those
+projects and (if configured) checks Gitea. The gate releases when those
 finish or after 12 seconds, so an unreachable host cannot hold the UI.
 
 On the native app, macOS may ask for **Local Network** access; allow it. If you
@@ -334,6 +334,6 @@ host card should show the Pi online with its temperature and container count.
 ## Next steps
 
 - [Using the console](operations.md) — settings, update sources, safety
-  profiles, updates, Repo street and workspace backups.
+  profiles, updates, Repos and workspace backups.
 - [Troubleshooting](troubleshooting.md) — common failures and current limits.
 - [Homelab Console](console.md) — architecture, API and detailed behavior.

@@ -1037,7 +1037,7 @@ export function showRepoCommit(ctx, repo) {
   const defaultMessage = `${repo.name}: update files ${new Date().toISOString().slice(0, 10)}`;
   const isNoise = (value) => /(^|\/)(__pycache__|node_modules|\.venv)(\/|$)|\.pyc$|(^|\/)\.DS_Store$|(^|\/)\.env$/.test(value);
   const ref = openModal({
-    title: 'Commit repo changes',
+    title: 'Commit project changes',
     subtitle: `${repo.rel} · ${entries.length} selectable file(s)${ignoredEntries.length ? ` · ${ignoredEntries.length} ignored hidden` : ''}`,
     className: 'wide',
     body: `<div class="repo-commit-toolbar">
@@ -1108,11 +1108,11 @@ export function showRepoCommit(ctx, repo) {
 
 export function showGiteaSync(ctx, repo) {
   if (!repo.gitea?.target) {
-    toast('No Gitea target', 'warn', repo.gitea?.detail || 'This repo has no GitHub origin or its owner does not match Gitea.');
+    toast('No Gitea target', 'warn', repo.gitea?.detail || 'This project has no GitHub origin or its owner does not match Gitea.');
     return;
   }
   if (repo.lfs) {
-    toast('Git LFS repo skipped', 'warn', 'Gitea sync is deliberately disabled for LFS repositories.');
+    toast('Git LFS project skipped', 'warn', 'Gitea sync is deliberately disabled for LFS projects.');
     return;
   }
   let destructive = false;
@@ -1129,7 +1129,7 @@ export function showGiteaSync(ctx, repo) {
     const comparison = dry.comparison || {};
     const title = {
       'up-to-date': 'Already in sync',
-      'would-create': 'Would create this repo in Gitea',
+      'would-create': 'Would create this project in Gitea',
       'would-sync': 'Would update the Gitea backup',
       skip: 'Nothing to do',
     }[dry.status] || dry.status;
@@ -1185,7 +1185,7 @@ export function showGiteaSync(ctx, repo) {
 export function showPushBoth(ctx, repos) {
   const selected = (repos || []).filter(Boolean);
   if (!selected.length) {
-    toast('Select at least one repo', 'warn', 'Use the row checkboxes to choose what enters the queue.');
+    toast('Select at least one project', 'warn', 'Use the row checkboxes to choose what enters the queue.');
     return;
   }
   const destructive = selected.some((repo) => (repo.gitea?.counts?.prune || 0) > 0 || (repo.gitea?.counts?.changed || 0) > 0);
@@ -1207,17 +1207,17 @@ export function showPushBoth(ctx, repos) {
   }).join('');
   const ref = openModal({
     title: 'Queue GitHub + Gitea',
-    subtitle: `${selected.length} repo(s) → GitHub then Gitea`,
+    subtitle: `${selected.length} project(s) → GitHub then Gitea`,
     className: 'wide',
     body: `<div class="info-box">${icon('info')}<div>GitHub receives the current branch, then Gitea receives every local branch and tag. If GitHub fails, the Gitea backup still runs and the queue continues.</div></div>
-      ${destructive ? `<div class="warn-box mt-2">${icon('alert')}<div><strong>A checked Gitea repo has refs that prune would delete, or rewritten refs.</strong> Review the per-repo Gitea previews first if you are unsure.</div></div>` : ''}
-      ${unknown ? `<div class="warn-box mt-2">${icon('clock')}<div>${ui.plural(unknown, 'repo')} not checked against Gitea yet. The queue will mirror them and run the duplicate-history check before writing.</div></div>` : ''}
+      ${destructive ? `<div class="warn-box mt-2">${icon('alert')}<div><strong>A checked Gitea project has refs that prune would delete, or rewritten refs.</strong> Review the per-project Gitea previews first if you are unsure.</div></div>` : ''}
+      ${unknown ? `<div class="warn-box mt-2">${icon('clock')}<div>${ui.plural(unknown, 'project')} not checked against Gitea yet. The queue will mirror them and run the duplicate-history check before writing.</div></div>` : ''}
       <div class="table-wrap mt-2"><table class="data">
-        <thead><tr><th>Repository</th><th>GitHub</th><th>Gitea</th></tr></thead>
+        <thead><tr><th>Project</th><th>GitHub</th><th>Gitea</th></tr></thead>
         <tbody>${rows}</tbody>
       </table></div>
       ${destructive ? `<label class="check mt-2"><input type="checkbox" id="repo-queue-destructive"><span>I understand the Gitea backup is an exact mirror using <span class="mono">prune + force</span>.</span></label>` : ''}`,
-    footer: `<div class="spacer"></div><button class="btn ghost" data-cancel>Cancel</button><button class="btn primary" data-queue ${destructive ? 'disabled' : ''}>Queue ${selected.length} repo(s)</button>`,
+    footer: `<div class="spacer"></div><button class="btn ghost" data-cancel>Cancel</button><button class="btn primary" data-queue ${destructive ? 'disabled' : ''}>Queue ${selected.length} project(s)</button>`,
   });
   ref.footer.querySelector('[data-cancel]').addEventListener('click', ref.close);
   const destructiveCheck = ref.body.querySelector('#repo-queue-destructive');
@@ -1229,8 +1229,8 @@ export function showPushBoth(ctx, repos) {
       const result = await api.post('/api/repos/push-both', { repos: selected.map((repo) => repo.id) });
       ref.close();
       await ctx.refreshState({ force: true });
-      toast('Queue started', 'ok', `${selected.length} repo(s) · GitHub → Gitea`);
-      if (result.run_id) ui.runModal(ctx, result.run_id, 'repo fleet: GitHub + Gitea');
+      toast('Queue started', 'ok', `${selected.length} project(s) · GitHub → Gitea`);
+      if (result.run_id) ui.runModal(ctx, result.run_id, 'Projects: GitHub + Gitea');
     } catch (error) {
       restore();
       ref.body.querySelector('#repo-queue-error')?.remove();

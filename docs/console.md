@@ -4,8 +4,8 @@
 
 A local web app for the Mac with two workspaces: **Pi fleet** (status,
 guided ed25519 onboarding, reviewable deploys, upstream release checks and
-opt-in updates) and **Repo street** (the local GitHub checkouts, their Gitea
-backup and a repo dashboard).
+opt-in updates) and **Repos** (the local GitHub checkouts, their Gitea
+backup and a project dashboard).
 
 ![Fleet dashboard, dark theme](assets/screenshots/fleet.png)
 
@@ -57,7 +57,7 @@ first host and first deploy — is in
 
 The console is a long-lived server, so "startup" means process start. On
 launch it runs the expensive checks once, in parallel: the SSH fleet probe, the
-local repo scan, and one Gitea ref comparison queued behind the first scan.
+local project scan, and one Gitea ref comparison queued behind the first scan.
 The browser shows a progress screen listing those three tasks instead of empty
 tiles filling in one at a time; `/api/state.warmup` drives it.
 
@@ -69,12 +69,12 @@ If the startup Gitea check reports errors it retries once after 30 seconds, so
 a cold-launch network blip does not leave a stale "unreachable" until you
 click. Unreachable details include the address the app resolved, which is the
 fastest way to spot a terminal-vs-app DNS disagreement.
-The Gitea task appears only when a repo folder is configured, the Gitea URL and
+The Gitea task appears only when a project folder is configured, the Gitea URL and
 owner are set, and `gitea_check_on_start` is on; a missing token is fine because
-the credential helper is a supported auth path. The per-repo ref probes run four
-at a time, which puts a ten-repo check under three seconds on a modern Mac.
+the credential helper is a supported auth path. The per-project ref probes run
+four at a time, which puts a ten-project check under three seconds on a modern Mac.
 
-After startup the cheap local repo scan keeps polling and the fleet keeps its
+After startup the cheap local project scan keeps polling and the fleet keeps its
 telemetry heartbeat; the network Gitea check is startup, post-action, or manual.
 
 </details>
@@ -135,7 +135,7 @@ System → Dark → Light.
 
 ![Fleet dashboard, light theme](assets/screenshots/fleet-light.png)
 
-![Repo street, light theme](assets/screenshots/repo-street-light.png)
+![Repos overview, light theme](assets/screenshots/repo-street-light.png)
 
 ### Layout, mobile and accessibility
 
@@ -144,32 +144,32 @@ System → Dark → Light.
 
 The shell has three parts: a persistent left rail, a slim top bar for context
 and fleet-wide actions, and one content column capped at 1500px. The rail is
-split into two workspaces at the top — **Pi fleet** and **Repo street** — with
+split into two workspaces at the top — **Pi fleet** and **Repos** — with
 the active workspace's views below and universal **Activity** / **Settings**
 pinned at the bottom. The workspace switch preserves the last workspace while
 you are in the universal pages. The **Pi fleet** workspace badge counts
 available updates; the **Fleet** view below it keeps the online/total host
-count, and **Repo street** counts repositories needing attention. The top bar
-is context-aware: releases are a Pi action and are hidden on Repo street, where
-the refresh button becomes **Refresh repos**; host and stack pages put the
+count, and **Repos** counts projects needing attention. The top bar
+is context-aware: releases are a Pi action and are hidden in Repos, where
+the refresh button becomes **Refresh projects**; host and stack pages put the
 actual host/stack name in the crumb and in the window title.
 
 Settings is long by design, so its sticky **Jump to** bar exposes Appearance,
-Collection, Sources, Console, Repo fleet, Backup, Safety and Maintenance without
+Collection, Sources, Console, Repos, Backup, Safety and Maintenance without
 a detour through the page. The active chip follows scrolling; clicking a chip
 pins it so the last sections at the bottom of the page cannot leave an earlier
 chip highlighted.
 
 <img src="assets/screenshots/mobile-fleet.png" alt="Fleet on a phone" width="390"> The top bar reads like
-`homelab / Repo street / Repositories`, so the workspace and view are always
+`homelab / Repos / Projects`, so the workspace and view are always
 explicit.
 
 Narrow screens adapt rather than hiding controls:
 
 - At 900px the two-workspace rail is replaced by one compact rail: every Pi and
-  Repo street view is one click away, with a short visible label under each icon
-  (`Street` / `Pulse` / `Repos` for the three repo views) plus the full accessible name and
-  native tooltip. Short windows reduce item padding so the rail still fits.
+  Repos view is one click away, with a short visible label under each icon
+  (`Overview` / `Pulse` / `Projects` for the three Repos views) plus the full
+  accessible name and native tooltip. Short windows reduce item padding so the rail still fits.
 - At 700px the top-bar actions (theme, check releases, refresh) become larger
   icon buttons with the same accessible names and native tooltips.
 - At 600px stat tiles pack two-up, key/value rows stack, and the attention list
@@ -177,9 +177,9 @@ Narrow screens adapt rather than hiding controls:
 - The Stacks table becomes stacked stack cards at 900px so status, sync, images,
   updates and actions stay reachable without sideways scrolling. Between 901
   and 1280px the Images column is folded under the stack name, and the
-  Repositories table becomes stacked repo cards at 700px so dirty/Gitea chips and
+  Projects table becomes stacked project cards at 700px so dirty/Gitea chips and
   actions stay reachable.
-- The repo dashboard health cards stack to one column at 700px.
+- The Repos dashboard health cards stack to one column at 700px.
 
 Keyboard and assistive-tech support is part of the shell:
 
@@ -297,13 +297,14 @@ outside the contract, and `./hlc doctor` reports the same paths.
 
 </details>
 
-### Repo street
+### Repos
 
-![Repo street overview](assets/screenshots/repo-street.png)
+![Repos overview](assets/screenshots/repo-street.png)
 
-Repo street has three views: **Overview** answers "what needs me now?",
-**Pulse** answers "what is changing over time?", and **Repositories** is where
-you commit, push and mirror.
+The **Repos** workspace has three views: **Overview** answers "what needs me now?",
+**Pulse** answers "what is changing over time?", and **Projects** is where you
+commit, push and mirror. The UI calls each managed checkout a **project**; the
+HTTP API and git commands still use repository terminology.
 
 - **Overview** keeps the fleet totals, GitHub/Gitea/VS Code/queue health, a
   14-day commit pulse, the action queue and the latest commit in each repo.
@@ -313,20 +314,20 @@ you commit, push and mirror.
   the Gitea ref comparison runs at startup, after a local commit/push, and on
   demand — never on a timer.
 - **Pulse** adds commit cadence, freshness, remote/backup coverage and quiet
-  repositories: commits in the last 7 and 30 days, active repositories,
-  median/oldest last commit, a 14-day bar chart, the most active repositories,
+  projects: commits in the last 7 and 30 days, active projects,
+  median/oldest last commit, a 14-day bar chart, the most active projects,
   a GitHub/upstream/fetch/Gitea/clean-tree coverage breakdown, recent commits
-  and repositories with no commit or working-tree edit for 90 days.
+  and projects with no commit or working-tree edit for 90 days.
   **Check refs** on the coverage card runs the same read-only Gitea comparison
   as Overview.
-- **Repositories** lists branch/upstream, dirty files, conflicts, ahead/behind,
+- **Projects** lists branch/upstream, dirty files, conflicts, ahead/behind,
   Gitea state and last commit. **Commit** stages only the checked paths
   (`.env`-family files and ignored paths are refused); **Push** sends the
   current branch with your credential helper; **Check Gitea** previews and then
   mirrors heads/tags; **Queue both** runs GitHub → Gitea serially.
   **Open in VS Code** launches `code -n`.
 
-![Repo pulse metrics](assets/screenshots/repo-pulse.png)
+![Project pulse metrics](assets/screenshots/repo-pulse.png)
 
 Activity numbers come from local git history. The backend caches each repo's
 commit counts by branch tip for five minutes, so the 10-second status scan does
@@ -338,25 +339,25 @@ shows the age of the newest `FETCH_HEAD` so the number can be trusted. No fetch,
 pull, network call or destructive git action is performed by Pulse.
 
 <details>
-<summary>Repository discovery, Gitea auth and sync details</summary>
+<summary>Project discovery, Gitea auth and sync details</summary>
 
-- Scans every configured repo folder **recursively** for git checkouts,
-  including the configured folder itself, so a folder of repos and a single
-  repo root both work. Hidden folders, dependency/build folders
+- Scans every configured project folder **recursively** for git checkouts,
+  including the configured folder itself, so a folder of projects and a single
+  project folder both work. Hidden folders, dependency/build folders
   (`node_modules`, `.venv`, `build`, `dist`, `target`, …) and nested checkouts
-  inside an already-found repo are skipped. Use **Manage repos…** to deselect
-  individual checkouts; they stay on disk but disappear from Repo street.
-  Folders are empty until chosen in Settings or the Repositories setup card;
+  inside an already-found project are skipped. Use **Manage projects…** to deselect
+  individual checkouts; they stay on disk but disappear from Repos.
+  Folders are empty until chosen in Settings or the Projects setup card;
   add as many as needed, with **Choose folders…** for a native multi-select or
   by typing a path.
-- The **Repositories** view lists every repo: branch/upstream, dirty files,
+- The **Projects** view lists every project: branch/upstream, dirty files,
   commits ahead/behind origin, Gitea backup state, last commit and direct
   GitHub link. The GitHub column is the accurate state (`7 ahead`, `up to
   date`, `2 behind`, `local only`); **Push** is the action that sends the
   current branch. A repo with no upstream still reports ahead/behind against
   `origin/<branch>` when that ref exists.
 - The dashboard highlights up to nine tasks that need action and offers
-  **Review** shortcuts into the filtered Repositories table. Conflicts, local
+  **Review** shortcuts into the filtered Projects table. Conflicts, local
   changes, push work and backup gaps are called out; dirty items include staged,
   unstaged, new and ignored counts plus the last touched age. A repo with
   commits behind origin shows a download icon and an **Updates** filter, based
@@ -379,15 +380,15 @@ pull, network call or destructive git action is performed by Pulse.
 - **Gitea** is a backup mirror: `Check Gitea` compares local heads/tags with
   the remote on demand, and a sync previews the ref changes before applying
   the same all-heads/all-tags `prune` + `force` push as `gitea-tools`. Missing
-  Gitea repos rely on push-to-create. LFS, shallow and unrelated-history
-  repos are skipped with a reason; the duplicate-history check runs before any
-  write.
+  Gitea projects rely on push-to-create. LFS, shallow and unrelated-history
+  projects are skipped with a reason; the duplicate-history check runs before
+  any write.
 - **Queue both** is a serial queue: GitHub push (when the current branch is
-  ahead), then Gitea mirror, per repo. If GitHub fails, Gitea is still backed
+  ahead), then Gitea mirror, per project. If GitHub fails, Gitea is still backed
   up and the queue continues. The full run is streamed in the usual run log
-  and the queue card retains per-repo GitHub/Gitea results.
+  and the queue card retains per-project GitHub/Gitea results.
 - Automatic Gitea ref checks (`gitea_check_on_start`) run **once at startup**,
-  queued behind the first local scan, and recheck the **affected repo after a
+  queued behind the first local scan, and recheck the **affected project after a
   commit or GitHub push**; **Check Gitea** always works on demand. There is no
   timer and no background Gitea network loop. Local dirty/ahead status refreshes
   every 10 seconds (configurable). A startup check does not need a stored token:
@@ -544,7 +545,7 @@ snapshot repo files
 
 - Health transitions, release detections, deploys, updates, rollback and
   commits are recorded. Every run has a full log.
-- The Repository panel shows branch, last commit and dirty files under
+- The workspace repository panel shows branch, last commit and dirty files under
   `stacks/` + `scripts/hosts.json`.
 - **Commit changes** writes a local git commit of exactly those paths. It never
   commits `.env`-family files, never pushes, and never runs without your click.
@@ -572,7 +573,7 @@ snapshot repo files
 - The API has no arbitrary command runner. The native Terminal bridge accepts
   only a main-frame message from the console origin, and external URLs open in
   the default browser rather than the privileged webview.
-- Repo street rejects dangerous repo-local Git configuration, disables
+- Repos rejects dangerous project-local Git configuration, disables
   `core.fsmonitor` and hooks for its Git calls, and scopes the Gitea
   Authorization header to the configured Gitea base. Redirects never carry
   credentials. Gitea must use HTTPS off loopback (or set
@@ -594,7 +595,7 @@ snapshot repo files
   digest is not detected. Digest-pinned stacks are reported as digest-pinned.
 - **Single operator, local.** No users, no auth server, no remote access. Use
   an SSH tunnel for remote use.
-- **Repo fleet is GitHub/Gitea, not a general Git host manager.** It pushes
+- **Repos is GitHub/Gitea, not a general Git host manager.** It pushes
   the current branch to GitHub and mirrors heads/tags to one configured Gitea
   owner. It does not create GitHub repos, manage branches, rebase, pull, or
   force-push GitHub.
@@ -637,10 +638,10 @@ app/
 │   ├── util.py                  # paths, child env, atomic writes
 │   └── templates.py             # starter stacks
 ├── web/                         # vanilla ES modules, no build step
-│   ├── js/views/repo-street.js  # repo dashboard + GitHub/Gitea health
+│   ├── js/views/repo-street.js  # Repos overview + GitHub/Gitea health
 │   ├── js/views/repo-pulse.js   # commit cadence, freshness and coverage
 │   ├── js/repoMetrics.js        # shared repo metric calculations and charts
-│   └── js/views/repos.js        # repositories table and queue UI
+│   └── js/views/repos.js        # projects table and queue UI
 └── tests/                       # stdlib unittest suite
 ```
 
@@ -681,10 +682,10 @@ must carry a same-origin `Origin`. SSE uses a short-lived, run-scoped
 | GET | `/api/runs/<id>/stream-token` | short-lived, run-scoped SSE token |
 | GET | `/api/runs/<id>/stream?stream_token=…` | SSE log stream |
 | GET/POST | `/api/git`, `/api/git/commit` | status / local commit |
-| GET | `/api/repos` | repo fleet snapshot (also in `/api/state`) |
+| GET | `/api/repos` | project snapshot (also in `/api/state`) |
 | GET | `/api/repos/discovered` | every discovered repo plus its selected state |
 | POST | `/api/repos/selection` | save per-root repo exclusions |
-| POST | `/api/repos/refresh` | rescan local repo status |
+| POST | `/api/repos/refresh` | rescan local project status |
 | POST | `/api/repos/gitea/check` | start an on-demand Gitea ref check |
 | POST | `/api/repos/connectivity/check` | probe github.com and the Gitea version endpoint |
 | POST | `/api/repos/<id>/open` | open the repo in a new VS Code window |
@@ -724,7 +725,7 @@ Persisted in `.hlc/config.json` (mode 600) and editable in Settings.
 | `gitea_token` | empty | optional; never returned by the API; env or git helper can supply it |
 | `repo_roots` | empty | checkout folders scanned recursively; add in Settings |
 | `repo_root` | empty | legacy alias for the first entry of `repo_roots` |
-| `repo_exclusions` | `{}` | per-root repositories hidden from Repo street |
+| `repo_exclusions` | `{}` | per-root projects hidden from Repos |
 | `gitea_url` | empty | backup server base URL; empty disables Gitea |
 | `gitea_owner` | empty | must match the GitHub owner; empty disables Gitea |
 | `gitea_timeout_s` | 120 | push/fetch timeout; ref checks cap at 15s |
@@ -751,12 +752,12 @@ sent as a header, so prefer HTTPS.
 .venv/bin/python -m unittest discover -s app/tests -v
 ```
 
-The suite is stdlib-only (159 tests) and covers compose parsing, nested file
+The suite is stdlib-only (163 tests) and covers compose parsing, nested file
 creation, stack-layout warnings, plan hashing, pin rewriting, host round-trips,
 SSH config edits, version selection, managed targets, release-age metadata,
 source normalization/overrides, per-stack safety profiles, database-dump
-listing, path safety, snapshots, recursive repo discovery and selection, and
-the repo fleet: porcelain-v2 status, selective commits, ignored tracked paths,
+listing, path safety, snapshots, recursive project discovery and selection, and
+the Repos workspace: porcelain-v2 status, selective commits, ignored tracked paths,
 ahead/behind-origin reporting, connectivity probes, one-repo post-action Gitea
 checks, VS Code launch, Gitea create/update/prune/force, unrelated-history and
 LFS skips, token masking, the queue failure policy and the encoded-id HTTP

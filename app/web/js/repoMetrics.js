@@ -108,7 +108,7 @@ export function freshnessHtml(repos) {
   const total = Math.max(1, (repos || []).length);
   const summary = buckets.map((bucket) => `${bucket.count} ${bucket.label.toLowerCase()}`).join(' · ');
   return `<div class="freshness">
-    <div class="freshness-bar" role="img" aria-label="Repository freshness: ${esc(summary)}">
+    <div class="freshness-bar" role="img" aria-label="Project freshness: ${esc(summary)}">
       ${buckets.map((bucket) => bucket.count ? `<span class="freshness-seg ${bucket.id}" style="width:${(bucket.count / total) * 100}%"></span>` : '').join('')}
     </div>
     <div class="freshness-list">
@@ -245,8 +245,8 @@ export function activitySummaryHtml(summary, repos) {
   const active = Number(summary?.active_repos || 0);
   return `<div class="pulse-glance">
     <div class="pulse-glance-item"><span class="pulse-glance-value mono">${commits30}</span><span class="pulse-glance-label">commits · 30 days</span><span class="pulse-glance-sub">${commits7} in the last 7 days</span></div>
-    <div class="pulse-glance-item"><span class="pulse-glance-value mono">${active}<small>/${(repos || []).length}</small></span><span class="pulse-glance-label">active repositories</span><span class="pulse-glance-sub">committed in the last 30 days</span></div>
-    <div class="pulse-glance-item"><span class="pulse-glance-value mono">${Number(summary?.quiet_repos || 0)}</span><span class="pulse-glance-label">quiet repositories</span><span class="pulse-glance-sub">no commits or edits in 90 days</span></div>
+    <div class="pulse-glance-item"><span class="pulse-glance-value mono">${active}<small>/${(repos || []).length}</small></span><span class="pulse-glance-label">active projects</span><span class="pulse-glance-sub">committed in the last 30 days</span></div>
+    <div class="pulse-glance-item"><span class="pulse-glance-value mono">${Number(summary?.quiet_repos || 0)}</span><span class="pulse-glance-label">quiet projects</span><span class="pulse-glance-sub">no commits or edits in 90 days</span></div>
   </div>`;
 }
 
@@ -254,7 +254,7 @@ export function commitListHtml(repos, events = [], limit = 8) {
   const commits = recentCommits(repos, limit);
   const repoEvents = (events || []).filter((event) => event.kind === 'repo').slice(0, 4);
   if (!commits.length && !repoEvents.length) {
-    return `<div class="card"><div class="card-body attention-empty"><span class="status-dot"></span><span class="muted">No commits or repo activity yet.</span></div></div>`;
+    return `<div class="card"><div class="card-body attention-empty"><span class="status-dot"></span><span class="muted">No commits or project activity yet.</span></div></div>`;
   }
   return `<div class="card"><ul class="commit-list">
     ${commits.map(({ repo, commit }) => {
@@ -281,7 +281,7 @@ export function commitListHtml(repos, events = [], limit = 8) {
 export function quietReposHtml(repos, limit = 5) {
   const quiet = quietRepos(repos).slice(0, limit);
   if (!quiet.length) {
-    return `<div class="card"><div class="card-body attention-empty"><span class="status-dot ok"></span><span class="muted">Every repository has a commit or working-tree edit in the last 90 days.</span></div></div>`;
+    return `<div class="card"><div class="card-body attention-empty"><span class="status-dot ok"></span><span class="muted">Every project has a commit or working-tree edit in the last 90 days.</span></div></div>`;
   }
   return `<div class="card"><ul class="quiet-list">
     ${quiet.map((repo) => `<li class="quiet-item">

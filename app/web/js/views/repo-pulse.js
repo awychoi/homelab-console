@@ -12,7 +12,7 @@ const { esc, icon } = ui;
 function activeReposHtml(repos) {
   const top = topActiveRepos(repos, 6);
   if (!top.length) {
-    return `<div class="card"><div class="card-body attention-empty"><span class="status-dot"></span><span class="muted">No commits in the last 30 days. The repositories are quiet but not necessarily unhealthy.</span></div></div>`;
+    return `<div class="card"><div class="card-body attention-empty"><span class="status-dot"></span><span class="muted">No commits in the last 30 days. The projects are quiet but not necessarily unhealthy.</span></div></div>`;
   }
   const max = Math.max(1, ...top.map((repo) => Number(repo.commit_activity?.last_30d || 0)));
   return `<div class="card"><ul class="active-list">
@@ -35,17 +35,17 @@ function activeReposHtml(repos) {
 function contentHtml(ctx) {
   const snapshot = reposSnapshot(ctx);
   if (!snapshot) {
-    return pageHead({ title: 'Pulse', subtitle: 'Loading repository metrics…' })
+    return pageHead({ title: 'Pulse', subtitle: 'Loading project metrics…' })
       + emptyState('activity', 'Loading pulse', 'The console is reading local git history.');
   }
   if (snapshot.root_configured === false) {
     return `${pageHead({ title: 'Pulse', subtitle: 'Choose a folder for your git checkouts' })}
-      ${emptyState('activity', 'No repo folder yet', 'Pulse reads commit history from the repositories under your configured checkout folders.', '<a class="btn primary mt-2" href="#/repos">Choose repo folder</a>')}`;
+      ${emptyState('activity', 'No project folder yet', 'Pulse reads commit history from the projects under your configured checkout folders.', '<a class="btn primary mt-2" href="#/repos">Choose project folder</a>')}`;
   }
   const repos = allRepos(ctx);
   if (!repos.length) {
-    return `${pageHead({ title: 'Pulse', subtitle: 'No repositories selected' })}
-      ${emptyState('git', 'No repositories to measure', 'Choose a repo folder or enable a repository on the Repositories page.', '<a class="btn primary mt-2" href="#/repos">Open Repositories</a>')}`;
+    return `${pageHead({ title: 'Pulse', subtitle: 'No projects selected' })}
+      ${emptyState('git', 'No projects to measure', 'Choose a project folder or enable a project on the Projects page.', '<a class="btn primary mt-2" href="#/repos">Open Projects</a>')}`;
   }
   const summary = snapshot.summary || {};
   const giteaConfigured = snapshot.gitea_configured !== false;
@@ -61,21 +61,21 @@ function contentHtml(ctx) {
   const roots = snapshot.roots || rootsFromSettings(ctx.bootstrap?.settings);
   return `${pageHead({
     title: 'Pulse',
-    subtitle: `<strong>${repos.length}</strong> repositories<span class="dot">·</span><strong>${commits30}</strong> commits in 30 days<span class="dot">·</span>${esc(rootsLabel(roots))}`,
-    actions: `<a class="btn ghost sm" href="#/repo-street">${icon('overview', 12)} Overview</a><a class="btn primary sm" href="#/repos">${icon('git', 12)} Repositories</a>`,
+    subtitle: `<strong>${repos.length}</strong> projects<span class="dot">·</span><strong>${commits30}</strong> commits in 30 days<span class="dot">·</span>${esc(rootsLabel(roots))}`,
+    actions: `<a class="btn ghost sm" href="#/repo-street">${icon('overview', 12)} Overview</a><a class="btn primary sm" href="#/repos">${icon('git', 12)} Projects</a>`,
     badges: ui.pill(activeDays ? 'info' : 'neutral', activeDays ? `${activeDays} active day${activeDays === 1 ? '' : 's'}` : 'no recent commits'),
   })}
   <div class="grid cols-4 mb-2">
     ${statTile({ label: 'Commits · 30 days', value: String(commits30), sub: `${commits7} in the last 7 days`, iconName: 'commit', toneName: commits30 ? 'info' : '' })}
-    ${statTile({ label: 'Active repositories', value: `${activeCount}<small> / ${repos.length}</small>`, sub: 'committed in the last 30 days', iconName: 'git', toneName: activeCount ? 'ok' : '' })}
+    ${statTile({ label: 'Active projects', value: `${activeCount}<small> / ${repos.length}</small>`, sub: 'committed in the last 30 days', iconName: 'git', toneName: activeCount ? 'ok' : '' })}
     ${statTile({ label: 'Median last commit', value: medianAge === null ? '—' : esc(formatAgeDays(medianAge)), sub: oldestAge === null ? 'no commit history' : `oldest ${esc(formatAgeDays(oldestAge))}`, iconName: 'clock', toneName: medianAge !== null && medianAge > 30 ? 'warn' : 'ok' })}
-    ${statTile({ label: 'Backup coverage', value: !backup.configured || !backup.checked || !backup.eligible ? '—' : `${backup.pct}<small>%</small>`, sub: !backup.configured ? 'Gitea is not configured' : !backup.checked ? 'refs not checked yet' : !backup.eligible ? 'no repositories eligible for backup' : `${backup.synced} of ${backup.eligible} eligible refs in sync`, iconName: 'shield', toneName: backup.configured && backup.checked && backup.eligible && backup.synced === backup.eligible ? 'ok' : backup.configured && backup.checked && backup.synced < backup.eligible ? 'warn' : '', valueTone: backup.configured && backup.checked && backup.eligible && backup.synced < backup.eligible ? 'text-warn' : '' })}
+    ${statTile({ label: 'Backup coverage', value: !backup.configured || !backup.checked || !backup.eligible ? '—' : `${backup.pct}<small>%</small>`, sub: !backup.configured ? 'Gitea is not configured' : !backup.checked ? 'refs not checked yet' : !backup.eligible ? 'no projects eligible for backup' : `${backup.synced} of ${backup.eligible} eligible refs in sync`, iconName: 'shield', toneName: backup.configured && backup.checked && backup.eligible && backup.synced === backup.eligible ? 'ok' : backup.configured && backup.checked && backup.synced < backup.eligible ? 'warn' : '', valueTone: backup.configured && backup.checked && backup.eligible && backup.synced < backup.eligible ? 'text-warn' : '' })}
   </div>
   <div class="grid cols-2 section">
     <div class="card">
       <div class="card-head">
         <div class="health-icon info">${icon('activity', 16)}</div>
-        <div><div class="card-title">Commit activity</div><div class="card-sub">Every repository · last 14 days</div></div>
+        <div><div class="card-title">Commit activity</div><div class="card-sub">Every project · last 14 days</div></div>
         <div class="card-actions">${ui.pill(commits30 ? 'info' : 'neutral', `${commits30} in 30 days`)}</div>
       </div>
       <div class="card-body">${activityBars(days)}</div>
@@ -83,14 +83,14 @@ function contentHtml(ctx) {
     <div class="card">
       <div class="card-head">
         <div class="health-icon ok">${icon('clock', 16)}</div>
-        <div><div class="card-title">Repository freshness</div><div class="card-sub">When each working tree last moved</div></div>
+        <div><div class="card-title">Project freshness</div><div class="card-sub">When each working tree last moved</div></div>
       </div>
       <div class="card-body">${freshnessHtml(repos)}</div>
     </div>
   </div>
   <div class="grid cols-2 section">
     <div>
-      <div class="section-head"><div class="section-title">Most active repositories</div><div class="section-sub">commits in the last 30 days</div></div>
+      <div class="section-head"><div class="section-title">Most active projects</div><div class="section-sub">commits in the last 30 days</div></div>
       ${activeReposHtml(repos)}
     </div>
     <div>
@@ -106,11 +106,11 @@ function contentHtml(ctx) {
   </div>
   <div class="grid cols-2 section">
     <div>
-      <div class="section-head"><div class="section-title">Recent commits</div><div class="section-sub">newest first across the fleet</div></div>
+      <div class="section-head"><div class="section-title">Recent commits</div><div class="section-sub">newest first across all projects</div></div>
       ${commitListHtml(repos, ctx.state?.activity || [], 8)}
     </div>
     <div>
-      <div class="section-head"><div class="section-title">Quiet repositories <span class="count">${Number(summary.quiet_repos || 0)}</span></div><div class="section-sub">no commits or edits in 90 days</div></div>
+      <div class="section-head"><div class="section-title">Quiet projects <span class="count">${Number(summary.quiet_repos || 0)}</span></div><div class="section-sub">no commits or edits in 90 days</div></div>
       ${quietReposHtml(repos, 6)}
     </div>
   </div>

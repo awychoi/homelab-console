@@ -1579,7 +1579,7 @@ textarea.code {
     text-overflow: ellipsis;
     white-space: nowrap;
     color: var(--dim);
-    font-size: 10.5px;
+    font-size: 9.5px;
     line-height: 1.15;
     text-align: center;
   }

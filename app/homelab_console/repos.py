@@ -325,7 +325,7 @@ def _ensure_repo_config_safe(repo: Path) -> None:
             bad.add(key)
     if bad:
         raise RepoError(
-            "repository defines unsafe local Git configuration "
+            "project defines unsafe local Git configuration "
             f"({', '.join(sorted(bad)[:4])}{' …' if len(bad) > 4 else ''}); "
             "remove it or use a terminal"
         )
@@ -431,7 +431,7 @@ def discover_repos(root: Path) -> list[Path]:
     """
     root = root.expanduser()
     if not root.is_dir():
-        raise RepoError(f"repo root not found: {root}")
+        raise RepoError(f"project folder not found: {root}")
     try:
         root = root.resolve()
     except OSError:
@@ -442,7 +442,7 @@ def discover_repos(root: Path) -> list[Path]:
     except StopIteration:
         return []
     except OSError as exc:
-        raise RepoError(f"cannot read repo root {root}: {exc}") from exc
+        raise RepoError(f"cannot read project folder {root}: {exc}") from exc
     found: list[Path] = []
     seen: set[Path] = set()
     visited = 0
@@ -520,16 +520,16 @@ def validate_repo_exclusions(
 ) -> dict[str, list[str]]:
     """Validate a {root: [repo-relative ids]} exclusion map."""
     if not isinstance(raw, dict):
-        raise RepoError("exclusions must be an object keyed by repo root")
+        raise RepoError("exclusions must be an object keyed by project folder")
     roots_by_text = {str(root): root for root in roots}
     allowed = {(entry["root"], entry["rel"]) for entry in discovered}
     cleaned: dict[str, list[str]] = {}
     for root_text, ids in raw.items():
         root_key = str(root_text or "").strip()
         if root_key not in roots_by_text:
-            raise RepoError(f"unknown repo root: {root_key or '(empty)'}")
+            raise RepoError(f"unknown project folder: {root_key or '(empty)'}")
         if not isinstance(ids, (list, tuple)):
-            raise RepoError("each repo root needs a list of excluded repository ids")
+            raise RepoError("each project folder needs a list of excluded project ids")
         keep: list[str] = []
         for item in ids:
             rel = str(item or "").strip()
@@ -870,7 +870,7 @@ def repo_row(path: Path, root: Path, cfg: GiteaConfig) -> dict[str, Any]:
             "origin": "",
             "github": None,
             "lfs": False,
-            "gitea": {"status": "error", "detail": "cannot read repository", "checked_at": 0},
+            "gitea": {"status": "error", "detail": "cannot read project", "checked_at": 0},
             "needs": {"commit": False, "push": False, "gitea": False},
         }
 
@@ -916,7 +916,7 @@ def repo_row(path: Path, root: Path, cfg: GiteaConfig) -> dict[str, Any]:
     if lfs:
         gitea = {
             "status": "skip",
-            "detail": "Git LFS repo — handle separately",
+            "detail": "Git LFS project — handle separately",
             "target": target,
             "checked_at": 0,
         }
@@ -1080,7 +1080,7 @@ def check_gitea(repo: Path, cfg: GiteaConfig, token: str) -> dict[str, Any]:
     origin = _origin(repo)
     target, skip_reason, _ = gitea_target(origin, cfg)
     if _uses_lfs(repo):
-        return {"status": "skip", "detail": "Git LFS repo — handle separately", "target": target, "checked_at": 0}
+        return {"status": "skip", "detail": "Git LFS project — handle separately", "target": target, "checked_at": 0}
     if skip_reason:
         return {"status": "skip", "detail": skip_reason, "target": target, "checked_at": 0}
     try:
@@ -1102,7 +1102,7 @@ def check_gitea(repo: Path, cfg: GiteaConfig, token: str) -> dict[str, Any]:
     if probe.kind in ("auth", "unreachable", "error"):
         detail = probe.detail or "could not read Gitea"
         if probe.kind == "auth":
-            detail = "Gitea token needed (Settings → Repo fleet)"
+            detail = "Gitea token needed (Settings → Repos)"
         return {
             "status": probe.kind,
             "detail": detail,
@@ -1242,7 +1242,7 @@ def sync_repo(
     target, skip_reason, _ = gitea_target(origin, cfg)
     base = {"target": target, "dry_run": dry_run, "ok": False}
     if _uses_lfs(repo):
-        return {**base, "ok": True, "status": "skip", "detail": "Git LFS repo — handle separately"}
+        return {**base, "ok": True, "status": "skip", "detail": "Git LFS project — handle separately"}
     if skip_reason:
         return {**base, "ok": True, "status": "skip", "detail": skip_reason}
     try:
@@ -1256,7 +1256,7 @@ def sync_repo(
     except RepoError as exc:
         return {**base, "status": "error", "detail": str(exc)}
     if probe.kind == "auth":
-        return {**base, "status": "error", "detail": "Gitea token needed (Settings → Repo fleet)"}
+        return {**base, "status": "error", "detail": "Gitea token needed (Settings → Repos)"}
     if probe.kind == "unreachable":
         return {**base, "status": "error", "detail": probe.detail or "Gitea is unreachable"}
     if probe.kind == "error":
@@ -1332,7 +1332,7 @@ def sync_repo(
             **base,
             "ok": True,
             "status": "synced",
-            "detail": "initialized an empty Gitea repo",
+            "detail": "initialized an empty Gitea project",
             "counts": _counts_payload(local, comparison),
         }
 
@@ -1347,7 +1347,7 @@ def sync_repo(
             **base,
             "ok": True,
             "status": "skip",
-            "detail": "Gitea repo has unrelated history; rename or delete it in Gitea, then sync",
+            "detail": "Gitea project has unrelated history; rename or delete it in Gitea, then sync",
         }
     try:
         push_to_gitea(repo, target or "", cfg, token)
@@ -1735,7 +1735,7 @@ class RepoFleet:
         self._snapshot["summary"] = self._summary(rows, self._snapshot.get("discovered") or [])
 
     def discovered(self) -> dict[str, Any]:
-        """Return every discovered repo and whether Repo street manages it."""
+        """Return every discovered repo and whether Repos manages it."""
         roots, entries, errors = _discovery_entries(self.settings)
         return {
             "root_configured": bool(roots),
@@ -1749,7 +1749,7 @@ class RepoFleet:
         """Persist a {root: [relative ids]} exclusion map and rescan."""
         roots, entries, _errors = _discovery_entries(self.settings)
         if not roots:
-            raise RepoError("repo roots are not configured — choose a folder in Settings")
+            raise RepoError("project folders are not configured — choose a folder in Settings")
         cleaned = validate_repo_exclusions(raw, roots, entries)
         self.settings.update({"repo_exclusions": cleaned})
         state = self.refresh()
@@ -1983,7 +1983,7 @@ class RepoFleet:
                     "checked_at": util.now_ts(),
                     "checked": checked,
                     "errors": errors,
-                    "message": f"{checked} repo(s) checked" + (f"; {errors} error(s)" if errors else ""),
+                    "message": f"{checked} project(s) checked" + (f"; {errors} error(s)" if errors else ""),
                 }
         except Exception as exc:
             log.exception("Gitea check failed")
@@ -2056,13 +2056,13 @@ class RepoFleet:
         # Gitea URL/owner is optional and must not gate them.
         roots = repo_roots(self.settings)
         if not roots:
-            raise RepoError("repo roots are not configured — choose a folder in Settings")
+            raise RepoError("project folders are not configured — choose a folder in Settings")
         matches = discover_identities(roots)
         exact = [(path, identity) for path, identity in matches if identity["id"] == repo_id]
         if len(exact) == 1:
             return exact[0]
         if len(exact) > 1:
-            raise RepoError(f"repository id is ambiguous: {repo_id!r}")
+            raise RepoError(f"project id is ambiguous: {repo_id!r}")
         # Selections can outlive a roots change; fall back to the relative name
         # only when it identifies exactly one checkout.
         for predicate in (
@@ -2073,9 +2073,9 @@ class RepoFleet:
             if len(candidates) == 1:
                 return candidates[0]
             if len(candidates) > 1:
-                raise RepoError(f"repository id is ambiguous: {repo_id!r}")
+                raise RepoError(f"project id is ambiguous: {repo_id!r}")
         raise RepoError(
-            f"repository not found under {', '.join(str(root) for root in roots)}: {repo_id or '(empty)'}"
+            f"project not found under {', '.join(str(root) for root in roots)}: {repo_id or '(empty)'}"
         )
 
     def open_in_vscode(self, repo_id: str) -> dict[str, Any]:
@@ -2101,7 +2101,7 @@ class RepoFleet:
         return {"ok": True, "path": str(path)}
 
     def refresh_after_commit(self, path: Path) -> bool:
-        """Recheck Gitea after a commit made outside Repo street.
+        """Recheck Gitea after a commit made outside Repos.
 
         The console's stack commit writes to the same checkout that Repo
         street scans. Refresh the rows, map the checkout back to its repo id,
@@ -2268,14 +2268,14 @@ class RepoFleet:
                 raise RepoError("a repo push queue is already running")
         rows = self._rows()
         if not rows:
-            raise RepoError("no repositories discovered")
+            raise RepoError("no projects discovered")
         wanted = [str(item) for item in (repo_ids or []) if str(item)]
         if not wanted:
             wanted = self.default_queue_ids()
         by_id = {row["id"]: row for row in rows}
         unknown = [item for item in wanted if item not in by_id]
         if unknown:
-            raise RepoError(f"unknown repository: {unknown[0]}")
+            raise RepoError(f"unknown project: {unknown[0]}")
         items: list[QueueItem] = []
         for repo_id in dict.fromkeys(wanted):
             row = by_id[repo_id]
@@ -2307,7 +2307,7 @@ class RepoFleet:
                 )
             )
         if not any(item.github == "pending" or item.gitea == "pending" for item in items):
-            raise RepoError("nothing to queue for the selected repositories")
+            raise RepoError("nothing to queue for the selected projects")
         queue_id = f"{time.strftime('%Y%m%d-%H%M%S')}-{os.urandom(3).hex()}"
         queue = RepoQueue(id=queue_id, items=items)
         with self._lock:
@@ -2318,7 +2318,7 @@ class RepoFleet:
             queue.status = "running"
             queue.run_id = run.id
             failures = 0
-            run.emit(f">> repo fleet push queue · {len(items)} repo(s)")
+            run.emit(f">> Projects push queue · {len(items)} project(s)")
             for item in items:
                 if self._stop.is_set():
                     item.status = "skipped"
@@ -2359,12 +2359,12 @@ class RepoFleet:
             queue.finished = util.now_ts()
             queue.status = "done" if failures == 0 else "partial"
             queue.error = "" if failures == 0 else f"{failures} repo operation(s) failed"
-            run.emit(f"✓ queue complete · {len(items) - failures}/{len(items)} repo(s) clean")
+            run.emit(f"✓ queue complete · {len(items) - failures}/{len(items)} project(s) clean")
             if failures:
                 raise RepoQueueError(queue.error, run_result={"queue": queue.public()})
             return {"queue": queue.public()}
 
-        run = self.tasks.start("repo-push", work, title="repo fleet: GitHub + Gitea")
+        run = self.tasks.start("repo-push", work, title="Projects: GitHub + Gitea")
         queue.run_id = run.id
         return {"ok": True, "run_id": run.id, "queue": queue.public()}
 

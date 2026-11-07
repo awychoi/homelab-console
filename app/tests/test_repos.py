@@ -1,4 +1,4 @@
-"""Repo fleet tests. Local temp repos and bare remotes only; no network."""
+"""Repos workspace tests. Local temp repos and bare remotes only; no network."""
 
 from __future__ import annotations
 

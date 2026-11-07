@@ -18,7 +18,7 @@ multi-user layer, or remote-access story.
   the console origin; its Terminal bridge accepts main-frame commands from that
   origin only, and external URLs open in the browser with allow-listed schemes.
 - **Commands:** fixed API; SSH/git are argv vectors; remote Docker paths are
-  quoted; no arbitrary command endpoint. Repo street rejects executable
+  quoted; no arbitrary command endpoint. Repos rejects executable
   repo-local Git config and disables hooks/fsmonitor; the Gitea header is
   scoped to its base; redirects strip credentials; non-loopback Gitea requires
   HTTPS (`HLC_GITEA_ALLOW_HTTP=1` is an explicit override).

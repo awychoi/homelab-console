@@ -211,7 +211,7 @@ def _validated_settings(payload: Any) -> dict[str, Any]:
                     continue
                 path = Path(raw).expanduser()
                 if not path.is_absolute():
-                    raise BackupError("archive repo roots must be absolute")
+                    raise BackupError("archive project folders must be absolute")
                 roots.append(str(path.resolve()))
             values[key] = roots
         elif key == "repo_exclusions":

@@ -163,14 +163,14 @@ export function copyHostButton(host) {
 
 /**
  * What to do when Gitea rejects the credentials depends on who owns the token.
- * In the app the shell owns it, so pointing at Settings → Repo fleet sends the
+ * In the app the shell owns it, so pointing at Settings → Repos sends the
  * user to a page that cannot help; deep-link straight to the app's window.
  */
 export function giteaAuthBanner(ctx, count) {
   if (!count) return '';
-  const title = `${ui.plural(count, 'repo')} could not authenticate to Gitea.`;
+  const title = `${ui.plural(count, 'project')} could not authenticate to Gitea.`;
   if (ctx.bootstrap?.settings?.app_managed) {
     return `<div class="banner bad">${icon('key')}<span><strong>${title}</strong> No Gitea token is stored. Open <strong>Homelab Console → Settings… (⌘,)</strong> from the menu bar and paste one. Saving restarts the console and checks Gitea automatically.</span><a class="btn sm ghost" href="homelab-console://settings">Open app Settings…</a></div>`;
   }
-  return `<div class="banner bad">${icon('key')}<span><strong>${title}</strong> Add a token in Settings → Repo fleet, then run Check Gitea again.</span><a class="btn sm ghost" href="#/settings">Settings</a></div>`;
+  return `<div class="banner bad">${icon('key')}<span><strong>${title}</strong> Add a token in Settings → Repos, then run Check Gitea again.</span><a class="btn sm ghost" href="#/settings">Settings</a></div>`;
 }

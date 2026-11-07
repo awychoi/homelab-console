@@ -94,7 +94,7 @@ class AppService:
             log.info("startup Gitea check skipped: not configured")
             return
         if not self.repos.state().get("root_configured"):
-            log.info("startup Gitea check skipped: repo root not configured")
+            log.info("startup Gitea check skipped: project folders not configured")
             return
         deadline = time.monotonic() + 30
         while not self._stop.is_set() and time.monotonic() < deadline:
@@ -161,9 +161,9 @@ class AppService:
         tasks.append(
             {
                 "id": "repos",
-                "label": "Scanning repositories",
+                "label": "Scanning projects",
                 "state": "done" if repos_done else "running",
-                "detail": f"{len(rows)} repositories" if repos_done else "local git status",
+                "detail": f"{len(rows)} projects" if repos_done else "local git status",
             }
         )
 
@@ -180,7 +180,7 @@ class AppService:
                         "id": "gitea",
                         "label": "Checking the Gitea backup",
                         "state": "warn" if phase in ("partial", "error") else "done",
-                        "detail": str(meta.get("message") or f"{meta.get('checked', 0)} repositories compared"),
+                        "detail": str(meta.get("message") or f"{meta.get('checked', 0)} projects compared"),
                     }
                 )
             else:

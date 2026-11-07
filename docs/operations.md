@@ -1,7 +1,7 @@
 # Using the console
 
 This page covers the day-to-day surface after the first deploy: settings,
-update sources, stack safety profiles, updates, Repo street and workspace
+update sources, stack safety profiles, updates, Repos and workspace
 backups. The first-run walkthrough is [First-time setup](getting-started.md);
 the implementation reference is [Homelab Console](console.md).
 
@@ -25,7 +25,7 @@ what the dialog showed.
 
 Open **Settings** in the left rail. Most defaults are usable for a first Pi.
 Use the sticky **Jump to** bar at the top of the page to reach Appearance,
-Collection, Sources, Console, Repo fleet, Backup, Safety or Maintenance
+Collection, Sources, Console, Repos, Backup, Safety or Maintenance
 directly; the active section follows you as you scroll.
 
 ### Collection and updates
@@ -81,17 +81,17 @@ keeps its exact pinned reference either way.
 A GitHub personal access token is optional and only raises the anonymous GitHub
 API limit; Docker Hub checks need no token. Tokens are never returned by the API.
 
-### Repo fleet
+### Repos
 
-Repo street is optional and not needed to deploy to a Pi.
+Repos is optional and not needed to deploy to a Pi.
 
-- Add one or more **Repo folders**. Each is scanned **recursively** for git
+- Add one or more **Project folders**. Each is scanned **recursively** for git
   checkouts, including the folder itself. Hidden folders and generated folders
   such as `node_modules`, `.venv`, `build`, `dist` and `target` are skipped; the
-  scan stops at a repo and does not list its nested repos.
-- Use **Manage repos…** on the Repositories page or in Settings to deselect
-  checkouts. A deselected repo stays on disk but is hidden from Repo street;
-  new repos under the root are selected by default. The selection is stored in
+  scan stops at a project and does not list its nested projects.
+- Use **Manage projects…** on the Projects page or in Settings to deselect
+  checkouts. A deselected project stays on disk but is hidden from Repos;
+  new projects under the root are selected by default. The selection is stored in
   `.hlc/config.json` and included in Backup & restore.
 - **Gitea URL** and **Gitea owner** are both empty by default. Filling both in
   enables the backup mirror and the **Check Gitea** actions. Leaving either
@@ -99,9 +99,9 @@ Repo street is optional and not needed to deploy to a Pi.
   sent as a header. Plain `http://` is accepted only for loopback, or with
   `HLC_GITEA_ALLOW_HTTP=1` for a network you trust.
 - Gitea is a backup, not a second push remote. It compares refs at startup,
-  after a commit or GitHub push for the affected repo, and on demand. Use
+  after a commit or GitHub push for the affected project, and on demand. Use
   **Check Gitea** then sync, or **Queue both**.
-- A missing Gitea repo relies on Gitea's push-to-create. The GitHub owner must
+- A missing Gitea project relies on Gitea's push-to-create. The GitHub owner must
   match `gitea_owner`.
 - In the native app, the Gitea token is owned by the app: use
   **Homelab Console → Settings… (⌘,)** and it goes to the macOS Keychain. The web
@@ -194,13 +194,13 @@ snapshot repo files
 The detailed release rules are in
 [Homelab Console → Updates](console.md#updates-that-verify-themselves).
 
-## Repo street
+## Repos
 
-Repo street is the local git half of the console, separate from the Pi fleet.
+Repos is the local git half of the console, separate from the Pi fleet.
 It scans each configured folder recursively for git checkouts and lets you
 deselect the ones you do not want to manage.
 
-- **Repositories** lists branch/upstream, dirty files, commits ahead/behind
+- **Projects** lists branch/upstream, dirty files, commits ahead/behind
   origin, Gitea backup state, last commit and a GitHub link.
 - **Commit** opens a checklist of changed and untracked files. Ignored and
   build-noise files start unchecked; nothing commits until you click.
@@ -215,7 +215,7 @@ deselect the ones you do not want to manage.
 
 **Settings → Backup & restore** writes one zip containing `hosts.json`, every
 stack file (including `.env` secrets), and all non-secret settings — including
-repo folders, repo selections, update sources and safety profiles. Tokens and
+project folders, project selections, update sources and safety profiles. Tokens and
 `.hlc/` state are excluded.
 
 The archive is mode 600 because it contains stack secrets. Treat it like the

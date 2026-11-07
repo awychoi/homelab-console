@@ -15,7 +15,7 @@ import { showCheckUpdates, showCommit } from './flows.js';
 
 const WORKSPACES = [
   { id: 'pi', label: 'Pi fleet', href: '#/fleet', icon: 'fleet' },
-  { id: 'repos', label: 'Repo street', href: '#/repo-street', icon: 'code' },
+  { id: 'repos', label: 'Repos', href: '#/repo-street', icon: 'code' },
 ];
 
 const PI_NAV = [
@@ -26,9 +26,9 @@ const PI_NAV = [
 ];
 
 const REPO_NAV = [
-  { id: 'repo-street', label: 'Overview', short: 'Street', href: '#/repo-street', icon: 'layers' },
+  { id: 'repo-street', label: 'Overview', short: 'Overview', href: '#/repo-street', icon: 'layers' },
   { id: 'repo-pulse', label: 'Pulse', short: 'Pulse', href: '#/repo-pulse', icon: 'activity' },
-  { id: 'repos', label: 'Repositories', short: 'Repos', href: '#/repos', icon: 'git' },
+  { id: 'repos', label: 'Projects', short: 'Projects', href: '#/repos', icon: 'git' },
 ];
 
 const CONSOLE_NAV = [
@@ -45,9 +45,9 @@ const CRUMBS = {
   stack: 'Pi fleet / Stack',
   updates: 'Pi fleet / Updates',
   hosts: 'Pi fleet / Hosts',
-  'repo-street': 'Repo street / Overview',
-  'repo-pulse': 'Repo street / Pulse',
-  repos: 'Repo street / Repositories',
+  'repo-street': 'Repos / Overview',
+  'repo-pulse': 'Repos / Pulse',
+  repos: 'Repos / Projects',
   activity: 'Console / Activity',
   settings: 'Console / Settings',
 };
@@ -180,7 +180,7 @@ const ctx = {
 
 window.hlc = ctx;
 
-// The dirty-state banner (and the contextual Repository button) open the
+// The dirty-state banner (and the contextual commit button) open the
 // commit dialog without a detour through Settings.
 document.addEventListener('click', (event) => {
   const trigger = event.target.closest('[data-open-commit]');
@@ -269,23 +269,23 @@ function updateChrome() {
     node.classList.toggle('hidden', node.dataset.workspaceNav !== ct);
   });
 
-  // Releases are a Pi-fleet concern; on Repo street the same topbar action was
+  // Releases are a Pi-fleet concern; in Repos the same topbar action was
   // a dead end. Swap in the right label so the controls match the workspace.
   const inRepoStreet = ['repos', 'repo-street', 'repo-pulse'].includes(route.name);
   const releaseButton = document.querySelector('[data-action="check-updates"]');
   if (releaseButton) releaseButton.classList.toggle('hidden', inRepoStreet);
   const refreshButton = document.querySelector('[data-action="refresh"]');
   if (refreshButton && !refreshButton.disabled) {
-    const refreshLabel = inRepoStreet ? 'Refresh repos' : 'Refresh';
+    const refreshLabel = inRepoStreet ? 'Refresh projects' : 'Refresh';
     const labelNode = refreshButton.querySelector('.btn-label');
     if (labelNode) labelNode.textContent = refreshLabel;
-    refreshButton.title = inRepoStreet ? 'Refresh repositories' : 'Refresh fleet data';
+    refreshButton.title = inRepoStreet ? 'Refresh projects' : 'Refresh fleet data';
     refreshButton.setAttribute('aria-label', refreshButton.title);
   }
   const piCount = document.querySelector('[data-workspace="pi"] .workspace-count');
   if (piCount) {
     // The Fleet view already shows online/total hosts; use this badge for the
-    // actionable number instead, matching Repo street's attention count.
+    // actionable number instead, matching Repos' attention count.
     const updates = Number(state.summary?.updates_available) || 0;
     piCount.textContent = updates ? String(updates) : '';
     piCount.classList.toggle('hidden', !updates);
@@ -366,7 +366,7 @@ function renderShell() {
         <div class="nav-label">Views</div>
         ${PI_NAV.map((item) => navLink(item)).join('')}
       </nav>
-      <nav class="nav nav-workspace hidden" data-workspace-nav="repos" aria-label="Repo street views">
+      <nav class="nav nav-workspace hidden" data-workspace-nav="repos" aria-label="Repos views">
         <div class="nav-label">Views</div>
         ${REPO_NAV.map((item) => navLink(item)).join('')}
       </nav>
@@ -405,7 +405,7 @@ function renderShell() {
       await api.post('/api/refresh');
       const inRepos = ['repos', 'repo-street', 'repo-pulse'].includes(ctx.route?.name);
       if (inRepos) await api.post('/api/repos/refresh');
-      ui.toast(inRepos ? 'Refreshing repositories' : 'Refreshing fleet', 'ok');
+      ui.toast(inRepos ? 'Refreshing projects' : 'Refreshing fleet', 'ok');
       setTimeout(() => ctx.refreshState({ force: true }), 900);
     } catch (error) {
       ui.toast('Could not refresh', 'err', ui.errorText(error));

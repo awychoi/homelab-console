@@ -4710,7 +4710,7 @@
     "checked_at": 1793761311,
     "checked": 12,
     "errors": 0,
-    "message": "12 repo(s) checked"
+    "message": "12 project(s) checked"
    },
    "connectivity": {
     "state": "done",
@@ -4749,15 +4749,15 @@
     },
     {
      "id": "repos",
-     "label": "Scanning repositories",
+     "label": "Scanning projects",
      "state": "done",
-     "detail": "12 repositories"
+     "detail": "12 projects"
     },
     {
      "id": "gitea",
      "label": "Checking the Gitea backup",
      "state": "done",
-     "detail": "12 repositories compared"
+     "detail": "12 projects compared"
     }
    ]
   }

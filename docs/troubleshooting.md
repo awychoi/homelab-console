@@ -37,21 +37,21 @@ logs on disk; they usually say more than the UI banner.
 | Compose validation fails | Usually a missing `.env` value or invalid YAML; the error is in the run log and deploy dialog. |
 | Compose parse error in the console | The built-in parser is line-based and intentionally small. Keep the top-level `services:` block conventional; the console will not adopt unusual YAML shapes. |
 | Stacks shows “Ignored nested stack layout” | Stack discovery is exactly `stacks/<host>/<stack>/<compose-file>`. Move the reported file up to that shape; files nested inside a valid stack are still pushed as assets. |
-| Repo street finds no repositories | The configured folder is scanned recursively, but hidden and generated folders (`node_modules`, `.venv`, `build`, `dist`, `target`) and nested repos inside a repo are skipped. Choose the repo/folder itself, then use **Manage repos…** to check what was discovered. |
+| Repos finds no projects | The configured folder is scanned recursively, but hidden and generated folders (`node_modules`, `.venv`, `build`, `dist`, `target`) and nested projects inside a project are skipped. Choose the project folder itself, then use **Manage projects…** to check what was discovered. |
 | New file says it already exists | The path is unique per stack; pick another name or edit the existing file in the Files tab. |
 | GitHub checks rate-limited | Add a GitHub token in Settings; Docker Hub needs none. |
 | Update fails with `no matching manifest for linux/arm64/v8` | The upstream tag does not contain an image for that host's CPU yet (often a release still publishing its arm64 build). The compose files were already rolled back, so the running container is untouched. Rebuild/update the console: release checks index Docker Hub platforms per architecture and will not offer that tag to an arm64 host. If the official per-arch image exists (for example `arm64v8/caddy:2.11.9` while `library/caddy:2.11.9` is amd64-only), it is a valid temporary pin and the console tracks it as a normal Docker Hub source. Otherwise retry after upstream publishes the missing build. |
 | Update rolls back even though every container says `running/healthy` | Verify also opens each published loopback TCP port. Look for `ports failing:` in the run log or `port probe failed:` in the error; a healthy container with a closed port fails by design. Check the compose `ports:` mapping and that the process listens on it. Builds before 2026-11-05 used a probe form that always reported failure for stacks with published ports; update to the fixed build. |
 | An image says **unmanaged** or its check fails | Open **Settings → Update sources**, pick the detected image, and add a Docker Hub or GitHub source. `quay.io` and private registries are deliberately not guessed. |
 | A stack should be excluded from auto-update | Open the stack → **Safety & backup**, set the level to **critical**, and save. |
-| Gitea says “not checked” after a commit | The console rechecks the affected repo after a commit or GitHub push. If it still says not checked, press **Check Gitea**. |
-| Gitea repo missing / create fails | Push-to-create must be enabled for that Gitea owner, or create an empty repo with the same owner/name once. A GitHub push alone does not create it. |
+| Gitea says “not checked” after a commit | The console rechecks the affected project after a commit or GitHub push. If it still says not checked, press **Check Gitea**. |
+| Gitea project missing / create fails | Push-to-create must be enabled for that Gitea owner, or create an empty project with the same owner/name once. A GitHub push alone does not create it. |
 | Gitea says token needed | Set it in Settings (source) or the app's ⌘, window (native app), or authenticate the git credential helper. |
 | `Gitea URL must use https…` | Use an `https://` URL for a non-loopback Gitea, or set `HLC_GITEA_ALLOW_HTTP=1` only on a trusted network; the token travels as a header. |
-| Gitea sync asks for a reviewed dry run | Run the Gitea dry run from the repo row, review the refs, then sync. A changed ref set returns a stale-preview error instead of force-pushing. |
-| Repo street says “unsafe local Git configuration” | The repository defines an executable local config: `url.*.insteadOf`, a shell/absolute credential helper, a filter, gpg/include or a TLS/proxy override. Remove that repo-local config (or use a terminal) before letting the console act on it. A normal `pushurl`, `core.hooksPath` or `osxkeychain` helper is fine. |
+| Gitea sync asks for a reviewed dry run | Run the Gitea dry run from the project row, review the refs, then sync. A changed ref set returns a stale-preview error instead of force-pushing. |
+| Repos says “unsafe local Git configuration” | The project defines an executable local config: `url.*.insteadOf`, a shell/absolute credential helper, a filter, gpg/include or a TLS/proxy override. Remove that project-local config (or use a terminal) before letting the console act on it. A normal `pushurl`, `core.hooksPath` or `osxkeychain` helper is fine. |
 | A `.env` file is missing from the commit dialog | That is intentional: `.env`, `.env.*` and `*.env` are filtered server-side, even if the workspace `.gitignore` is incomplete. |
-| Gitea says “unrelated history” | The local repo was rewritten while the mirror still holds the old history. Rename the Gitea repo to keep the old backup, or delete it and let push-to-create make a fresh mirror. |
+| Gitea says “unrelated history” | The local project was rewritten while the mirror still holds the old history. Rename the Gitea project to keep the old backup, or delete it and let push-to-create make a fresh mirror. |
 
 ## Current limits
 
@@ -74,7 +74,7 @@ These are deliberate product boundaries, not bugs to work around.
   digest is not detected. Digest-pinned stacks are reported as digest-pinned.
 - **Text stack files.** Files larger than 2 MB or non-UTF-8 are not pushed by the
   console. `.env` values are visible in the local file editor by design.
-- **GitHub/Gitea, not a general Git host manager.** Repo street pushes the
+- **GitHub/Gitea, not a general Git host manager.** Repos pushes the
   current branch, mirrors to one configured Gitea owner, and does not create
   GitHub repos, rebase, pull or manage pull requests.
 
