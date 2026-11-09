@@ -347,8 +347,11 @@ function renderShell() {
     <div class="app-shell">
     <aside class="sidebar">
       <a class="brand" href="#/fleet" aria-label="Homelab Console home">
-        <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 100 100"><rect x="18" y="6" width="21" height="21" rx="6" fill="#FFFFFF"/><rect x="18" y="71" width="21" height="21" rx="6" fill="#FFFFFF"/><rect x="59" y="35" width="21" height="21" rx="6" fill="#FFFFFF"/><rect x="59" y="71" width="21" height="21" rx="6" fill="#5B8DFF"/><rect x="24" y="27" width="9" height="44" fill="#FFFFFF"/><rect x="24" y="41" width="35" height="9" fill="#FFFFFF"/><rect x="65" y="56" width="9" height="15" fill="#FFFFFF"/></svg></span>
-        <span class="brand-text"><strong>Homelab</strong><span>console</span></span>
+        <span class="brand-lockup">
+          <img class="brand-logo brand-logo-dark" src="/brand-dark.svg" alt="" width="278" height="90">
+          <img class="brand-logo brand-logo-light" src="/brand-light.svg" alt="" width="278" height="90">
+        </span>
+        <img class="brand-mark" src="/favicon.svg" alt="" width="34" height="34">
       </a>
       <nav class="workspace-switch" aria-label="Workspaces">
         ${WORKSPACES.map((item) => `<a class="workspace-item" data-workspace="${item.id}" href="${item.href}" aria-label="${item.label}" title="${item.label}">

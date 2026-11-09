@@ -319,23 +319,25 @@ button { cursor: pointer; }
   z-index: 30;
 }
 
+/* Full lockup on wide sidebars; the favicon mark carries the compact rail. */
 .brand {
   display: flex;
   align-items: center;
   gap: 11px;
   padding: 4px 8px 20px;
 }
+.brand-lockup { display: block; width: 100%; min-width: 0; }
+.brand-logo { display: block; width: 100%; height: auto; }
+.brand-logo-light { display: none; }
+[data-theme="light"] .brand-logo-dark { display: none; }
+[data-theme="light"] .brand-logo-light { display: block; }
 .brand-mark {
+  display: none;
   width: 34px; height: 34px; flex: none;
   border-radius: 9px;
-  display: grid; place-items: center;
   background: #07090D;
   border: 1px solid rgba(255, 255, 255, .10);
 }
-.brand-mark svg { width: 26px; height: 26px; display: block; }
-.brand-text { display: flex; flex-direction: column; line-height: 1.15; }
-.brand-text strong { font-size: 14.5px; letter-spacing: .02em; }
-.brand-text span { font-size: 10.5px; color: var(--dim); letter-spacing: .14em; text-transform: uppercase; }
 
 .nav { display: flex; flex-direction: column; gap: 3px; }
 .nav-label {
@@ -1275,7 +1277,9 @@ textarea.code {
 }
 @media (max-width: 900px) {
   :root { --sidebar-w: 74px; }
-  .brand-text, .nav-text, .nav-label { display: none; }
+  .nav-text, .nav-label { display: none; }
+  .brand-lockup { display: none; }
+  .brand-mark { display: block; }
   .brand { justify-content: center; padding-left: 0; padding-right: 0; }
   .nav-item { justify-content: center; padding: 11px 0; }
   .nav-count { display: none; }
