@@ -4,6 +4,8 @@ order: 30
 kicker: Dashboard · Raspberry Pi · Git Repos
 banner: docs/assets/screenshots/fleet.png
 banner_alt: Homelab Console fleet dashboard, status, and container counts.
+logo: docs/assets/workbench-logo.svg
+logo_light: docs/assets/workbench-logo-light.svg
 meta:
   - label: The hard part
     value: Knowing what not to build.
