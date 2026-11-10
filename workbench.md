@@ -7,10 +7,11 @@ banner_alt: Homelab Console fleet dashboard, status, and container counts.
 logo: docs/assets/workbench-logo.svg
 logo_light: docs/assets/workbench-logo-light.svg
 meta:
-  - label: The hard part
-    value: Knowing what not to build.
+  - label: The experiment
+    value: Engineer my way out of managing a fleet of Raspberry Pis, a sprawl of services, repos to review and sync, and Gitea backups.
   - label: What I learned
-    value: Build the undo first. Bad update, service down - rollback in seconds, not hours.
+    value: Yes - and include snapshot and rollback functions.
+
 link:
   href: https://github.com/awychoi/homelab-console
 ---
