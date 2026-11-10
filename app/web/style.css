@@ -326,7 +326,7 @@ button { cursor: pointer; }
   gap: 11px;
   padding: 4px 8px 20px;
 }
-.brand-lockup { display: block; width: 100%; min-width: 0; }
+.brand-lockup { display: block; width: 75%; max-width: 100%; min-width: 0; }
 .brand-logo { display: block; width: 100%; height: auto; }
 .brand-logo-light { display: none; }
 [data-theme="light"] .brand-logo-dark { display: none; }
