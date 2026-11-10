@@ -100,7 +100,10 @@ Repos is optional and not needed to deploy to a Pi.
   `HLC_GITEA_ALLOW_HTTP=1` for a network you trust.
 - Gitea is a backup, not a second push remote. It compares refs at startup,
   after a commit or GitHub push for the affected project, and on demand. Use
-  **Check Gitea** then sync, or **Queue both**.
+  **Check Gitea** then sync, or **Queue both**. Prune and force-update are
+  configured in **Settings → Repos**; the destructive prune warning lives there,
+  and a sync does not prompt again. With prune off, extra Gitea refs are left
+  in place and do not mark the backup as behind.
 - A missing Gitea project relies on Gitea's push-to-create. The GitHub owner must
   match `gitea_owner`.
 - In the native app, the Gitea token is owned by the app: use

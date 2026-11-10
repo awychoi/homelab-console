@@ -379,11 +379,13 @@ pull, network call or destructive git action is performed by Pulse.
   not create or manage PRs, and for a fork `origin` must point at the fork you
   can write to.
 - **Gitea** is a backup mirror: `Check Gitea` compares local heads/tags with
-  the remote on demand, and a sync previews the ref changes before applying
-  the same all-heads/all-tags `prune` + `force` push as `gitea-tools`. Missing
-  Gitea projects rely on push-to-create. LFS, shallow and unrelated-history
-  projects are skipped with a reason; the duplicate-history check runs before
-  any write.
+  the remote on demand, and a sync previews the ref changes before applying an
+  all-heads/all-tags push. **Prune** and **force** are configured once in
+  **Settings → Repos**; enabling prune shows the destructive warning there, and
+  a sync does not ask for another confirmation. With prune off, extra refs on
+  Gitea are left in place and do not count as out of sync. Missing Gitea
+  projects rely on push-to-create. LFS, shallow and unrelated-history projects
+  are skipped with a reason; the duplicate-history check runs before any write.
 - **Queue both** is a serial queue: GitHub push (when the current branch is
   ahead), then Gitea mirror, per project. If GitHub fails, Gitea is still backed
   up and the queue continues. The full run is streamed in the usual run log
@@ -730,7 +732,7 @@ Persisted in `.hlc/config.json` (mode 600) and editable in Settings.
 | `gitea_url` | empty | backup server base URL; empty disables Gitea |
 | `gitea_owner` | empty | must match the GitHub owner; empty disables Gitea |
 | `gitea_timeout_s` | 120 | push/fetch timeout; ref checks cap at 15s |
-| `gitea_prune` | true | delete Gitea refs absent locally |
+| `gitea_prune` | true | delete Gitea refs absent locally; warning shown in Settings |
 | `gitea_force` | true | allow rewritten history to update Gitea |
 | `gitea_check_on_start` | true | automatic startup and post-action Gitea ref checks |
 | `repo_poll_interval_s` | 10 | local dirty/ahead scan interval (5–120) |
@@ -753,16 +755,16 @@ sent as a header, so prefer HTTPS.
 .venv/bin/python -m unittest discover -s app/tests -v
 ```
 
-The suite is stdlib-only (163 tests) and covers compose parsing, nested file
+The suite is stdlib-only (164 tests) and covers compose parsing, nested file
 creation, stack-layout warnings, plan hashing, pin rewriting, host round-trips,
 SSH config edits, version selection, managed targets, release-age metadata,
 source normalization/overrides, per-stack safety profiles, database-dump
 listing, path safety, snapshots, recursive project discovery and selection, and
 the Repos workspace: porcelain-v2 status, selective commits, ignored tracked paths,
 ahead/behind-origin reporting, connectivity probes, one-repo post-action Gitea
-checks, VS Code launch, Gitea create/update/prune/force, unrelated-history and
-LFS skips, token masking, the queue failure policy and the encoded-id HTTP
-route. There is no build step; edit `app/web/`, reload the page, and the server
+checks, VS Code launch, Gitea create/update/prune/force (including prune-off
+extras), unrelated-history and LFS skips, token masking, the queue failure
+policy and the encoded-id HTTP route. There is no build step; edit `app/web/`, reload the page, and the server
 serves the new modules with `no-cache` (the HTML is served `no-store`).
 
 ### UI conventions

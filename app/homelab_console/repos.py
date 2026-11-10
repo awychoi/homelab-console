@@ -1057,14 +1057,18 @@ def _compare_refs(local: dict[str, str], remote: dict[str, str]) -> dict[str, An
     }
 
 
-def _counts_payload(local: dict[str, str], comparison: dict[str, Any] | None) -> dict[str, Any]:
+def _counts_payload(
+    local: dict[str, str],
+    comparison: dict[str, Any] | None,
+    prune: bool = True,
+) -> dict[str, Any]:
     payload = {"local": len(local), "remote": 0, "push": 0, "prune": 0, "changed": 0}
     if comparison:
         payload.update(
             {
                 "remote": len(local) - len(comparison["missing"]) + len(comparison["extra"]),
                 "push": comparison["push_count"],
-                "prune": comparison["prune_count"],
+                "prune": comparison["prune_count"] if prune else 0,
                 "changed": len(comparison["changed"]),
             }
         )
@@ -1097,7 +1101,7 @@ def check_gitea(repo: Path, cfg: GiteaConfig, token: str) -> dict[str, Any]:
             "detail": "not in Gitea — a sync will create it",
             "target": target,
             "checked_at": checked,
-            "counts": _counts_payload(local, None),
+            "counts": _counts_payload(local, None, cfg.prune),
         }
     if probe.kind in ("auth", "unreachable", "error"):
         detail = probe.detail or "could not read Gitea"
@@ -1108,16 +1112,19 @@ def check_gitea(repo: Path, cfg: GiteaConfig, token: str) -> dict[str, Any]:
             "detail": detail,
             "target": target,
             "checked_at": checked,
-            "counts": _counts_payload(local, None),
+            "counts": _counts_payload(local, None, cfg.prune),
         }
     comparison = _compare_refs(local, probe.refs)
-    if comparison["synced"]:
+    if not comparison["push_count"] and (not cfg.prune or not comparison["prune_count"]):
+        detail = "all refs match Gitea"
+        if comparison["extra"]:
+            detail = f"{len(comparison['extra'])} extra ref(s) left on Gitea"
         return {
             "status": "synced",
-            "detail": "all refs match Gitea",
+            "detail": detail,
             "target": target,
             "checked_at": checked,
-            "counts": _counts_payload(local, comparison),
+            "counts": _counts_payload(local, comparison, cfg.prune),
         }
     bits = []
     if comparison["push_count"]:
@@ -1129,7 +1136,7 @@ def check_gitea(repo: Path, cfg: GiteaConfig, token: str) -> dict[str, Any]:
         "detail": " · ".join(bits) or "refs differ",
         "target": target,
         "checked_at": checked,
-        "counts": _counts_payload(local, comparison),
+        "counts": _counts_payload(local, comparison, cfg.prune),
         "comparison": {
             "missing": comparison["missing"][:100],
             "changed": comparison["changed"][:100],
@@ -1279,7 +1286,7 @@ def sync_repo(
                 "ok": True,
                 "status": "would-create",
                 "detail": f"would create {target}",
-                "counts": _counts_payload(local, None),
+                "counts": _counts_payload(local, None, cfg.prune),
                 "review_hash": current_review,
             }
         try:
@@ -1291,30 +1298,37 @@ def sync_repo(
             "ok": True,
             "status": "created",
             "detail": f"created {target}",
-            "counts": _counts_payload(local, None),
+            "counts": _counts_payload(local, None, cfg.prune),
         }
 
-    if probe.refs == local:
+    comparison = _compare_refs(local, probe.refs)
+    if not comparison["push_count"] and (not cfg.prune or not comparison["prune_count"]):
+        detail = f"{len(local)} ref(s) already match"
+        if comparison["extra"]:
+            detail = f"{detail}; {len(comparison['extra'])} extra left on Gitea"
         return {
             **base,
             "ok": True,
             "status": "up-to-date",
-            "detail": f"{len(local)} ref(s) already match",
-            "counts": _counts_payload(local, _compare_refs(local, probe.refs)),
+            "detail": detail,
+            "counts": _counts_payload(local, comparison, cfg.prune),
         }
 
-    comparison = _compare_refs(local, probe.refs)
     if dry_run:
         pieces = [f"would sync {comparison['push_count']} ref(s)"]
         if comparison["prune_count"]:
-            pieces.append(f"prune {comparison['prune_count']} extra")
+            pieces.append(
+                f"prune {comparison['prune_count']} extra"
+                if cfg.prune
+                else f"leave {comparison['prune_count']} extra"
+            )
         pieces.append("history check skipped")
         return {
             **base,
             "ok": True,
             "status": "would-sync",
             "detail": "; ".join(pieces),
-            "counts": _counts_payload(local, comparison),
+            "counts": _counts_payload(local, comparison, cfg.prune),
             "comparison": {
                 "missing": comparison["missing"][:100],
                 "changed": comparison["changed"][:100],
@@ -1333,7 +1347,7 @@ def sync_repo(
             "ok": True,
             "status": "synced",
             "detail": "initialized an empty Gitea project",
-            "counts": _counts_payload(local, comparison),
+            "counts": _counts_payload(local, comparison, cfg.prune),
         }
 
     try:
@@ -1355,13 +1369,17 @@ def sync_repo(
         return {**base, "status": "error", "detail": str(exc)}
     pieces = [f"synced {len(local)} ref(s)"]
     if comparison["prune_count"]:
-        pieces.append(f"pruned {comparison['prune_count']}")
+        pieces.append(
+            f"pruned {comparison['prune_count']}"
+            if cfg.prune
+            else f"left {comparison['prune_count']} extra"
+        )
     return {
         **base,
         "ok": True,
         "status": "synced",
         "detail": "; ".join(pieces),
-        "counts": _counts_payload(local, comparison),
+        "counts": _counts_payload(local, comparison, cfg.prune),
     }
 
 

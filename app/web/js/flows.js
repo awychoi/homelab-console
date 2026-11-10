@@ -1115,7 +1115,6 @@ export function showGiteaSync(ctx, repo) {
     toast('Git LFS project skipped', 'warn', 'Gitea sync is deliberately disabled for LFS projects.');
     return;
   }
-  let destructive = false;
   const ref = openModal({
     title: 'Gitea backup',
     subtitle: `${repo.rel} → ${esc(repo.gitea.target)}`,
@@ -1135,7 +1134,7 @@ export function showGiteaSync(ctx, repo) {
     }[dry.status] || dry.status;
     const extra = comparison.extra || [];
     const changed = comparison.changed || [];
-    destructive = extra.length > 0 || changed.length > 0;
+    const pruneOn = ctx.bootstrap?.settings?.gitea_prune !== false;
     const refList = (label, values) => values.length
       ? `<div class="repo-ref-list"><span class="mini-label">${esc(label)}</span>${values.slice(0, 8).map((value) => `<span class="chip mono">${esc(value)}</span>`).join('')}${values.length > 8 ? `<span class="muted tiny">+${values.length - 8}</span>` : ''}</div>`
       : '';
@@ -1147,17 +1146,13 @@ export function showGiteaSync(ctx, repo) {
         <div class="kv-row"><div class="kv-key">Safety</div><div class="kv-val">${dry.status === 'would-sync' || dry.status === 'would-create' ? 'a duplicate-history check runs before the push' : 'no write is needed'}</div></div>
       </div>
       ${dry.status === 'skip' ? `<div class="info-box mt-2">${icon('info')}<div>${esc(dry.detail || 'Skipped.')}</div></div>` : ''}
-      ${dry.status === 'would-sync' ? `<div class="warn-box mt-2">${icon('alert')}<div><strong>This is a mirror, not a merge.</strong> Gitea refs missing locally are deleted when prune is on, and rewritten refs are force-updated.</div></div>` : ''}
       ${refList('refs to sync', [...(comparison.missing || []), ...changed])}
-      ${refList('extra refs that prune would delete', extra)}
-      ${destructive ? `<label class="check mt-2"><input type="checkbox" id="repo-gitea-destructive"><span>I reviewed the refs above and want to update the Gitea backup with <span class="mono">prune + force</span>.</span></label>` : ''}`;
+      ${refList(pruneOn ? 'extra refs prune will delete' : 'extra refs left untouched', extra)}`;
     const canApply = dry.ok && !['up-to-date', 'skip'].includes(dry.status);
-    ref.footer.innerHTML = `<div class="spacer"></div><button class="btn ghost" data-cancel>Cancel</button>${canApply ? `<button class="btn primary" data-apply ${destructive ? 'disabled' : ''}>Sync Gitea</button>` : `<button class="btn primary" data-close>Close</button>`}`;
+    ref.footer.innerHTML = `<div class="spacer"></div><button class="btn ghost" data-cancel>Cancel</button>${canApply ? `<button class="btn primary" data-apply>Sync Gitea</button>` : `<button class="btn primary" data-close>Close</button>`}`;
     ref.footer.querySelector('[data-cancel]')?.addEventListener('click', ref.close);
     ref.footer.querySelector('[data-close]')?.addEventListener('click', ref.close);
-    const destructiveCheck = ref.body.querySelector('#repo-gitea-destructive');
     const applyButton = ref.footer.querySelector('[data-apply]');
-    if (destructiveCheck) destructiveCheck.addEventListener('change', () => { applyButton.disabled = !destructiveCheck.checked; });
     applyButton?.addEventListener('click', async () => {
       const restore = busy(applyButton, 'Syncing…');
       try {
@@ -1188,7 +1183,6 @@ export function showPushBoth(ctx, repos) {
     toast('Select at least one project', 'warn', 'Use the row checkboxes to choose what enters the queue.');
     return;
   }
-  const destructive = selected.some((repo) => (repo.gitea?.counts?.prune || 0) > 0 || (repo.gitea?.counts?.changed || 0) > 0);
   const unknown = selected.filter((repo) => repo.gitea?.status === 'unknown').length;
   const rows = selected.map((repo) => {
     const ahead = repo.ahead === null || repo.ahead === undefined ? 'new branch' : `${repo.ahead} ahead`;
@@ -1210,19 +1204,15 @@ export function showPushBoth(ctx, repos) {
     subtitle: `${selected.length} project(s) → GitHub then Gitea`,
     className: 'wide',
     body: `<div class="info-box">${icon('info')}<div>GitHub receives the current branch, then Gitea receives every local branch and tag. If GitHub fails, the Gitea backup still runs and the queue continues.</div></div>
-      ${destructive ? `<div class="warn-box mt-2">${icon('alert')}<div><strong>A checked Gitea project has refs that prune would delete, or rewritten refs.</strong> Review the per-project Gitea previews first if you are unsure.</div></div>` : ''}
       ${unknown ? `<div class="warn-box mt-2">${icon('clock')}<div>${ui.plural(unknown, 'project')} not checked against Gitea yet. The queue will mirror them and run the duplicate-history check before writing.</div></div>` : ''}
       <div class="table-wrap mt-2"><table class="data">
         <thead><tr><th>Project</th><th>GitHub</th><th>Gitea</th></tr></thead>
         <tbody>${rows}</tbody>
-      </table></div>
-      ${destructive ? `<label class="check mt-2"><input type="checkbox" id="repo-queue-destructive"><span>I understand the Gitea backup is an exact mirror using <span class="mono">prune + force</span>.</span></label>` : ''}`,
-    footer: `<div class="spacer"></div><button class="btn ghost" data-cancel>Cancel</button><button class="btn primary" data-queue ${destructive ? 'disabled' : ''}>Queue ${selected.length} project(s)</button>`,
+      </table></div>`,
+    footer: `<div class="spacer"></div><button class="btn ghost" data-cancel>Cancel</button><button class="btn primary" data-queue>Queue ${selected.length} project(s)</button>`,
   });
   ref.footer.querySelector('[data-cancel]').addEventListener('click', ref.close);
-  const destructiveCheck = ref.body.querySelector('#repo-queue-destructive');
   const queueButton = ref.footer.querySelector('[data-queue]');
-  if (destructiveCheck) destructiveCheck.addEventListener('change', () => { queueButton.disabled = !destructiveCheck.checked; });
   queueButton.addEventListener('click', async () => {
     const restore = busy(queueButton, 'Queueing…');
     try {

@@ -77,7 +77,8 @@ function repoSettingsHtml(ctx) {
             <div class="field"><label for="set-gitea-timeout">Network timeout (s)</label><input id="set-gitea-timeout" type="number" min="15" max="900" value="${esc(settings.gitea_timeout_s || 120)}"></div>
             <div class="field"><label for="set-repo-poll">Local scan interval</label><select id="set-repo-poll">${[10, 30, 60, 120].map((value) => `<option value="${value}" ${Number(settings.repo_poll_interval_s) === value ? 'selected' : ''}>${value} seconds</option>`).join('')}</select></div>
           </div>
-          <label class="check"><input type="checkbox" id="set-gitea-prune" ${settings.gitea_prune !== false ? 'checked' : ''}><span><strong>Prune Gitea refs.</strong> Delete branches and tags on Gitea that no longer exist locally. This is the exact-mirror mode used by gitea-tools.</span></label>
+          <label class="check"><input type="checkbox" id="set-gitea-prune" ${settings.gitea_prune !== false ? 'checked' : ''}><span><strong>Prune extra Gitea refs.</strong> Delete branches and tags on Gitea that no longer exist locally, keeping the backup an exact mirror.</span></label>
+          <div id="set-gitea-prune-warning" class="warn-box mt-1 ${settings.gitea_prune !== false ? '' : 'hidden'}">${icon('alert')}<div><strong>Prune deletes refs from Gitea.</strong> Branches and tags missing locally are removed on the next Gitea sync. Only enable this if Gitea is a disposable backup, not a merge target. The sync itself will not ask again.</div></div>
           <label class="check"><input type="checkbox" id="set-gitea-force" ${settings.gitea_force !== false ? 'checked' : ''}><span><strong>Force-update Gitea refs.</strong> Allow a rewritten local history to replace the Gitea backup. Never applies to GitHub.</span></label>
           <label class="check"><input type="checkbox" id="set-gitea-startup" ${settings.gitea_check_on_start !== false ? 'checked' : ''}><span><strong>Check Gitea automatically.</strong> One ref comparison at startup, plus the affected project after a commit or GitHub push. No timer; <strong>Check Gitea</strong> still works at any time.</span></label>
           <div class="btn-group mt-1"><button class="btn primary" data-action="save-repo-settings">Save project settings</button><button class="btn ghost" type="button" data-action="manage-repos">Manage projects…</button><a class="btn ghost" href="#/repos">Open Projects</a></div>
@@ -758,6 +759,11 @@ export default {
           }
         });
       }
+      const pruneInput = page.querySelector('#set-gitea-prune');
+      const pruneWarning = page.querySelector('#set-gitea-prune-warning');
+      const syncPruneWarning = () => pruneWarning?.classList.toggle('hidden', !pruneInput?.checked);
+      pruneInput?.addEventListener('change', syncPruneWarning);
+      syncPruneWarning();
       page.querySelector('[data-action="save-repo-settings"]')?.addEventListener('click', async (event) => {
         const button = event.currentTarget;
         button.disabled = true;

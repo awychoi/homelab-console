@@ -494,6 +494,37 @@ class GiteaSyncTests(unittest.TestCase):
             self.assertEqual(refs(local), refs(target))
             self.assertIn("pruned", result["detail"])
 
+    def test_prune_off_leaves_extra_refs(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            local, target, cfg = self._fixture(Path(tmp).resolve())
+            repos.sync_repo(local, cfg, "")
+            tip = run("git", "rev-parse", "HEAD", cwd=target).stdout.strip()
+            run("git", "branch", "extra", tip, cwd=target)
+            run("git", "tag", "extra-tag", tip, cwd=target)
+            no_prune = repos.GiteaConfig(
+                root=cfg.root,
+                url=cfg.url,
+                owner=cfg.owner,
+                timeout=cfg.timeout,
+                prune=False,
+                force=cfg.force,
+            )
+
+            checked = repos.check_gitea(local, no_prune, "")
+            self.assertEqual(checked["status"], "synced")
+            self.assertIn("extra ref(s) left on Gitea", checked["detail"])
+            self.assertEqual(checked["counts"]["prune"], 0)
+
+            preview = repos.sync_repo(local, no_prune, "", dry_run=True)
+            self.assertEqual(preview["status"], "up-to-date")
+            self.assertIn("extra left on Gitea", preview["detail"])
+            self.assertEqual(preview["counts"]["prune"], 0)
+
+            result = repos.sync_repo(local, no_prune, "")
+            self.assertEqual(result["status"], "up-to-date")
+            self.assertIn("refs/heads/extra", refs(target))
+            self.assertNotIn("refs/heads/extra", refs(local))
+
     def test_unrelated_history_is_skipped(self):
         with tempfile.TemporaryDirectory() as tmp:
             base = Path(tmp).resolve()
