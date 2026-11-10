@@ -2,7 +2,7 @@ import * as ui from '../ui.js';
 import { pageHead, stateBanner, statTile, emptyState, giteaAuthBanner } from './common.js';
 import { nativePick } from '../native.js';
 import { addRoot, bindRootRemoval, openRepoSelection, readRoots, rootsFromSettings, rootsHtml, rootsLabel } from '../repoRoots.js';
-import { showGiteaSync, showPushBoth, showRepoCommit, refreshRemoteSoon } from '../flows.js';
+import { syncGitea, showPushBoth, showRepoCommit, refreshRemoteSoon } from '../flows.js';
 
 const { esc, icon } = ui;
 
@@ -112,7 +112,7 @@ function giteaCell(repo) {
   if (status === 'behind') {
     const push = gitea.counts?.push || 0;
     const prune = gitea.counts?.prune || 0;
-    return `<button type="button" class="chip chip-action warn" data-repo-action="gitea" title="Preview and sync the Gitea backup" aria-label="Sync ${esc(repo.rel)} to Gitea">${icon('git', 11)} ${push ? `${push} ref${push === 1 ? '' : 's'} to sync` : 'refs differ'}</button>
+    return `<button type="button" class="chip chip-action warn" data-repo-action="gitea" title="Sync the Gitea backup" aria-label="Sync ${esc(repo.rel)} to Gitea">${icon('git', 11)} ${push ? `${push} ref${push === 1 ? '' : 's'} to sync` : 'refs differ'}</button>
       ${prune ? `<span class="chip bad">${prune} to prune</span>` : ''}
       <span class="sub">checked ${esc(ui.ago(gitea.checked_at))}</span>`;
   }
@@ -472,7 +472,17 @@ export default {
             return;
           }
           if (action === 'gitea') {
-            showGiteaSync(ctx, repo);
+            const original = button.innerHTML;
+            button.disabled = true;
+            button.setAttribute('aria-busy', 'true');
+            button.innerHTML = '<span class="spinner sm"></span> Syncing…';
+            try {
+              await syncGitea(ctx, repo);
+            } finally {
+              button.disabled = false;
+              button.removeAttribute('aria-busy');
+              button.innerHTML = original;
+            }
             return;
           }
           if (action === 'open') {

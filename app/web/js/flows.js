@@ -1012,15 +1012,6 @@ export function showCommit(ctx) {
 /* --------------------------------------------------------------- repo fleet */
 const repoApi = (repo, suffix = '') => `/api/repos/${encodeURIComponent(repo.id)}${suffix}`;
 
-function repoStatusPill(status, label = null) {
-  const tone = {
-    ok: 'ok', synced: 'ok', pushed: 'ok',
-    pending: 'neutral', queued: 'neutral', skipped: 'neutral', unknown: 'neutral', checking: 'info',
-    running: 'info', behind: 'warn', missing: 'warn', partial: 'warn',
-    failed: 'bad', error: 'bad', auth: 'bad', unreachable: 'bad',
-  }[status] || 'neutral';
-  return ui.pill(tone, label || status);
-}
 
 export function showRepoCommit(ctx, repo) {
   const allEntries = repo.entries || [];
@@ -1106,75 +1097,35 @@ export function showRepoCommit(ctx, repo) {
   });
 }
 
-export function showGiteaSync(ctx, repo) {
+export async function syncGitea(ctx, repo) {
   if (!repo.gitea?.target) {
     toast('No Gitea target', 'warn', repo.gitea?.detail || 'This project has no GitHub origin or its owner does not match Gitea.');
-    return;
+    return false;
   }
   if (repo.lfs) {
     toast('Git LFS project skipped', 'warn', 'Gitea sync is deliberately disabled for LFS projects.');
-    return;
+    return false;
   }
-  const ref = openModal({
-    title: 'Gitea backup',
-    subtitle: `${repo.rel} → ${esc(repo.gitea.target)}`,
-    body: `<div class="repo-sync-loading"><span class="spinner"></span><span class="muted">Checking Gitea refs and preparing the dry run…</span></div>`,
-    footer: `<div class="spacer"></div><button class="btn ghost" data-cancel>Cancel</button>`,
-  });
-  ref.footer.querySelector('[data-cancel]').addEventListener('click', ref.close);
-
-  const renderPreview = (dry) => {
-    const counts = dry.counts || {};
-    const comparison = dry.comparison || {};
-    const title = {
-      'up-to-date': 'Already in sync',
-      'would-create': 'Would create this project in Gitea',
-      'would-sync': 'Would update the Gitea backup',
-      skip: 'Nothing to do',
-    }[dry.status] || dry.status;
-    const extra = comparison.extra || [];
-    const changed = comparison.changed || [];
-    const pruneOn = ctx.bootstrap?.settings?.gitea_prune !== false;
-    const refList = (label, values) => values.length
-      ? `<div class="repo-ref-list"><span class="mini-label">${esc(label)}</span>${values.slice(0, 8).map((value) => `<span class="chip mono">${esc(value)}</span>`).join('')}${values.length > 8 ? `<span class="muted tiny">+${values.length - 8}</span>` : ''}</div>`
-      : '';
-    ref.body.innerHTML = `
-      <div class="repo-sync-head">${repoStatusPill(dry.status, title)}<span class="mono tiny muted">${esc(dry.detail || '')}</span></div>
-      <div class="kv mt-2">
-        <div class="kv-row"><div class="kv-key">Mode</div><div class="kv-val">exact mirror · ${repo.gitea?.target ? 'heads + tags' : ''}${ctx.bootstrap?.settings?.gitea_prune !== false ? ' · prune' : ''}${ctx.bootstrap?.settings?.gitea_force !== false ? ' · force' : ''}</div></div>
-        <div class="kv-row"><div class="kv-key">Refs</div><div class="kv-val mono">${counts.local ?? '—'} local · ${counts.remote ?? '—'} on Gitea${counts.push ? ` · ${counts.push} to sync` : ''}${counts.prune ? ` · ${counts.prune} to prune` : ''}</div></div>
-        <div class="kv-row"><div class="kv-key">Safety</div><div class="kv-val">${dry.status === 'would-sync' || dry.status === 'would-create' ? 'a duplicate-history check runs before the push' : 'no write is needed'}</div></div>
-      </div>
-      ${dry.status === 'skip' ? `<div class="info-box mt-2">${icon('info')}<div>${esc(dry.detail || 'Skipped.')}</div></div>` : ''}
-      ${refList('refs to sync', [...(comparison.missing || []), ...changed])}
-      ${refList(pruneOn ? 'extra refs prune will delete' : 'extra refs left untouched', extra)}`;
-    const canApply = dry.ok && !['up-to-date', 'skip'].includes(dry.status);
-    ref.footer.innerHTML = `<div class="spacer"></div><button class="btn ghost" data-cancel>Cancel</button>${canApply ? `<button class="btn primary" data-apply>Sync Gitea</button>` : `<button class="btn primary" data-close>Close</button>`}`;
-    ref.footer.querySelector('[data-cancel]')?.addEventListener('click', ref.close);
-    ref.footer.querySelector('[data-close]')?.addEventListener('click', ref.close);
-    const applyButton = ref.footer.querySelector('[data-apply]');
-    applyButton?.addEventListener('click', async () => {
-      const restore = busy(applyButton, 'Syncing…');
-      try {
-        const result = await api.post(repoApi(repo, '/gitea/sync'), { review_hash: dry.review_hash || '' });
-        ref.close();
-        await ctx.refreshState({ force: true });
-        refreshRemoteSoon(ctx);
-        toast(result.ok ? 'Gitea backup updated' : 'Gitea sync failed', result.ok ? 'ok' : 'err', result.detail || '');
-      } catch (error) {
-        restore();
-        ref.body.querySelector('.repo-sync-head')?.insertAdjacentHTML('afterend', errorHtml(ui.errorText(error)));
-      }
-    });
-  };
-
-  api.post(repoApi(repo, '/gitea/dry-run'))
-    .then(renderPreview)
-    .catch((error) => {
-      ref.body.innerHTML = errorHtml(ui.errorText(error));
-      ref.footer.innerHTML = `<div class="spacer"></div><button class="btn ghost" data-cancel>Close</button>`;
-      ref.footer.querySelector('[data-cancel]').addEventListener('click', ref.close);
-    });
+  try {
+    const dry = await api.post(repoApi(repo, '/gitea/dry-run'));
+    if (!dry.ok) {
+      toast('Gitea sync failed', 'err', dry.detail || 'The Gitea dry run failed.');
+      return false;
+    }
+    if (!['would-create', 'would-sync'].includes(dry.status)) {
+      await ctx.refreshState({ force: true });
+      toast(dry.status === 'up-to-date' ? 'Gitea already in sync' : 'Nothing to sync', 'ok', dry.detail || '');
+      return true;
+    }
+    const result = await api.post(repoApi(repo, '/gitea/sync'), { review_hash: dry.review_hash || '' });
+    await ctx.refreshState({ force: true });
+    refreshRemoteSoon(ctx);
+    toast(result.ok ? 'Gitea backup updated' : 'Gitea sync failed', result.ok ? 'ok' : 'err', result.detail || '');
+    return result.ok;
+  } catch (error) {
+    toast('Gitea sync failed', 'err', ui.errorText(error));
+    return false;
+  }
 }
 
 export function showPushBoth(ctx, repos) {

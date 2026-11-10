@@ -209,9 +209,10 @@ deselect the ones you do not want to manage.
   build-noise files start unchecked; nothing commits until you click.
 - **Push** sends the current branch to GitHub, using your existing git
   credential helper. It never force-pushes and does not manage pull requests.
-- **Check Gitea** compares local heads/tags with the configured mirror and shows
-  a sync preview. **Queue both** pushes GitHub (when ahead), then mirrors to
-  Gitea. A GitHub failure does not stop the Gitea backup.
+- **Check Gitea** compares local heads/tags with the configured mirror. The
+  project’s Gitea action runs the dry run and syncs in one step; **Queue both**
+  pushes GitHub (when ahead), then mirrors to Gitea. A GitHub failure does not
+  stop the Gitea backup.
 - **Open in VS Code** uses `code -n`, with a fallback to the macOS application.
 
 ## Backup and restore

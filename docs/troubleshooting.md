@@ -48,7 +48,7 @@ logs on disk; they usually say more than the UI banner.
 | Gitea project missing / create fails | Push-to-create must be enabled for that Gitea owner, or create an empty project with the same owner/name once. A GitHub push alone does not create it. |
 | Gitea says token needed | Set it in Settings (source) or the app's ⌘, window (native app), or authenticate the git credential helper. |
 | `Gitea URL must use https…` | Use an `https://` URL for a non-loopback Gitea, or set `HLC_GITEA_ALLOW_HTTP=1` only on a trusted network; the token travels as a header. |
-| Gitea sync asks for a reviewed dry run | Run the Gitea dry run from the project row, review the refs, then sync. A changed ref set returns a stale-preview error instead of force-pushing. |
+| Gitea sync says the preview is stale | The refs changed between the background dry run and the push. Retry the Gitea action; the next dry run returns a fresh hash. The backend refuses a stale preview instead of force-pushing. |
 | Repos says “unsafe local Git configuration” | The project defines an executable local config: `url.*.insteadOf`, a shell/absolute credential helper, a filter, gpg/include or a TLS/proxy override. Remove that project-local config (or use a terminal) before letting the console act on it. A normal `pushurl`, `core.hooksPath` or `osxkeychain` helper is fine. |
 | A `.env` file is missing from the commit dialog | That is intentional: `.env`, `.env.*` and `*.env` are filtered server-side, even if the workspace `.gitignore` is incomplete. |
 | Gitea says “unrelated history” | The local project was rewritten while the mirror still holds the old history. Rename the Gitea project to keep the old backup, or delete it and let push-to-create make a fresh mirror. |

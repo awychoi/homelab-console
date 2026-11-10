@@ -324,8 +324,9 @@ HTTP API and git commands still use repository terminology.
 - **Projects** lists branch/upstream, dirty files, conflicts, ahead/behind,
   Gitea state and last commit. **Commit** stages only the checked paths
   (`.env`-family files and ignored paths are refused); **Push** sends the
-  current branch with your credential helper; **Check Gitea** previews and then
-  mirrors heads/tags; **Queue both** runs GitHub → Gitea serially.
+  current branch with your credential helper; **Check Gitea** compares refs, and
+  the Gitea action runs the dry run and mirrors heads/tags in one step;
+  **Queue both** runs GitHub → Gitea serially.
   **Open in VS Code** launches `code -n`.
 
 ![Project pulse metrics](assets/screenshots/repo-pulse.png)
@@ -379,13 +380,14 @@ pull, network call or destructive git action is performed by Pulse.
   not create or manage PRs, and for a fork `origin` must point at the fork you
   can write to.
 - **Gitea** is a backup mirror: `Check Gitea` compares local heads/tags with
-  the remote on demand, and a sync previews the ref changes before applying an
-  all-heads/all-tags push. **Prune** and **force** are configured once in
-  **Settings → Repos**; enabling prune shows the destructive warning there, and
-  a sync does not ask for another confirmation. With prune off, extra refs on
-  Gitea are left in place and do not count as out of sync. Missing Gitea
-  projects rely on push-to-create. LFS, shallow and unrelated-history projects
-  are skipped with a reason; the duplicate-history check runs before any write.
+  the remote on demand. The Gitea action on a project runs its dry run and
+  applies the all-heads/all-tags push in one step, without a confirmation
+  dialog; the backend still rejects a stale preview. **Prune** and **force**
+  are configured once in **Settings → Repos**; enabling prune shows the
+  destructive warning there. With prune off, extra refs on Gitea are left in
+  place and do not count as out of sync. Missing Gitea projects rely on
+  push-to-create. LFS, shallow and unrelated-history projects are skipped with
+  a reason; the duplicate-history check runs before any write.
 - **Queue both** is a serial queue: GitHub push (when the current branch is
   ahead), then Gitea mirror, per project. If GitHub fails, Gitea is still backed
   up and the queue continues. The full run is streamed in the usual run log

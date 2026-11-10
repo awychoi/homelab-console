@@ -1416,10 +1416,6 @@ textarea.code {
 .repo-file-path { overflow-wrap: anywhere; }
 .repo-file-orig { color: var(--dim); }
 .repo-file-tag { font-size: 9.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--dim); }
-.repo-sync-loading { display: flex; align-items: center; gap: 10px; padding: 24px 0; }
-.repo-sync-head { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
-.repo-ref-list { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; margin-top: 10px; }
-.repo-ref-list .mini-label { width: 100%; margin-bottom: 0; }
 .queue-progress {
   display: flex; align-items: center; gap: 12px;
   padding: 12px 16px; border-bottom: 1px solid var(--line-soft);
