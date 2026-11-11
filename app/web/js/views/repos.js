@@ -1,7 +1,7 @@
 import * as ui from '../ui.js';
 import { pageHead, stateBanner, statTile, emptyState, giteaAuthBanner } from './common.js';
 import { nativePick } from '../native.js';
-import { addRoot, bindRootRemoval, openRepoSelection, readRoots, rootsFromSettings, rootsHtml, rootsLabel } from '../repoRoots.js';
+import { addRoot, bindRootRemoval, openRepoSelection, readDraft, rootsDraft, rootsFromSettings, rootsHtml, rootsLabel } from '../repoRoots.js';
 import { syncGitea, showPushBoth, showRepoCommit, refreshRemoteSoon } from '../flows.js';
 
 const { esc, icon } = ui;
@@ -74,8 +74,9 @@ function ensureSelection(ctx) {
   if (state.selection === null) {
     state.selection = new Set(
       repos.filter((repo) => (
-        repo.needs?.push
-        || (repo.gitea?.target && ['behind', 'missing'].includes(repo.gitea?.status))
+        !repo.nested
+        && (repo.needs?.push
+          || (repo.gitea?.target && ['behind', 'missing'].includes(repo.gitea?.status)))
       )).map((repo) => repo.id),
     );
   } else {
@@ -188,6 +189,7 @@ function rowHtml(ctx, repo, selected) {
   const checked = selected.has(repo.id) ? 'checked' : '';
   const container = repo.container ? `<span class="pill tiny neutral">${esc(repo.container)}</span>` : '';
   const badges = [
+    repo.nested ? '<span class="pill tiny warn" title="Found by a deep scan inside another project">nested</span>' : '',
     repo.lfs ? '<span class="pill tiny warn">LFS</span>' : '',
     !repo.github ? '<span class="pill tiny neutral">local only</span>' : '',
   ].join('');
@@ -256,22 +258,20 @@ function queueHtml(ctx) {
 }
 
 function repoRootSetup(ctx) {
-  const settings = ctx.bootstrap?.settings || {};
-  if (!ctx.uiState.repoRootsDraft) ctx.uiState.repoRootsDraft = rootsFromSettings(settings);
-  const roots = ctx.uiState.repoRootsDraft;
+  const draft = rootsDraft(ctx);
   return `<div class="card">
     <div class="card-head"><div class="card-title">Choose project folders</div><div class="card-sub">Projects are off until you add one</div></div>
     <div class="card-body">
       <div class="field">
         <label>Project folders</label>
-        <div id="repo-roots-first" class="root-list">${rootsHtml(roots)}</div>
+        <div id="repo-roots-first" class="root-list">${rootsHtml(draft.roots, draft.deep)}</div>
         <div class="field-row mt-1">
           <label class="sr-only" for="repo-root-first">Project folder path</label>
           <input id="repo-root-first" placeholder="/Users/you/code" autocomplete="off" spellcheck="false">
           <button class="btn ghost sm" type="button" data-add-repo-root-first>Add path</button>
           <button class="btn sm" type="button" data-pick-repo-roots-first>Choose folders…</button>
         </div>
-        <div class="hint">Each folder is scanned recursively for git projects. Hidden and dependency/build folders are skipped; choose a single project folder too if that is all you need.</div>
+        <div class="hint">Each folder is scanned recursively for git projects. Hidden and dependency/build folders are skipped; choose a single project folder too if that is all you need. Mark a folder <strong>nested</strong> to scan inside its projects as well.</div>
       </div>
       <div class="btn-group"><button class="btn primary" data-save-repo-root>Use these folders</button><a class="btn ghost" href="#/settings">Other settings</a></div>
       <div id="repo-root-error"></div>
@@ -300,6 +300,7 @@ function contentHtml(ctx) {
   const roots = snapshot?.roots?.length ? snapshot.roots : rootsFromSettings(ctx.bootstrap?.settings);
   const rootError = snapshot?.root_error || '';
   const giteaConfigError = snapshot?.gitea_config_error || '';
+  const discoveryWarnings = snapshot?.discovery_warnings || [];
   const authErrors = repos.filter((repo) => repo.gitea?.status === 'auth').length;
   const giteaTile = gitea.checked_at
     ? { value: String(summary.gitea_behind || 0), sub: `${ui.plural(summary.gitea_checked || 0, 'project')} checked · ${ui.ago(gitea.checked_at)}` }
@@ -316,6 +317,7 @@ function contentHtml(ctx) {
     badges: gitea.checked_at ? ui.pill('ok', `Gitea checked ${ui.ago(gitea.checked_at)}`) : ui.pill('neutral', 'Gitea on demand'),
   })}
   ${rootError ? `<div class="banner bad">${icon('alert')}<span><strong>Project folder unavailable.</strong> ${esc(rootError)}</span><a class="btn sm ghost" href="#/settings">Settings</a></div>` : ''}
+  ${discoveryWarnings.length ? `<div class="warn-box mb-2">${icon('alert')}<div><strong>Scan stopped early.</strong> ${esc(discoveryWarnings.join(' · '))} Narrow the folder or remove generated directories to see everything.</div></div>` : ''}
   ${giteaConfigError ? `<div class="banner bad">${icon('alert')}<span><strong>Gitea configuration is invalid.</strong> ${esc(giteaConfigError)}</span><a class="btn sm ghost" href="#/settings">Settings</a></div>` : ''}
   ${queueActive ? `<div class="banner">${icon('layers')}<span><strong>Queue running.</strong> ${snapshot.queue.completed}/${snapshot.queue.total} complete — GitHub then Gitea for each project.</span>${snapshot.queue.run_id ? `<button class="btn sm ghost" data-repo-queue-log="${esc(snapshot.queue.run_id)}">${icon('terminal', 12)} View log</button>` : ''}</div>` : ''}
   ${giteaAuthBanner(ctx, authErrors)}
@@ -392,8 +394,15 @@ export default {
       const input = root.querySelector('#repo-root-first');
       const errorBox = root.querySelector('#repo-root-error');
       const list = root.querySelector('#repo-roots-first');
-      bindRootRemoval(list);
-      const add = () => { if (addRoot(list, input?.value || '')) input.value = ''; };
+      const syncDraft = () => { ctx.uiState.repoRootsDraft = readDraft(list); };
+      bindRootRemoval(list, syncDraft);
+      list.addEventListener('change', syncDraft);
+      const add = () => {
+        if (addRoot(list, input?.value || '')) {
+          input.value = '';
+          syncDraft();
+        }
+      };
       root.querySelector('[data-add-repo-root-first]')?.addEventListener('click', add);
       input?.addEventListener('keydown', (event) => {
         if (event.key === 'Enter') { event.preventDefault(); add(); }
@@ -404,23 +413,29 @@ export default {
         try {
           const picked = await nativePick({ directories: true, multiple: true });
           if (picked === null) { input?.focus(); ui.toast('Type a folder path, then Add path', 'info'); }
-          else for (const path of picked) addRoot(list, path);
+          else {
+            for (const path of picked) addRoot(list, path);
+            syncDraft();
+          }
         } finally { button.disabled = false; }
       });
       saveRootButton.addEventListener('click', async () => {
-        const roots = readRoots(list);
-        if (!roots.length) {
+        const draft = readDraft(list);
+        if (!draft.roots.length) {
           if (errorBox) errorBox.innerHTML = '<div class="danger-box">Add at least one folder.</div>';
           input?.focus();
           return;
         }
         saveRootButton.disabled = true;
         try {
-          await ctx.api.post('/api/settings', { repo_roots: roots });
-          ctx.uiState.repoRootsDraft = roots;
+          await ctx.api.post('/api/settings', {
+            repo_roots: draft.roots,
+            repo_deep_roots: draft.deep,
+          });
+          ctx.uiState.repoRootsDraft = draft;
           await ctx.reloadBootstrap();
           await ctx.refreshState({ force: true });
-          ui.toast('Project folders saved', 'ok', roots.length === 1 ? roots[0] : `${roots.length} folders`);
+          ui.toast('Project folders saved', 'ok', draft.roots.length === 1 ? draft.roots[0] : `${draft.roots.length} folders`);
           ctx.navigate('#/repos');
         } catch (error) {
           if (errorBox) errorBox.innerHTML = `<div class="danger-box">${esc(ui.errorText(error))}</div>`;

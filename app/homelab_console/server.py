@@ -1147,10 +1147,16 @@ class ConsoleHandler(BaseHTTPRequestHandler):
             return self._send_json(200, {"ok": True, **self.app.repos.state()})
         if rest == ["selection"]:
             body = self._body()
-            raw = body.get("exclusions", body)
+            raw = body.get("exclusions")
+            included = body.get("included")
+            if raw is None and included is None:
+                # Historical callers post the exclusion map as the whole body.
+                raw = body
+            if raw is None:
+                raw = {}
             if not isinstance(raw, dict):
                 raise ApiError(400, "exclusions must be an object keyed by project folder")
-            result = self.app.repos.set_repo_exclusions(raw)
+            result = self.app.repos.set_repo_exclusions(raw, included)
             return self._send_json(200, {"ok": True, **result})
         if rest == ["gitea", "check"]:
             if not self.app.repos.gitea_configured():
@@ -1469,12 +1475,38 @@ class ConsoleHandler(BaseHTTPRequestHandler):
                     values["repo_root"] = resolved
                     values["repo_roots"] = [resolved]
             if "repo_roots" in values:
-                # Removing a root also removes its per-root exclusions.
+                # Removing a root also removes its per-root selections.
                 allowed_roots = set(values["repo_roots"])
                 exclusions = self.app.settings.get("repo_exclusions") or {}
                 values["repo_exclusions"] = {
                     root: ids for root, ids in exclusions.items() if root in allowed_roots
                 }
+                nested_selected = self.app.settings.get("repo_nested_selected") or {}
+                values["repo_nested_selected"] = {
+                    root: ids
+                    for root, ids in nested_selected.items()
+                    if root in allowed_roots
+                }
+            if "repo_deep_roots" in body:
+                effective_roots = (
+                    values["repo_roots"]
+                    if "repo_roots" in values
+                    else [str(root) for root in repos.repo_roots(self.app.settings)]
+                )
+                try:
+                    values["repo_deep_roots"] = repos.validate_deep_roots(
+                        body["repo_deep_roots"],
+                        [Path(root) for root in effective_roots],
+                    )
+                except repos.RepoError as exc:
+                    raise ApiError(400, str(exc))
+            elif "repo_roots" in values:
+                allowed = set(values["repo_roots"])
+                values["repo_deep_roots"] = [
+                    str(root)
+                    for root in repos.repo_deep_roots(self.app.settings)
+                    if str(root) in allowed
+                ]
             if "gitea_url" in body:
                 raw = str(body["gitea_url"] or "").strip().rstrip("/")
                 if raw:
@@ -1536,6 +1568,8 @@ class ConsoleHandler(BaseHTTPRequestHandler):
             repo_keys = {
                 "repo_root",
                 "repo_roots",
+                "repo_deep_roots",
+                "repo_nested_selected",
                 "gitea_url",
                 "gitea_owner",
                 "gitea_timeout_s",

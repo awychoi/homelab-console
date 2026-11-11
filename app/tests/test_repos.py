@@ -40,6 +40,20 @@ def configure_gitea(settings: Settings, url: str = "https://gitea.invalid", owne
     return settings
 
 
+def repo_settings(
+    base: Path,
+    roots: list[Path],
+    deep: list[Path] | None = None,
+) -> Settings:
+    settings = Settings.load(base / "console")
+    settings.values["repo_roots"] = [str(root) for root in roots]
+    settings.values["repo_root"] = str(roots[0]) if roots else ""
+    settings.values["repo_deep_roots"] = [str(root) for root in (deep or [])]
+    settings.values["repo_exclusions"] = {}
+    settings.values["repo_nested_selected"] = {}
+    return settings
+
+
 def refs(path: Path) -> dict[str, str]:
     output = run(
         "git", "for-each-ref", "--format=%(refname) %(objectname)",
@@ -96,6 +110,128 @@ class DiscoveryTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             with self.assertRaises(repos.RepoError):
                 repos.discover_repos(Path(tmp) / "nope")
+
+
+class DeepScanTests(unittest.TestCase):
+    def test_deep_scan_lists_nested_checkouts(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp).resolve() / "repos"
+            root.mkdir()
+            make_repo(root / "parent")
+            make_repo(root / "parent" / "child")
+            shallow = {path.relative_to(root).as_posix() for path in repos.discover_repos(root)}
+            deep = {
+                path.relative_to(root).as_posix()
+                for path in repos.discover_repos(root, deep=True)
+            }
+        self.assertEqual(shallow, {"parent"})
+        self.assertEqual(deep, {"parent", "parent/child"})
+
+    def test_scan_caps_are_reported_in_stats(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp).resolve() / "repos"
+            root.mkdir()
+            (root / "one" / "two").mkdir(parents=True)
+            dir_stats: dict = {}
+            with mock.patch.object(repos, "MAX_DISCOVERY_DIRS", 1):
+                repos.discover_repos(root, deep=True, stats=dir_stats)
+            self.assertTrue(dir_stats["truncated_dirs"])
+            self.assertEqual(dir_stats["visited"], 2)
+
+            make_repo(root / "alpha")
+            make_repo(root / "beta")
+            repo_stats: dict = {}
+            with mock.patch.object(repos, "MAX_DISCOVERED_REPOS", 1):
+                found = repos.discover_repos(root, stats=repo_stats)
+            self.assertEqual(len(found), 1)
+            self.assertTrue(repo_stats["truncated_repos"])
+
+    def test_deep_discovery_marks_nested_and_keeps_it_unselected(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp).resolve()
+            root = base / "code"
+            make_repo(root / "parent")
+            make_repo(root / "parent" / "child")
+            settings = repo_settings(base, [root], [root])
+            roots, entries, errors, warnings = repos._discovery_entries(settings)
+        self.assertEqual(roots, [root])
+        self.assertEqual(errors, [])
+        self.assertEqual(warnings, [])
+        by_rel = {entry["rel"]: entry for entry in entries}
+        self.assertEqual(set(by_rel), {"parent", "parent/child"})
+        self.assertTrue(by_rel["parent"]["selected"])
+        self.assertFalse(by_rel["parent"]["nested"])
+        self.assertTrue(by_rel["parent/child"]["nested"])
+        self.assertFalse(by_rel["parent/child"]["selected"])
+
+    def test_nested_checkout_can_be_opted_in_and_resolved(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp).resolve()
+            root = base / "code"
+            make_repo(root / "parent")
+            make_repo(root / "parent" / "child")
+            settings = repo_settings(base, [root], [root])
+            fleet = repos.RepoFleet(settings, StoreStub())
+            first = fleet.refresh()
+            self.assertEqual({row["rel"] for row in first["repos"]}, {"parent"})
+            self.assertEqual(first["summary"]["nested"], 0)
+
+            result = fleet.set_repo_exclusions({}, {str(root): ["parent/child"]})
+            self.assertEqual(result["included"], {str(root): ["parent/child"]})
+            state = fleet.state()
+            self.assertEqual(
+                {row["rel"] for row in state["repos"]},
+                {"parent", "parent/child"},
+            )
+            self.assertEqual(state["summary"]["nested"], 1)
+            child = next(row for row in state["repos"] if row["rel"] == "parent/child")
+            self.assertTrue(child["nested"])
+            path, identity = fleet.resolve("parent/child")
+            self.assertEqual(path, (root / "parent" / "child").resolve())
+            self.assertEqual(identity["id"], "parent/child")
+
+    def test_explicit_nested_root_wins_over_the_parent_scan(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp).resolve()
+            root = base / "code"
+            parent = root / "parent"
+            child = parent / "child"
+            make_repo(parent)
+            make_repo(child)
+            settings = repo_settings(base, [root, child], [root])
+            _roots, entries, _errors, _warnings = repos._discovery_entries(settings)
+        by_rel = {entry["rel"]: entry for entry in entries}
+        self.assertIn("child", by_rel)
+        self.assertEqual(by_rel["child"]["root"], str(child))
+        self.assertTrue(by_rel["child"]["root_repo"])
+        self.assertFalse(by_rel["child"]["nested"])
+        self.assertTrue(by_rel["child"]["selected"])
+
+    def test_deep_root_must_also_be_a_configured_root(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp).resolve()
+            root = base / "code"
+            other = base / "other"
+            root.mkdir()
+            other.mkdir()
+            settings = repo_settings(base, [root], [other])
+            self.assertEqual(repos.repo_deep_roots(settings), set())
+            self.assertEqual(repos.validate_deep_roots([str(root)], [root]), [str(root)])
+            with self.assertRaises(repos.RepoError):
+                repos.validate_deep_roots([str(other)], [root])
+            with self.assertRaises(repos.RepoError):
+                repos.validate_deep_roots([str(root / "missing")], [root])
+
+    def test_scan_cap_becomes_a_discovery_warning(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp).resolve()
+            root = base / "code"
+            (root / "one" / "two").mkdir(parents=True)
+            settings = repo_settings(base, [root])
+            with mock.patch.object(repos, "MAX_DISCOVERY_DIRS", 1):
+                _roots, _entries, errors, warnings = repos._discovery_entries(settings)
+        self.assertEqual(errors, [])
+        self.assertTrue(any("scan stopped after" in warning for warning in warnings))
 
 
 class UnconfiguredRootTests(unittest.TestCase):
@@ -166,6 +302,23 @@ class MultiRootTests(unittest.TestCase):
             reloaded = Settings.load(base / "console")
             self.assertEqual(reloaded.get("repo_roots"), [str(root)])
             self.assertEqual(reloaded.get("repo_root"), str(root))
+
+    def test_deep_roots_and_nested_selection_survive_reload(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp).resolve()
+            root = base / "code"
+            root.mkdir()
+            settings = Settings.load(base / "console")
+            settings.values["repo_roots"] = [str(root)]
+            settings.values["repo_deep_roots"] = [str(root)]
+            settings.values["repo_nested_selected"] = {str(root): ["group/child"]}
+            settings.save()
+            reloaded = Settings.load(base / "console")
+            self.assertEqual(reloaded.get("repo_deep_roots"), [str(root)])
+            self.assertEqual(
+                reloaded.get("repo_nested_selected"),
+                {str(root): ["group/child"]},
+            )
 
 
 class RepoSelectionTests(unittest.TestCase):

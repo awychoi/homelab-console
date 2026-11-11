@@ -36,6 +36,7 @@ class _StubRepos:
         self.opened: list[str] = []
         self.queued: list[list[str]] = []
         self.selection: dict[str, list[str]] = {}
+        self.nested_selection: dict[str, list[str]] = {}
         self.state_data = {
             "root": "/tmp/repos",
             "root_error": "",
@@ -54,17 +55,29 @@ class _StubRepos:
         return {
             "root_configured": True,
             "roots": ["/tmp/repos"],
+            "deep_roots": [],
             "repos": [
                 {"root": "/tmp/repos", "rel": "homelab", "name": "homelab", "selected": True},
                 {"root": "/tmp/repos", "rel": "skip-me", "name": "skip-me", "selected": False},
             ],
             "errors": [],
+            "warnings": [],
             "exclusions": self.selection,
+            "included": self.nested_selection,
         }
 
-    def set_repo_exclusions(self, exclusions):
+    def set_repo_exclusions(self, exclusions, included=None):
         self.selection = exclusions
-        return {"roots": ["/tmp/repos"], "exclusions": exclusions, "discovered": [], "errors": []}
+        if included is not None:
+            self.nested_selection = included
+        return {
+            "roots": ["/tmp/repos"],
+            "exclusions": exclusions,
+            "included": self.nested_selection,
+            "discovered": [],
+            "warnings": [],
+            "errors": [],
+        }
 
     def request_refresh(self):
         self.refreshed += 1
@@ -197,11 +210,15 @@ class RepoApiTests(unittest.TestCase):
         self.assertEqual(len(payload["repos"]), 2)
 
         status, payload = self.request(
-            "POST", "/api/repos/selection", {"exclusions": {"/tmp/repos": ["skip-me"]}}
+            "POST",
+            "/api/repos/selection",
+            {"exclusions": {"/tmp/repos": ["skip-me"]}, "included": {"/tmp/repos": ["nested/one"]}},
         )
         self.assertEqual(status, 200)
         self.assertEqual(self.app.repos.selection, {"/tmp/repos": ["skip-me"]})
+        self.assertEqual(self.app.repos.nested_selection, {"/tmp/repos": ["nested/one"]})
         self.assertEqual(payload["exclusions"], {"/tmp/repos": ["skip-me"]})
+        self.assertEqual(payload["included"], {"/tmp/repos": ["nested/one"]})
 
 
 class ServiceMetadataApiTests(unittest.TestCase):

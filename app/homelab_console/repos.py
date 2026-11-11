@@ -7,8 +7,10 @@ is unpushed, and what has not reached the backup yet".
 Design rules:
 
 - Discovery is recursive under each configured root, including the root itself.
-  It stops at the first repository on a branch, skips hidden and generated
-  directories, and lets the operator exclude individual repos afterwards.
+  By default it stops at the first repository on a branch; a root can opt into
+  a deep scan that keeps descending so nested checkouts are found too. Hidden
+  and generated directories are skipped, and the operator can exclude
+  individual repos afterwards.
 - Gitea is a backup mirror, not a second everyday remote.  Ordinary
   ``git push`` still goes to GitHub only; the console pushes Gitea explicitly.
 - Gitea ref checks are on demand.  There is no background network loop.
@@ -165,19 +167,96 @@ def repo_root(settings: Settings) -> Path | None:
     return roots[0] if roots else None
 
 
+def repo_deep_roots(settings: Settings) -> set[Path]:
+    """Configured roots whose scan continues inside a project.
+
+    A deep root is still an ordinary root; the flag only changes what happens
+    after a checkout is found.  Values that are not also configured roots are
+    ignored, so a stale setting cannot widen the scan.
+    """
+    raw = settings.get("repo_deep_roots")
+    values: list[str] = []
+    if isinstance(raw, (list, tuple)):
+        values = [str(item).strip() for item in raw if str(item).strip()]
+    elif isinstance(raw, str) and raw.strip():
+        values = [raw.strip()]
+    roots = set(repo_roots(settings))
+    deep: set[Path] = set()
+    for value in values:
+        path = Path(value).expanduser()
+        if not path.is_absolute():
+            path = settings.repo / path
+        try:
+            resolved = path.resolve()
+        except OSError:
+            resolved = path
+        if resolved in roots:
+            deep.add(resolved)
+    return deep
+
+
+def repo_scan_roots(settings: Settings) -> list[tuple[Path, bool]]:
+    """Every configured root paired with its deep-scan flag, in display order."""
+    deep = repo_deep_roots(settings)
+    return [(root, root in deep) for root in repo_roots(settings)]
+
+
+def validate_deep_roots(raw: Any, roots: list[Path]) -> list[str]:
+    """Validate the settings payload for deep-scan roots.
+
+    Every deep folder must already be a project folder; the flag only changes
+    what the scan does after it finds a checkout, it never widens the roots.
+    """
+    if not isinstance(raw, list) or len(raw) > 20:
+        raise RepoError("deep-scan folders must be a list of at most 20 folders")
+    allowed = {str(root) for root in roots}
+    deep: list[str] = []
+    for item in raw:
+        value = str(item or "").strip()
+        if not value:
+            continue
+        path = Path(value).expanduser()
+        if not path.is_absolute() or not path.is_dir() or len(str(path)) > 400:
+            raise RepoError("each deep-scan folder must be an existing absolute directory")
+        resolved = str(path.resolve())
+        if resolved not in allowed:
+            raise RepoError("deep-scan folders must also be project folders")
+        if resolved not in deep:
+            deep.append(resolved)
+    return deep
+
+
 def root_for_path(path: Path, roots: list[Path]) -> Path | None:
     resolved = Path(path).resolve()
     matches = [root for root in roots if resolved == root or root in resolved.parents]
     return max(matches, key=lambda root: len(root.parts)) if matches else None
 
 
-def discover_identities(roots: list[Path]) -> list[tuple[Path, dict[str, str]]]:
-    """Every repo under every root with a unique id, in stable order."""
+def _scan_pairs(roots: list[Any]) -> list[tuple[Path, bool]]:
+    """Accept either bare roots or ``(root, deep)`` pairs."""
+    pairs: list[tuple[Path, bool]] = []
+    for item in roots:
+        if isinstance(item, tuple) and len(item) == 2:
+            pairs.append((Path(item[0]), bool(item[1])))
+        else:
+            pairs.append((Path(item), False))
+    return pairs
+
+
+def discover_identities(roots: list[Any]) -> list[tuple[Path, dict[str, str]]]:
+    """Every repo under every root with a unique id, in stable order.
+
+    ``roots`` may be paths (the historical call form) or ``(path, deep)``
+    pairs.  When one checkout is reachable from more than one configured root,
+    the most specific root names it, so the id agrees with discovery.
+    """
+    scan = _scan_pairs(roots)
+    root_paths = [root for root, _deep in scan]
     items: list[tuple[Path, dict[str, str]]] = []
     seen_paths: set[Path] = set()
-    for root in roots:
+    for root, deep in scan:
         try:
-            paths = discover_repos(root)
+            paths = discover_repos(root, deep=deep)
         except RepoError:
             continue
         for path in paths:
@@ -185,7 +264,8 @@ def discover_identities(roots: list[Path]) -> list[tuple[Path, dict[str, str]]]:
             if resolved in seen_paths:
                 continue
             seen_paths.add(resolved)
-            items.append((path, repo_identity(path, root)))
+            entry_root = root_for_path(resolved, root_paths) or root
+            items.append((resolved, repo_identity(resolved, entry_root)))
     counts = Counter(identity["id"] for _, identity in items)
     if any(count > 1 for count in counts.values()):
         items = [
@@ -421,14 +501,34 @@ def gitea_target(origin: str, cfg: GiteaConfig) -> tuple[str | None, str, tuple[
     return gitea_repo_url(cfg.url, cfg.owner, name), "", parsed
 
 
-def discover_repos(root: Path) -> list[Path]:
+def discover_repos(
+    root: Path,
+    *,
+    deep: bool = False,
+    stats: dict[str, Any] | None = None,
+) -> list[Path]:
     """Find every git repo under ``root``, including ``root`` itself.
 
-    The walk stops at the first repository on each branch, so a repo's
-    submodules or nested checkouts are not listed separately. Hidden and
-    generated directories are pruned. Roots are commonly a folder of repos,
-    but a single checkout is valid too.
+    The default walk stops at the first repository on each branch, so a repo's
+    submodules or nested checkouts are not listed separately.  ``deep=True``
+    keeps descending after a checkout is found, which lists those nested repos
+    as independent projects.  Hidden and generated directories are pruned.
+    Roots are commonly a folder of repos, but a single checkout is valid too.
+
+    ``stats`` (optional) is filled with ``visited``, ``deep``,
+    ``truncated_dirs`` and ``truncated_repos`` so callers can tell the operator
+    when a cap, not the folder, ended the scan.
     """
+    if stats is None:
+        stats = {}
+    stats.update(
+        {
+            "deep": bool(deep),
+            "visited": 0,
+            "truncated_dirs": False,
+            "truncated_repos": False,
+        }
+    )
     root = root.expanduser()
     if not root.is_dir():
         raise RepoError(f"project folder not found: {root}")
@@ -448,7 +548,9 @@ def discover_repos(root: Path) -> list[Path]:
     visited = 0
     for current, dirs, _files in os.walk(root, topdown=True, followlinks=False):
         visited += 1
+        stats["visited"] = visited
         if visited > MAX_DISCOVERY_DIRS:
+            stats["truncated_dirs"] = True
             break
         dirs[:] = sorted(
             name
@@ -462,8 +564,10 @@ def discover_repos(root: Path) -> list[Path]:
                 seen.add(resolved)
                 found.append(resolved)
                 if len(found) >= MAX_DISCOVERED_REPOS:
+                    stats["truncated_repos"] = True
                     break
-            dirs[:] = []
+            if not deep:
+                dirs[:] = []
     return found
 
 
@@ -482,35 +586,75 @@ def repo_identity(path: Path, root: Path) -> dict[str, str]:
     }
 
 
-def _discovery_entries(settings: Settings) -> tuple[list[Path], list[dict[str, Any]], list[str]]:
-    """Discover every repo under every root, with the current selection state."""
-    roots = repo_roots(settings)
+def _discovery_entries(
+    settings: Settings,
+) -> tuple[list[Path], list[dict[str, Any]], list[str], list[str]]:
+    """Discover every repo under every root, with the current selection state.
+
+    Returns ``(roots, entries, errors, warnings)``.  A repo found only because
+    its root is deep-scanned is marked ``nested`` and stays unselected until the
+    operator opts it in, so vendored checkouts do not join the fleet by accident.
+    """
+    scan = repo_scan_roots(settings)
+    roots = [root for root, _deep in scan]
     exclusions = settings.get("repo_exclusions") or {}
+    nested_selected = settings.get("repo_nested_selected") or {}
     entries: list[dict[str, Any]] = []
     errors: list[str] = []
-    seen: set[str] = set()
-    for root in roots:
-        root_text = str(root)
+    warnings: list[str] = []
+    seen: dict[str, dict[str, Any]] = {}
+    order: list[str] = []
+    for root, deep in scan:
+        stats: dict[str, Any] = {}
         try:
-            paths = discover_repos(root)
+            paths = discover_repos(root, deep=deep, stats=stats)
         except RepoError as exc:
             errors.append(str(exc))
             continue
-        excluded = set(exclusions.get(root_text) or [])
+        if stats.get("truncated_dirs"):
+            warnings.append(
+                f"{root}: scan stopped after {MAX_DISCOVERY_DIRS:,} folders; "
+                "some projects may be missing"
+            )
+        if stats.get("truncated_repos"):
+            warnings.append(
+                f"{root}: scan stopped at {MAX_DISCOVERED_REPOS} projects; "
+                "some projects may be missing"
+            )
         for path in paths:
             resolved = str(path.resolve())
             if resolved in seen:
                 continue
-            seen.add(resolved)
-            identity = repo_identity(path, root)
-            entries.append(
-                {
-                    **identity,
-                    "root_repo": path == root,
-                    "selected": identity["rel"] not in excluded,
-                }
-            )
-    return roots, entries, errors
+            # A path reachable from a more specific root belongs to that root,
+            # so an explicitly added nested checkout keeps its short id.
+            entry_root = root_for_path(path, roots) or root
+            identity = repo_identity(path, entry_root)
+            seen[resolved] = {
+                **identity,
+                "root_repo": path == entry_root,
+                "nested": False,
+                "selected": True,
+            }
+            order.append(resolved)
+    for resolved in order:
+        entry = seen[resolved]
+        entry_root = Path(entry["root"])
+        path = Path(resolved)
+        if not entry["root_repo"]:
+            for ancestor in path.parents:
+                if ancestor == entry_root:
+                    break
+                if str(ancestor) in seen:
+                    entry["nested"] = True
+                    break
+        excluded = set(exclusions.get(entry["root"]) or [])
+        included = set(nested_selected.get(entry["root"]) or [])
+        entry["selected"] = (
+            entry["rel"] not in excluded
+            and (not entry["nested"] or entry["rel"] in included)
+        )
+        entries.append(entry)
+    return roots, entries, errors, warnings
 
 
 def validate_repo_exclusions(
@@ -538,6 +682,47 @@ def validate_repo_exclusions(
             if (root_key, rel) not in allowed:
                 # A repo can disappear between the scan and the save. Ignore
                 # that stale id instead of blocking the whole selection.
+                continue
+            if rel not in keep:
+                keep.append(rel)
+            if len(keep) >= MAX_REPO_EXCLUSIONS:
+                break
+        if keep:
+            cleaned[root_key] = keep
+    return cleaned
+
+
+def validate_nested_selection(
+    raw: Any,
+    roots: list[Path],
+    discovered: list[dict[str, Any]],
+) -> dict[str, list[str]]:
+    """Validate a {root: [nested repo ids]} opt-in map.
+
+    Only deep-discovered nested checkouts are eligible; ordinary projects keep
+    the historical "new projects are selected" behaviour.
+    """
+    if not isinstance(raw, dict):
+        raise RepoError("nested selections must be an object keyed by project folder")
+    roots_by_text = {str(root): root for root in roots}
+    allowed = {
+        (entry["root"], entry["rel"])
+        for entry in discovered
+        if entry.get("nested")
+    }
+    cleaned: dict[str, list[str]] = {}
+    for root_text, ids in raw.items():
+        root_key = str(root_text or "").strip()
+        if root_key not in roots_by_text:
+            raise RepoError(f"unknown project folder: {root_key or '(empty)'}")
+        if not isinstance(ids, (list, tuple)):
+            raise RepoError("each project folder needs a list of nested project ids")
+        keep: list[str] = []
+        for item in ids:
+            rel = str(item or "").strip()
+            if not rel:
+                continue
+            if (root_key, rel) not in allowed:
                 continue
             if rel not in keep:
                 keep.append(rel)
@@ -1580,13 +1765,16 @@ class RepoFleet:
         self._snapshot: dict[str, Any] = {
             "root": str(roots[0]) if roots else "",
             "roots": [str(root) for root in roots],
+            "deep_roots": [str(root) for root in repo_deep_roots(settings)],
             "root_configured": bool(roots),
             "root_error": "",
             "gitea_config_error": "",
             "repos": [],
             "discovered": [],
             "exclusions": {},
+            "nested_selected": {},
             "discovery_errors": [],
+            "discovery_warnings": [],
             "summary": {},
             "generated_at": 0,
             "scanning": False,
@@ -1646,13 +1834,16 @@ class RepoFleet:
                     self._snapshot = {
                         "root": "",
                         "roots": [],
+                        "deep_roots": [],
                         "root_configured": False,
                         "root_error": "",
                         "gitea_config_error": "",
                         "repos": [],
                         "discovered": [],
                         "exclusions": {},
+                        "nested_selected": {},
                         "discovery_errors": [],
+                        "discovery_warnings": [],
                         "summary": self._summary([], []),
                         "generated_at": util.now_ts(),
                         "scanning": False,
@@ -1673,7 +1864,7 @@ class RepoFleet:
                 else:
                     gitea_unconfigured = True
             discovered_entries: list[dict[str, Any]]
-            _, discovered_entries, root_errors = _discovery_entries(self.settings)
+            _, discovered_entries, root_errors, discovery_warnings = _discovery_entries(self.settings)
             selected = [
                 (Path(entry["path"]), Path(entry["root"]))
                 for entry in discovered_entries
@@ -1684,6 +1875,13 @@ class RepoFleet:
                 workers = min(4, max(1, len(selected)))
                 with ThreadPoolExecutor(max_workers=workers, thread_name_prefix="hlc-repo-scan") as pool:
                     rows = list(pool.map(lambda item: repo_row(item[0], item[1], cfg), selected))
+            # Carry the scan-only flags (nested opt-in, explicit root) onto the
+            # status rows; repo_row only knows the checkout itself.
+            entries_by_path = {entry["path"]: entry for entry in discovered_entries}
+            for row in rows:
+                entry = entries_by_path.get(row.get("path") or "")
+                row["nested"] = bool(entry and entry.get("nested"))
+                row["root_repo"] = bool(entry and entry.get("root_repo"))
             # Two roots can contain the same relative repo name; fall back to
             # the absolute path as the id so selection and actions stay unique.
             counts = Counter(row.get("id") for row in rows)
@@ -1720,13 +1918,16 @@ class RepoFleet:
                 self._snapshot = {
                     "root": str(roots[0]),
                     "roots": [str(root) for root in roots],
+                    "deep_roots": [str(root) for root in repo_deep_roots(self.settings)],
                     "root_configured": True,
                     "root_error": "; ".join(root_errors),
                     "gitea_config_error": gitea_error,
                     "repos": rows,
                     "discovered": discovered_entries,
                     "exclusions": copy.deepcopy(self.settings.get("repo_exclusions") or {}),
+                    "nested_selected": copy.deepcopy(self.settings.get("repo_nested_selected") or {}),
                     "discovery_errors": root_errors,
+                    "discovery_warnings": discovery_warnings,
                     "summary": self._summary(rows, discovered_entries),
                     "generated_at": util.now_ts(),
                     "scanning": False,
@@ -1743,6 +1944,7 @@ class RepoFleet:
         summary = _summarise(rows)
         summary["discovered"] = len(discovered)
         summary["excluded"] = sum(1 for entry in discovered if not entry.get("selected"))
+        summary["nested"] = sum(1 for row in rows if row.get("nested"))
         return summary
 
     def _refresh_needs(self, rows: list[dict[str, Any]]) -> None:
@@ -1754,27 +1956,51 @@ class RepoFleet:
 
     def discovered(self) -> dict[str, Any]:
         """Return every discovered repo and whether Repos manages it."""
-        roots, entries, errors = _discovery_entries(self.settings)
+        roots, entries, errors, warnings = _discovery_entries(self.settings)
         return {
             "root_configured": bool(roots),
             "roots": [str(root) for root in roots],
+            "deep_roots": [str(root) for root in repo_deep_roots(self.settings)],
             "repos": entries,
             "errors": errors,
+            "warnings": warnings,
             "exclusions": copy.deepcopy(self.settings.get("repo_exclusions") or {}),
+            "included": copy.deepcopy(self.settings.get("repo_nested_selected") or {}),
         }
 
-    def set_repo_exclusions(self, raw: Any) -> dict[str, Any]:
-        """Persist a {root: [relative ids]} exclusion map and rescan."""
-        roots, entries, _errors = _discovery_entries(self.settings)
+    def set_repo_exclusions(self, raw: Any, included: Any = None) -> dict[str, Any]:
+        """Persist selection maps and rescan.
+
+        ``raw`` is the exclusion map for every hidden project; ``included``
+        opts deep-discovered nested projects back in.  ``None`` leaves the
+        existing opt-ins alone, which keeps older clients working.
+        """
+        roots, entries, _errors, _warnings = _discovery_entries(self.settings)
         if not roots:
             raise RepoError("project folders are not configured — choose a folder in Settings")
         cleaned = validate_repo_exclusions(raw, roots, entries)
-        self.settings.update({"repo_exclusions": cleaned})
+        updates: dict[str, Any] = {"repo_exclusions": cleaned}
+        if included is not None:
+            nested = validate_nested_selection(included, roots, entries)
+            # An opt-in always wins over a stale exclusion left by an older scan.
+            for root_text, ids in nested.items():
+                remaining = [item for item in cleaned.get(root_text, []) if item not in ids]
+                if remaining:
+                    cleaned[root_text] = remaining
+                else:
+                    cleaned.pop(root_text, None)
+            updates["repo_exclusions"] = cleaned
+            updates["repo_nested_selected"] = nested
+        self.settings.update(updates)
         state = self.refresh()
         return {
             "roots": [str(root) for root in roots],
             "discovered": state.get("discovered", []),
             "exclusions": cleaned,
+            "included": copy.deepcopy(
+                self.settings.get("repo_nested_selected") or {}
+            ),
+            "warnings": state.get("discovery_warnings", []),
             "errors": state.get("discovery_errors", []),
         }
 
@@ -2075,7 +2301,7 @@ class RepoFleet:
         roots = repo_roots(self.settings)
         if not roots:
             raise RepoError("project folders are not configured — choose a folder in Settings")
-        matches = discover_identities(roots)
+        matches = discover_identities(repo_scan_roots(self.settings))
         exact = [(path, identity) for path, identity in matches if identity["id"] == repo_id]
         if len(exact) == 1:
             return exact[0]
@@ -2128,7 +2354,7 @@ class RepoFleet:
         self.refresh()
         try:
             resolved = Path(path).resolve()
-            for candidate, identity in discover_identities(repo_roots(self.settings)):
+            for candidate, identity in discover_identities(repo_scan_roots(self.settings)):
                 if candidate == resolved:
                     return self.recheck_gitea_async(identity["id"])
         except (RepoError, ValueError):

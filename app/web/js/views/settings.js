@@ -1,7 +1,7 @@
 import * as ui from '../ui.js';
 import { pageHead, stateBanner } from './common.js';
 import { nativePick } from '../native.js';
-import { addRoot, bindRootRemoval, openRepoSelection, readRoots, rootsFromSettings, rootsHtml, rootsLabel } from '../repoRoots.js';
+import { addRoot, bindRootRemoval, openRepoSelection, readDraft, resetRootsDraft, rootsDraft, rootsHtml, rootsLabel } from '../repoRoots.js';
 
 const { esc, icon } = ui;
 
@@ -51,7 +51,8 @@ function repoSettingsHtml(ctx) {
         ? `<span class="chip ${gitea.errors ? 'warn' : 'good'}">${esc(gitea.state || 'checked')}</span><span class="sub">${esc(ui.ago(gitea.checked_at))}</span>`
         : '<span class="chip neutral">not checked</span>';
   const vscode = repoState.vscode || {};
-  const roots = rootsFromSettings(settings);
+  const draft = rootsDraft(ctx);
+  const roots = draft.roots;
   return `<div class="section settings-section" id="repo-fleet" data-settings-section="repo-fleet">
     <div class="section-head"><div class="section-title">Repos</div><div class="section-sub">local project folders and the Gitea backup</div></div>
     <div class="grid cols-2">
@@ -60,14 +61,14 @@ function repoSettingsHtml(ctx) {
         <div class="card-body">
           <div class="field">
             <label>Project folders</label>
-            <div id="repo-roots-list" class="root-list">${rootsHtml(roots)}</div>
+            <div id="repo-roots-list" class="root-list">${rootsHtml(roots, draft.deep)}</div>
             <div class="field-row mt-1">
               <label class="sr-only" for="set-repo-root-manual">Add a project folder path</label>
               <input id="set-repo-root-manual" placeholder="/Users/you/code" autocomplete="off" spellcheck="false">
               <button class="btn ghost sm" type="button" data-action="add-repo-root">Add path</button>
               <button class="btn sm" type="button" data-action="pick-repo-roots">Choose folders…</button>
             </div>
-            <div class="hint">Each folder is scanned recursively for git projects. Hidden and dependency/build folders are skipped. Use <strong>Manage projects…</strong> to hide checkouts you do not want in Repos.</div>
+            <div class="hint">Each folder is scanned recursively for git projects. Hidden and dependency/build folders are skipped. Mark a folder <strong>nested</strong> to keep scanning inside its projects; nested projects start hidden, so include the ones you want with <strong>Manage projects…</strong>.</div>
           </div>
           <div class="field-row">
             <div class="field"><label for="set-gitea-url">Gitea URL</label><input id="set-gitea-url" value="${esc(settings.gitea_url || '')}" placeholder="https://gitea.example.com" autocomplete="off"><div class="hint">Leave URL and owner empty to disable the Gitea backup.</div></div>
@@ -730,16 +731,24 @@ export default {
       });
       const rootsList = page.querySelector('#repo-roots-list');
       if (rootsList) {
-        bindRootRemoval(rootsList);
+        const syncDraft = () => { ctx.uiState.repoRootsDraft = readDraft(rootsList); };
+        bindRootRemoval(rootsList, syncDraft);
+        rootsList.addEventListener('change', syncDraft);
         page.querySelector('[data-action="add-repo-root"]')?.addEventListener('click', () => {
           const input = page.querySelector('#set-repo-root-manual');
-          if (addRoot(rootsList, input?.value || '')) input.value = '';
+          if (addRoot(rootsList, input?.value || '')) {
+            input.value = '';
+            syncDraft();
+          }
         });
         page.querySelector('#set-repo-root-manual')?.addEventListener('keydown', (event) => {
           if (event.key !== 'Enter') return;
           event.preventDefault();
           const input = page.querySelector('#set-repo-root-manual');
-          if (addRoot(rootsList, input?.value || '')) input.value = '';
+          if (addRoot(rootsList, input?.value || '')) {
+            input.value = '';
+            syncDraft();
+          }
         });
         page.querySelector('[data-action="pick-repo-roots"]')?.addEventListener('click', async (event) => {
           const button = event.currentTarget;
@@ -753,6 +762,7 @@ export default {
               // cancelled
             } else {
               for (const path of picked) addRoot(rootsList, path);
+              syncDraft();
             }
           } finally {
             button.disabled = false;
@@ -768,9 +778,10 @@ export default {
         const button = event.currentTarget;
         button.disabled = true;
         try {
-          const roots = readRoots(page.querySelector('#repo-roots-list'));
+          const draft = readDraft(page.querySelector('#repo-roots-list'));
           await ctx.api.post('/api/settings', {
-            repo_roots: roots,
+            repo_roots: draft.roots,
+            repo_deep_roots: draft.deep,
             repo_poll_interval_s: Number(page.querySelector('#set-repo-poll').value),
             gitea_url: page.querySelector('#set-gitea-url').value.trim(),
             gitea_owner: page.querySelector('#set-gitea-owner').value.trim(),
@@ -779,7 +790,9 @@ export default {
             gitea_force: page.querySelector('#set-gitea-force').checked,
             gitea_check_on_start: page.querySelector('#set-gitea-startup').checked,
           });
-          await ctx.reloadBootstrap();
+          ctx.uiState.repoRootsDraft = draft;
+          const bootstrap = await ctx.reloadBootstrap();
+          if (bootstrap) resetRootsDraft(ctx);
           await ctx.refreshState({ force: true });
           ui.toast('Project settings saved', 'ok');
         } catch (error) {

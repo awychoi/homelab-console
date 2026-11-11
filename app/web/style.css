@@ -1627,7 +1627,12 @@ textarea.code {
   border-radius: 8px;
   background: var(--panel-2);
 }
-.root-item .mono { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.root-item .mono { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.root-item .root-deep {
+  flex: none; align-items: center; gap: 6px; margin: 0; padding: 0;
+  font-size: 11px; color: var(--dim); white-space: nowrap;
+}
+.root-item .root-deep input { width: 13px; height: 13px; margin: 0; }
 .root-item .root-remove { width: 26px; height: 26px; padding: 0; flex: none; font-size: 16px; line-height: 1; }
 
 /* ------------------------------------------------------ repo selection ---- */

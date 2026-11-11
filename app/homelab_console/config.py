@@ -175,7 +175,9 @@ DEFAULTS: dict[str, Any] = {
     "gitea_token": "",
     "repo_root": "",
     "repo_roots": [],
+    "repo_deep_roots": [],
     "repo_exclusions": {},
+    "repo_nested_selected": {},
     "gitea_url": "",
     "gitea_owner": "",
     "gitea_timeout_s": 120,
@@ -301,7 +303,16 @@ class Settings:
             roots = [legacy]
         merged["repo_roots"] = roots
         merged["repo_root"] = roots[0] if roots else ""
+        raw_deep = merged.get("repo_deep_roots")
+        merged["repo_deep_roots"] = (
+            [str(item).strip() for item in raw_deep if str(item).strip()]
+            if isinstance(raw_deep, list)
+            else []
+        )
         merged["repo_exclusions"] = normalize_repo_exclusions(merged.get("repo_exclusions"))
+        merged["repo_nested_selected"] = normalize_repo_exclusions(
+            merged.get("repo_nested_selected")
+        )
         # Workspace-owned service metadata is normalized on read so a hand
         # edit cannot inject an invalid source or profile into the app.
         try:

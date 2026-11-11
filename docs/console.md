@@ -347,8 +347,13 @@ pull, network call or destructive git action is performed by Pulse.
   including the configured folder itself, so a folder of projects and a single
   project folder both work. Hidden folders, dependency/build folders
   (`node_modules`, `.venv`, `build`, `dist`, `target`, …) and nested checkouts
-  inside an already-found project are skipped. Use **Manage projects…** to deselect
-  individual checkouts; they stay on disk but disappear from Repos.
+  inside an already-found project are skipped unless the folder is marked
+  **nested**; then the walk continues inside projects and lists those checkouts
+  as separate projects. Nested projects start unselected and are opted in from
+  **Manage projects…**. Scans stop at 20,000 folders and 500 projects per root,
+  and the Projects page shows a warning when a cap ended the walk. Use
+  **Manage projects…** to deselect individual checkouts; they stay on disk but
+  disappear from Repos.
   Folders are empty until chosen in Settings or the Projects setup card;
   add as many as needed, with **Choose folders…** for a native multi-select or
   by typing a path.
@@ -729,8 +734,10 @@ Persisted in `.hlc/config.json` (mode 600) and editable in Settings.
 | `github_token` | empty | optional; never returned by the API |
 | `gitea_token` | empty | optional; never returned by the API; env or git helper can supply it |
 | `repo_roots` | empty | checkout folders scanned recursively; add in Settings |
+| `repo_deep_roots` | `[]` | roots that also scan inside projects for nested checkouts |
 | `repo_root` | empty | legacy alias for the first entry of `repo_roots` |
 | `repo_exclusions` | `{}` | per-root projects hidden from Repos |
+| `repo_nested_selected` | `{}` | nested projects opted into Repos |
 | `gitea_url` | empty | backup server base URL; empty disables Gitea |
 | `gitea_owner` | empty | must match the GitHub owner; empty disables Gitea |
 | `gitea_timeout_s` | 120 | push/fetch timeout; ref checks cap at 15s |
@@ -757,7 +764,7 @@ sent as a header, so prefer HTTPS.
 .venv/bin/python -m unittest discover -s app/tests -v
 ```
 
-The suite is stdlib-only (164 tests) and covers compose parsing, nested file
+The suite is stdlib-only (172 tests) and covers compose parsing, nested file
 creation, stack-layout warnings, plan hashing, pin rewriting, host round-trips,
 SSH config edits, version selection, managed targets, release-age metadata,
 source normalization/overrides, per-stack safety profiles, database-dump

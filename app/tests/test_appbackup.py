@@ -94,6 +94,8 @@ class BackupTests(unittest.TestCase):
                     "release_sources": {key: release_source},
                     "stack_profiles": {"pi-a/whoami": profile},
                     "repo_exclusions": {str(source.repo / "code"): ["skip-me"]},
+                    "repo_deep_roots": [str(source.repo / "code")],
+                    "repo_nested_selected": {str(source.repo / "code"): ["group/nested"]},
                 }
             )
             appbackup.create_backup(source, base / "fleet.zip")
@@ -102,12 +104,22 @@ class BackupTests(unittest.TestCase):
                 self.assertIn(key, payload["release_sources"])
                 self.assertEqual(payload["stack_profiles"]["pi-a/whoami"]["safety"]["level"], "critical")
                 self.assertEqual(payload["repo_exclusions"][str(source.repo / "code")], ["skip-me"])
+                self.assertEqual(payload["repo_deep_roots"], [str(source.repo / "code")])
+                self.assertEqual(
+                    payload["repo_nested_selected"][str(source.repo / "code")],
+                    ["group/nested"],
+                )
 
             target = make_workspace(base / "target")
             appbackup.restore_backup(target, base / "fleet.zip")
             self.assertEqual(target.get("release_sources")[key]["github_repo"], "example/app")
             self.assertEqual(target.get("stack_profiles")["pi-a/whoami"]["database"]["container"], "db")
             self.assertEqual(target.get("repo_exclusions")[str(source.repo / "code")], ["skip-me"])
+            self.assertEqual(target.get("repo_deep_roots"), [str(source.repo / "code")])
+            self.assertEqual(
+                target.get("repo_nested_selected")[str(source.repo / "code")],
+                ["group/nested"],
+            )
 
     def test_restore_rejects_path_traversal(self):
         with tempfile.TemporaryDirectory() as tmp:

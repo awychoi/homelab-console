@@ -197,7 +197,7 @@ function isEditing() {
   // Keep local controls (filters, tabs, policy pickers) focused across background
   // polls; replacing the view would otherwise drop keyboard focus mid-use.
   return Boolean(element.closest('#view') && element.matches(
-    '[data-tab], [data-activity-tab], [data-host], [data-theme-choice], [data-policy], [data-settings-jump], [data-log-tail] button',
+    '[data-tab], [data-activity-tab], [data-host], [data-theme-choice], [data-policy], [data-settings-jump], [data-log-tail] button, [data-root-path], [data-root-deep], [data-remove-root], [data-add-repo-root], [data-add-repo-root-first], [data-pick-repo-roots], [data-pick-repo-roots-first], [data-save-repo-root], [data-repo-choice]',
   ));
 }
 

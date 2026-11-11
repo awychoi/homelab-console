@@ -87,12 +87,22 @@ Repos is optional and not needed to deploy to a Pi.
 
 - Add one or more **Project folders**. Each is scanned **recursively** for git
   checkouts, including the folder itself. Hidden folders and generated folders
-  such as `node_modules`, `.venv`, `build`, `dist` and `target` are skipped; the
-  scan stops at a project and does not list its nested projects.
-- Use **Manage projects…** on the Projects page or in Settings to deselect
+  such as `node_modules`, `.venv`, `build`, `dist` and `target` are skipped.
+  By default the scan stops at a project and does not list its nested projects.
+  Tick **nested** on a folder to keep scanning inside its projects and find
+  those checkouts too; that is slower and can surface vendored clones.
+- Added folders and **nested** ticks are local until you press **Save project
+  settings** (or **Use these folders** in the setup card). The background poll
+  keeps unsaved edits on screen, but they are not persisted until then.
+- Use **Manage projects…** on the Projects page or in Settings to choose
   checkouts. A deselected project stays on disk but is hidden from Repos;
-  new projects under the root are selected by default. The selection is stored in
-  `.hlc/config.json` and included in Backup & restore.
+  ordinary new projects under the root are selected by default, while nested
+  projects found by a deep scan start unchecked and must be included here.
+  The selection is stored in `.hlc/config.json` and included in Backup &
+  restore.
+- A scan stops at 20,000 folders or 500 projects per root. The Projects page
+  says so instead of silently returning a short list; narrow the folder if the
+  warning appears.
 - **Gitea URL** and **Gitea owner** are both empty by default. Filling both in
   enables the backup mirror and the **Check Gitea** actions. Leaving either
   empty disables them. Use `https://` for a non-loopback Gitea: the token is

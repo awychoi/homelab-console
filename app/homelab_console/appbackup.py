@@ -46,7 +46,9 @@ SETTINGS_KEYS = (
     "remote_root",
     "repo_root",
     "repo_roots",
+    "repo_deep_roots",
     "repo_exclusions",
+    "repo_nested_selected",
     "gitea_url",
     "gitea_owner",
     "gitea_timeout_s",
@@ -94,6 +96,8 @@ def _settings_payload(settings) -> dict[str, Any]:
         if key in SECRET_KEYS:
             continue
         if key == "repo_roots":
+            value = [str(item) for item in (value or [])]
+        elif key == "repo_deep_roots":
             value = [str(item) for item in (value or [])]
         payload[key] = value
     return payload
@@ -214,11 +218,29 @@ def _validated_settings(payload: Any) -> dict[str, Any]:
                     raise BackupError("archive project folders must be absolute")
                 roots.append(str(path.resolve()))
             values[key] = roots
+        elif key == "repo_deep_roots":
+            if not isinstance(value, list) or len(value) > 20:
+                raise BackupError("archive has an invalid repo_deep_roots list")
+            deep: list[str] = []
+            for item in value:
+                raw = str(item or "").strip()
+                if not raw:
+                    continue
+                path = Path(raw).expanduser()
+                if not path.is_absolute():
+                    raise BackupError("archive deep-scan folders must be absolute")
+                deep.append(str(path.resolve()))
+            values[key] = deep
         elif key == "repo_exclusions":
             try:
                 values[key] = normalize_repo_exclusions(value)
             except (TypeError, ValueError) as exc:
                 raise BackupError("archive has invalid repo_exclusions") from exc
+        elif key == "repo_nested_selected":
+            try:
+                values[key] = normalize_repo_exclusions(value)
+            except (TypeError, ValueError) as exc:
+                raise BackupError("archive has invalid repo_nested_selected") from exc
         elif key == "release_sources":
             try:
                 values[key] = releases.normalize_source_overrides(value, strict=True)
@@ -271,11 +293,18 @@ def _validated_settings(payload: Any) -> dict[str, Any]:
         values["repo_roots"] = [values["repo_root"]]
     if values.get("repo_roots"):
         values["repo_root"] = values["repo_roots"][0]
-    if values.get("repo_exclusions"):
-        allowed_roots = set(values.get("repo_roots") or [])
-        values["repo_exclusions"] = {
-            root: ids for root, ids in values["repo_exclusions"].items() if root in allowed_roots
-        }
+        allowed_roots = set(values["repo_roots"])
+        if values.get("repo_deep_roots"):
+            values["repo_deep_roots"] = [
+                path for path in values["repo_deep_roots"] if path in allowed_roots
+            ]
+        for key in ("repo_exclusions", "repo_nested_selected"):
+            if values.get(key):
+                values[key] = {
+                    root: ids
+                    for root, ids in values[key].items()
+                    if root in allowed_roots
+                }
     return values
 
 
