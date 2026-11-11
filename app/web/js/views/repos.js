@@ -301,6 +301,8 @@ function contentHtml(ctx) {
   const rootError = snapshot?.root_error || '';
   const giteaConfigError = snapshot?.gitea_config_error || '';
   const discoveryWarnings = snapshot?.discovery_warnings || [];
+  const nestedPending = (snapshot?.discovered || [])
+    .filter((entry) => entry.nested && !entry.selected).length;
   const authErrors = repos.filter((repo) => repo.gitea?.status === 'auth').length;
   const giteaTile = gitea.checked_at
     ? { value: String(summary.gitea_behind || 0), sub: `${ui.plural(summary.gitea_checked || 0, 'project')} checked · ${ui.ago(gitea.checked_at)}` }
@@ -322,6 +324,7 @@ function contentHtml(ctx) {
   ${queueActive ? `<div class="banner">${icon('layers')}<span><strong>Queue running.</strong> ${snapshot.queue.completed}/${snapshot.queue.total} complete — GitHub then Gitea for each project.</span>${snapshot.queue.run_id ? `<button class="btn sm ghost" data-repo-queue-log="${esc(snapshot.queue.run_id)}">${icon('terminal', 12)} View log</button>` : ''}</div>` : ''}
   ${giteaAuthBanner(ctx, authErrors)}
   ${!repos.length && Number(summary.discovered || 0) > 0 ? `<div class="banner">${icon('info')}<span><strong>All discovered projects are deselected.</strong> They stay on disk; use <strong>Manage</strong> to add them back.</span><button class="btn sm ghost" type="button" data-repo-manage>${icon('settings', 12)} Manage</button></div>` : ''}
+  ${nestedPending && repos.length ? `<div class="banner">${icon('git')}<span><strong>${ui.plural(nestedPending, 'nested project')} found.</strong> They stay out of Repos until you include them — nested projects start unselected.</span><button class="btn sm ghost" type="button" data-repo-manage>${icon('settings', 12)} Manage</button></div>` : ''}
   <div class="grid cols-4 mb-2">
     ${statTile({ label: 'Projects', value: String(summary.total || 0), sub: `${summary.github || 0} with GitHub · ${(summary.total || 0) - (summary.github || 0)} local-only`, iconName: 'git', toneName: '', valueTone: '' })}
     ${statTile({ label: 'Files to commit', value: String(summary.dirty_files || 0), sub: summary.dirty_repos ? `${ui.plural(summary.dirty_repos, 'project')} dirty${summary.ignored_files ? ` · ${summary.ignored_files} ignored hidden` : ''}` : 'all working trees clean', iconName: 'commit', toneName: summary.dirty_repos ? 'warn' : 'ok', valueTone: summary.dirty_repos ? 'text-warn' : '' })}
