@@ -10,7 +10,7 @@ meta:
   - label: The experiment
     value: Engineer my way out of managing a fleet of Raspberry Pis, a sprawl of services, repos to review and sync, and Gitea backups.
   - label: What I learned
-    value: Yes - and include snapshot and rollback functions.
+    value: Snapshot and rollback functions are critical. Knowing what not to build.
 
 link:
   href: https://github.com/awychoi/homelab-console
