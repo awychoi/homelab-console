@@ -28,6 +28,18 @@ Use the sticky **Jump to** bar at the top of the page to reach Appearance,
 Collection, Sources, Console, Repos, Backup, Safety or Maintenance
 directly; the active section follows you as you scroll.
 
+### Dismissible banners
+
+Banners and warning boxes on every page have a close control. The dismissal is
+saved in `.hlc/config.json` (`dismissed_notices`) rather than browser storage,
+so it survives polls, app restarts and the loopback port changing. The
+nested-projects hint stays dismissed even after you include one of those
+projects; most content-keyed warnings can return when their text changes (a new
+error, a different host list). Status banners (queue progress, first snapshot),
+the Gitea prune warning and warnings inside confirmation dialogs stay visible by
+design. **Settings → Appearance → Restore dismissed banners** brings everything
+back.
+
 ### Collection and updates
 
 - **Telemetry poll interval** — how often the SSH fleet probe runs.

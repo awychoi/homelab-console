@@ -1,5 +1,6 @@
 import * as ui from '../ui.js';
 import { pageHead, stateBanner, emptyState, hostLabel, stackHref } from './common.js';
+import { filterNoticeHtml } from '../notices.js';
 
 const { esc, icon } = ui;
 
@@ -116,7 +117,7 @@ export default {
     if (!page) return;
 
     const paint = () => {
-      page.innerHTML = contentHtml(ctx);
+      page.innerHTML = filterNoticeHtml(contentHtml(ctx));
       attach();
     };
 

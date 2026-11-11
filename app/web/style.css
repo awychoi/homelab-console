@@ -884,6 +884,16 @@ table.data .actions { text-align: right; white-space: nowrap; }
 .banner.bad { border-color: var(--border-bad); background: var(--banner-bad-bg); color: var(--banner-bad-text); }
 .banner .btn { margin-left: auto; }
 .banner svg { width: 15px; height: 15px; }
+.banner > span, .warn-box > div { flex: 1; min-width: 0; }
+.notice-close {
+  flex: none; width: 24px; height: 24px; padding: 0; margin-left: 6px;
+  display: grid; place-items: center;
+  border: 0; border-radius: 6px;
+  background: transparent; color: inherit; opacity: .5;
+  font-size: 17px; line-height: 1; cursor: pointer;
+}
+.notice-close:hover, .notice-close:focus-visible { opacity: 1; background: var(--hover-strong); }
+.warn-box > .notice-close { align-self: flex-start; margin-top: -3px; }
 
 /* ---------------------------------------------------------------- forms */
 .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }

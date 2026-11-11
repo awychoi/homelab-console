@@ -1,6 +1,7 @@
 import * as ui from '../ui.js';
 import { pageHead, stateBanner, runtimePill, syncPill, safetyBadge, containerStatePill } from './common.js';
 import { showDeploy, showLifecycle, showUpdate, showRollback, renderPlan } from '../flows.js';
+import { filterNoticeHtml } from '../notices.js';
 import { openHostTerminal } from '../terminal.js';
 
 const { esc, icon } = ui;
@@ -331,7 +332,7 @@ export default {
     const paint = () => {
       const stateRow = (ctx.state?.stacks || []).find((row) => row.host === host && row.name === name);
       const cached = getCache(ctx, host, name);
-      page.innerHTML = contentHtml(ctx, host, name, cached?.data || null, stateRow);
+      page.innerHTML = filterNoticeHtml(contentHtml(ctx, host, name, cached?.data || null, stateRow));
       attach();
     };
 

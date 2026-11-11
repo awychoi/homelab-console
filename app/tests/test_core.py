@@ -1007,6 +1007,29 @@ class ConfigTests(unittest.TestCase):
             reloaded = Settings.load(root)
             self.assertEqual(reloaded.get("repo_exclusions"), {str(repo.resolve()): ["alpha", "group/beta"]})
 
+    def test_dismissed_notices_round_trip_and_sanitize(self):
+        import tempfile
+        from homelab_console.config import Settings
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            settings = Settings.load(root)
+            settings.update(
+                {
+                    "dismissed_notices": {
+                        "id:repos-nested-pending": 10,
+                        "banner:abc": "20",
+                        "": 30,
+                        "bad\nkey": 40,
+                    }
+                }
+            )
+            reloaded = Settings.load(root)
+            self.assertEqual(
+                reloaded.get("dismissed_notices"),
+                {"id:repos-nested-pending": 10, "banner:abc": 20},
+            )
+
     def test_theme_migration_and_validation(self):
         import tempfile
         from homelab_console.config import Settings

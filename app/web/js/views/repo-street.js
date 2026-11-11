@@ -187,7 +187,7 @@ function contentHtml(ctx) {
   })}
   ${snapshot.root_error ? `<div class="banner bad">${icon('alert')}<span><strong>Project folder unavailable.</strong> ${esc(snapshot.root_error)}</span><a class="btn sm ghost" href="#/settings">Settings</a></div>` : ''}
   ${snapshot.gitea_config_error ? `<div class="banner bad">${icon('alert')}<span><strong>Gitea configuration is invalid.</strong> ${esc(snapshot.gitea_config_error)}</span><a class="btn sm ghost" href="#/settings">Settings</a></div>` : ''}
-  ${queue && ['queued', 'running'].includes(queue.status) ? `<div class="banner">${icon('layers')}<span><strong>Queue running.</strong> ${queue.completed}/${queue.total} complete — GitHub then Gitea for each project.</span>${queue.run_id ? `<button class="btn sm ghost" data-repo-queue-log="${esc(queue.run_id)}">${icon('terminal', 12)} View log</button>` : ''}</div>` : ''}
+  ${queue && ['queued', 'running'].includes(queue.status) ? `<div class="banner" data-no-dismiss>${icon('layers')}<span><strong>Queue running.</strong> ${queue.completed}/${queue.total} complete — GitHub then Gitea for each project.</span>${queue.run_id ? `<button class="btn sm ghost" data-repo-queue-log="${esc(queue.run_id)}">${icon('terminal', 12)} View log</button>` : ''}</div>` : ''}
   ${giteaAuthBanner(ctx, authErrors)}
   <div class="grid cols-4 mb-2">
     ${statTile({ label: 'Projects', value: String(summary.total || 0), sub: `${summary.github || 0} with GitHub · ${(summary.total || 0) - (summary.github || 0)} local-only`, iconName: 'git' })}

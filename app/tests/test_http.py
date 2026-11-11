@@ -258,6 +258,24 @@ class ServiceMetadataApiTests(unittest.TestCase):
         finally:
             conn.close()
 
+    def test_notice_dismissal_round_trip(self):
+        status, payload = self.request("POST", "/api/notices", {"key": "id:repos-nested-pending"})
+        self.assertEqual(status, 200)
+        self.assertIn("id:repos-nested-pending", payload["dismissed"])
+        self.assertIn("id:repos-nested-pending", self.settings.get("dismissed_notices"))
+
+        status, payload = self.request("GET", "/api/notices")
+        self.assertEqual(status, 200)
+        self.assertIn("id:repos-nested-pending", payload["dismissed"])
+
+        status, _payload = self.request("POST", "/api/notices", {"key": ""})
+        self.assertEqual(status, 400)
+
+        status, payload = self.request("POST", "/api/notices", {"restore": True})
+        self.assertEqual(status, 200)
+        self.assertEqual(payload["dismissed"], {})
+        self.assertEqual(self.settings.get("dismissed_notices"), {})
+
     def test_release_source_round_trip(self):
         status, payload = self.request(
             "POST",

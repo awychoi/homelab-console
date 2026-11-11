@@ -41,6 +41,25 @@ __pycache__/
 """
 
 MAX_REPO_EXCLUSIONS = 500
+MAX_DISMISSED_NOTICES = 200
+
+
+def normalize_dismissed_notices(raw: Any) -> dict[str, int]:
+    """Validate the UI notice dismissal map (key -> unix timestamp)."""
+    if not isinstance(raw, dict):
+        return {}
+    cleaned: dict[str, int] = {}
+    for key, value in raw.items():
+        text = str(key or "").strip()
+        if not text or len(text) > 200 or any(char in text for char in ("\r", "\n", "\x00")):
+            continue
+        try:
+            at = int(value or 0)
+        except (TypeError, ValueError):
+            at = 0
+        cleaned[text] = at
+    newest = sorted(cleaned.items(), key=lambda item: item[1])[-MAX_DISMISSED_NOTICES:]
+    return dict(newest)
 
 
 def normalize_repo_exclusions(raw: Any) -> dict[str, list[str]]:
@@ -178,6 +197,7 @@ DEFAULTS: dict[str, Any] = {
     "repo_deep_roots": [],
     "repo_exclusions": {},
     "repo_nested_selected": {},
+    "dismissed_notices": {},
     "gitea_url": "",
     "gitea_owner": "",
     "gitea_timeout_s": 120,
@@ -312,6 +332,9 @@ class Settings:
         merged["repo_exclusions"] = normalize_repo_exclusions(merged.get("repo_exclusions"))
         merged["repo_nested_selected"] = normalize_repo_exclusions(
             merged.get("repo_nested_selected")
+        )
+        merged["dismissed_notices"] = normalize_dismissed_notices(
+            merged.get("dismissed_notices")
         )
         # Workspace-owned service metadata is normalized on read so a hand
         # edit cannot inject an invalid source or profile into the app.

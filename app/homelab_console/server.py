@@ -28,7 +28,7 @@ from typing import Any
 
 from . import __version__, appbackup, backups, hosts as hosts_mod, profiles, releases, repos, sshkeys, stacks, updates, util
 from .app_service import AppService
-from .config import APP_NAME, VERSION
+from .config import APP_NAME, MAX_DISMISSED_NOTICES, VERSION
 from .hosts import HostError
 from .runner import RunError
 from .sshkeys import KeyError_
@@ -378,6 +378,8 @@ class ConsoleHandler(BaseHTTPRequestHandler):
             return self._release_sources(method)
         if rest and rest[0] == "settings":
             return self._settings(method)
+        if rest and rest[0] == "notices":
+            return self._notices(method)
         if rest and rest[0] == "system":
             if method != "GET":
                 raise ApiError(405, "method not allowed")
@@ -1587,6 +1589,37 @@ class ConsoleHandler(BaseHTTPRequestHandler):
                 self.app.repos.request_refresh()
             return self._send_json(200, {"settings": self.app.settings.public()})
         raise ApiError(405, "method not allowed")
+
+    # -------------------------------------------------------------- notices
+    def _notices(self, method: str) -> None:
+        """Dismissed page notices live in the workspace, not browser storage.
+
+        The macOS shell picks a random loopback port on every launch, so an
+        origin-scoped localStorage entry would not survive a restart.
+        """
+        if method == "GET":
+            return self._send_json(
+                200, {"dismissed": self.app.settings.get("dismissed_notices") or {}}
+            )
+        if method != "POST":
+            raise ApiError(405, "method not allowed")
+        body = self._body()
+        if body.get("restore"):
+            self.app.settings.update({"dismissed_notices": {}})
+            return self._send_json(200, {"ok": True, "dismissed": {}})
+        key = str(body.get("key") or "").strip()
+        if not key or len(key) > 200 or any(char in key for char in ("\r", "\n", "\x00")):
+            raise ApiError(400, "key must be a short single-line string")
+        dismissed = dict(self.app.settings.get("dismissed_notices") or {})
+        dismissed[key] = util.now_ts()
+        if len(dismissed) > MAX_DISMISSED_NOTICES:
+            oldest = sorted(dismissed.items(), key=lambda item: item[1])[
+                : len(dismissed) - MAX_DISMISSED_NOTICES
+            ]
+            for old_key, _stamp in oldest:
+                dismissed.pop(old_key, None)
+        self.app.settings.update({"dismissed_notices": dismissed})
+        return self._send_json(200, {"ok": True, "dismissed": dismissed})
 
     # ------------------------------------------------------------- system
     def _system(self) -> None:

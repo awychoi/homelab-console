@@ -738,6 +738,7 @@ Persisted in `.hlc/config.json` (mode 600) and editable in Settings.
 | `repo_root` | empty | legacy alias for the first entry of `repo_roots` |
 | `repo_exclusions` | `{}` | per-root projects hidden from Repos |
 | `repo_nested_selected` | `{}` | nested projects opted into Repos |
+| `dismissed_notices` | `{}` | page banners/warnings closed by the operator; restored from Appearance |
 | `gitea_url` | empty | backup server base URL; empty disables Gitea |
 | `gitea_owner` | empty | must match the GitHub owner; empty disables Gitea |
 | `gitea_timeout_s` | 120 | push/fetch timeout; ref checks cap at 15s |
@@ -764,7 +765,7 @@ sent as a header, so prefer HTTPS.
 .venv/bin/python -m unittest discover -s app/tests -v
 ```
 
-The suite is stdlib-only (172 tests) and covers compose parsing, nested file
+The suite is stdlib-only (174 tests) and covers compose parsing, nested file
 creation, stack-layout warnings, plan hashing, pin rewriting, host round-trips,
 SSH config edits, version selection, managed targets, release-age metadata,
 source normalization/overrides, per-stack safety profiles, database-dump

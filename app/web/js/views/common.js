@@ -49,7 +49,7 @@ export function stateBanner(ctx) {
   if (!state) return '';
   const summary = state.summary || {};
   if (state.warming_up) {
-    return `<div class="banner">${icon('clock')}<span>Collecting the first fleet snapshot…</span></div>`;
+    return `<div class="banner" data-no-dismiss>${icon('clock')}<span>Collecting the first fleet snapshot…</span></div>`;
   }
   if (summary.hosts_offline?.length) {
     return `<div class="banner bad">${icon('alert')}<span><strong>${esc(summary.hosts_offline.join(', '))}</strong> unreachable — data shown for those hosts may be stale.</span><a class="btn sm ghost" href="#/hosts">Hosts</a></div>`;

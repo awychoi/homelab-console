@@ -12,6 +12,7 @@ import hostsView from './views/hosts.js';
 import activityView from './views/activity.js';
 import settingsView from './views/settings.js';
 import { showCheckUpdates, showCommit } from './flows.js';
+import { filterNoticeHtml, installNoticeDismissal, setDismissedNotices } from './notices.js';
 
 const WORKSPACES = [
   { id: 'pi', label: 'Pi fleet', href: '#/fleet', icon: 'fleet' },
@@ -127,6 +128,7 @@ const ctx = {
       const bootstrap = await api.get('/api/bootstrap');
       ctx.bootstrap = bootstrap;
       ctx.state = bootstrap.state;
+      setDismissedNotices(bootstrap.settings?.dismissed_notices);
       if (bootstrap.settings?.theme) ctx.applyTheme(bootstrap.settings.theme);
       updateChrome();
       return bootstrap;
@@ -461,6 +463,7 @@ function renderCurrent() {
     html = `<div class="empty"><strong>This view failed to render</strong><p>${ui.esc(ui.errorText(error))}</p></div>`;
     ui.toast('View render failed', 'err', ui.errorText(error));
   }
+  html = filterNoticeHtml(html);
   // If nothing changed, keep the existing DOM and its listeners. This avoids
   // pointless replacement on poll ticks (especially on static views).
   if (container.innerHTML === html) { updateChrome(); return; }
@@ -566,6 +569,7 @@ async function boot() {
   try {
     ctx.bootstrap = await api.get('/api/bootstrap');
     ctx.state = ctx.bootstrap.state;
+    setDismissedNotices(ctx.bootstrap.settings?.dismissed_notices);
   } catch (error) {
     document.getElementById('app').innerHTML = `<div class="empty boot-error">
       <strong>Cannot reach the console server</strong>
@@ -594,4 +598,5 @@ async function boot() {
   setTimeout(tick, 4000);
 }
 
+installNoticeDismissal();
 boot();

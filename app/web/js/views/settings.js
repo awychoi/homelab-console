@@ -1,6 +1,7 @@
 import * as ui from '../ui.js';
 import { pageHead, stateBanner } from './common.js';
 import { nativePick } from '../native.js';
+import { clearDismissedNotices, filterNoticeHtml } from '../notices.js';
 import { addRoot, bindRootRemoval, openRepoSelection, readDraft, resetRootsDraft, rootsDraft, rootsHtml, rootsLabel } from '../repoRoots.js';
 
 const { esc, icon } = ui;
@@ -79,7 +80,7 @@ function repoSettingsHtml(ctx) {
             <div class="field"><label for="set-repo-poll">Local scan interval</label><select id="set-repo-poll">${[10, 30, 60, 120].map((value) => `<option value="${value}" ${Number(settings.repo_poll_interval_s) === value ? 'selected' : ''}>${value} seconds</option>`).join('')}</select></div>
           </div>
           <label class="check"><input type="checkbox" id="set-gitea-prune" ${settings.gitea_prune !== false ? 'checked' : ''}><span><strong>Prune extra Gitea refs.</strong> Delete branches and tags on Gitea that no longer exist locally, keeping the backup an exact mirror.</span></label>
-          <div id="set-gitea-prune-warning" class="warn-box mt-1 ${settings.gitea_prune !== false ? '' : 'hidden'}">${icon('alert')}<div><strong>Prune deletes refs from Gitea.</strong> Branches and tags missing locally are removed on the next Gitea sync. Only enable this if Gitea is a disposable backup, not a merge target. The sync itself will not ask again.</div></div>
+          <div id="set-gitea-prune-warning" data-no-dismiss class="warn-box mt-1 ${settings.gitea_prune !== false ? '' : 'hidden'}">${icon('alert')}<div><strong>Prune deletes refs from Gitea.</strong> Branches and tags missing locally are removed on the next Gitea sync. Only enable this if Gitea is a disposable backup, not a merge target. The sync itself will not ask again.</div></div>
           <label class="check"><input type="checkbox" id="set-gitea-force" ${settings.gitea_force !== false ? 'checked' : ''}><span><strong>Force-update Gitea refs.</strong> Allow a rewritten local history to replace the Gitea backup. Never applies to GitHub.</span></label>
           <label class="check"><input type="checkbox" id="set-gitea-startup" ${settings.gitea_check_on_start !== false ? 'checked' : ''}><span><strong>Check Gitea automatically.</strong> One ref comparison at startup, plus the affected project after a commit or GitHub push. No timer; <strong>Check Gitea</strong> still works at any time.</span></label>
           <div class="btn-group mt-1"><button class="btn primary" data-action="save-repo-settings">Save project settings</button><button class="btn ghost" type="button" data-action="manage-repos">Manage projects…</button><a class="btn ghost" href="#/repos">Open Projects</a></div>
@@ -348,6 +349,7 @@ function contentHtml(ctx) {
         ${themeChoice('system', 'System', 'Follows the macOS appearance and changes live when the OS does.', 'system')}
       </div>
       <div class="hint mt-2">The choice follows this console on the Mac. The quick control in the top bar cycles Dark → Light → System.</div>
+      <div class="btn-group mt-2"><button class="btn ghost" data-action="restore-notices">Restore dismissed banners</button><span class="hint">Brings back banners and warnings you closed, including the nested-projects hint.</span></div>
     </div>
   </div>
   <div class="card mb-2 settings-section" data-settings-section="collection">
@@ -435,7 +437,7 @@ export default {
     const page = root.querySelector('#settings-page');
     if (!page) return;
     if (ctx.uiState.settingsNavCleanup) ctx.uiState.settingsNavCleanup();
-    const paint = () => { page.innerHTML = contentHtml(ctx); attach(); };
+    const paint = () => { page.innerHTML = filterNoticeHtml(contentHtml(ctx)); attach(); };
 
     // The page is long; keep the section chips in sync while the operator scrolls.
     const setupSettingsNav = () => {
@@ -957,6 +959,14 @@ export default {
         } catch (error) {
           ui.toast('Could not clear history', 'err', ui.errorText(error));
         }
+      });
+      page.querySelector('[data-action="restore-notices"]')?.addEventListener('click', async () => {
+        const ok = await clearDismissedNotices();
+        ui.toast(
+          ok ? 'Dismissed banners restored' : 'Could not restore dismissed banners',
+          ok ? 'ok' : 'err',
+        );
+        await ctx.refreshState({ force: true });
       });
       setupSettingsNav();
     };
