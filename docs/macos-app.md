@@ -163,10 +163,13 @@ The app menu has two entries that live entirely in the shell:
   handler) so **Choose folders…** can select several project folders and backup
   save/restore can use real paths instead of typed ones.
 
-The app is **foreground-only**. Closing the console window quits the app,
-terminates the backend child process, and unregisters any login item left by an
-older build. There is no menu-bar mode, launch agent, or daemon; opening the app
-is the only way it starts.
+Closing the console window puts the app out of sight without stopping it: the
+window, webview and backend stay alive, the Dock icon keeps its running dot,
+and clicking the icon restores the same page instantly. **Quit Homelab
+Console (⌘Q)**, or **Quit** from the Dock icon's menu, terminates the backend
+and exits. The app has no menu-bar extra, login item, launch agent or daemon;
+opening the app is the only way it starts, and a login item left by an older
+build is unregistered at launch.
 
 While the app is running, the console's own Settings page hides the token
 field and says the token is app-managed, so there is only one place to set it.

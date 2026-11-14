@@ -88,10 +88,12 @@ PyInstaller is a build-time dependency only and the console stays stdlib-only.
 
 The shell picks a free loopback port, starts `serve --no-browser`, waits for
 `/api/health`, then loads the page in the webview. Closing the console window
-quits the app and terminates the child; there is no login item or background
-mode. A crash or Force Quit is covered by a parent watchdog in the backend, so
-no server is left holding a port. Logs: `~/Library/Logs/Homelab Console/sidecar.log`
-and `<workspace>/.hlc/logs/console.log`.
+hides the app but keeps the shell and backend child running, so clicking the
+Dock icon restores the same page; **Quit (⌘Q)** terminates the child. There is
+no login item, menu-bar extra or always-on daemon. A crash or Force Quit is
+covered by a parent watchdog in the backend, so no server is left holding a
+port. Logs: `~/Library/Logs/Homelab Console/sidecar.log` and
+`<workspace>/.hlc/logs/console.log`.
 
 Signing defaults to ad-hoc; see
 [Build and sign it yourself](building.md). The Gitea token moves to the

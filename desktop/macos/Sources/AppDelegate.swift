@@ -26,7 +26,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
         preferences.onTokenSaved = { [weak self] token in
             self?.restartBackend(token: token)
         }
-        // Foreground-only app: remove a login item registered by an older build.
+        // No login item: remove one registered by an older build.
         // Unconditional: a disabled/stale BTM record can report notRegistered
         // while still appearing in System Settings.
         try? SMAppService.mainApp.unregister()
@@ -38,8 +38,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
         }
     }
 
+    /// The console window is the whole app, but closing it should not end the
+    /// backend: hide to the Dock instead so a click resumes instantly.
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
-        true
+        false
     }
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
@@ -47,28 +49,34 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
         return .terminateNow
     }
 
-    /// The red close button quits the app instead of leaving a windowless
-    /// process in the Dock. Returning false keeps the window until the
-    /// termination sequence has stopped the backend.
+    /// The red close button hides the app and keeps the window, webview and
+    /// backend alive. The Dock icon stays dotted, and clicking it restores the
+    /// same page. Quit (⌘Q) is still the way to stop everything.
     func windowShouldClose(_ sender: NSWindow) -> Bool {
-        guard sender === window else { return true }
-        shuttingDown = true
-        NSApp.terminate(nil)
+        guard sender === window, !shuttingDown else { return true }
+        NSApp.hide(nil)
         return false
     }
 
-    /// Fallback for programmatic closes.
+    /// Fallback for a programmatic close: keep the process in the Dock rather
+    /// than terminating it with no window.
     func windowWillClose(_ notification: Notification) {
         guard !shuttingDown,
               let closing = notification.object as? NSWindow,
               closing === window else { return }
-        shuttingDown = true
-        NSApp.terminate(nil)
+        NSApp.hide(nil)
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
-        if !flag { window?.makeKeyAndOrderFront(nil) }
+        showConsoleWindow()
         return true
+    }
+
+    /// Bring the hidden console back without recreating the window or backend.
+    private func showConsoleWindow() {
+        NSApp.unhide(nil)
+        NSApp.activate(ignoringOtherApps: true)
+        window?.makeKeyAndOrderFront(nil)
     }
 
     func applicationSupportsSecureRestorableState(_ app: NSApplication) -> Bool {
@@ -413,6 +421,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
     }
 
     @objc private func showPreferences() {
+        NSApp.unhide(nil)
         preferences.showWindow(nil)
         preferences.window?.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
@@ -603,7 +612,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
     /// Applied after the Keychain changes: the token reaches the backend
     /// through its environment, and a child's environment cannot change.
     private func restartBackend(token: String?) {
-        window?.makeKeyAndOrderFront(nil)
+        showConsoleWindow()
         if let backend, backend.isRunning {
             shuttingDown = true
             backend.terminate()

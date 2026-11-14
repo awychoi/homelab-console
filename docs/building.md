@@ -113,7 +113,8 @@ launch if you transfer the `.app` to them. They can right-click → **Open** onc
 each person to build and sign their own copy.
 
 The app has **no auto-update**: a new build is a new file. Closing the window
-quits the backend; there is no login item or background mode. Logs are at
+hides the app and keeps the backend running for an instant reopen; **Quit
+(⌘Q)** stops it. There is no login item or menu-bar extra. Logs are at
 `~/Library/Logs/Homelab Console/sidecar.log` and
 `<workspace>/.hlc/logs/console.log`.
 
