@@ -374,11 +374,13 @@ pull, network call or destructive git action is performed by Pulse.
 - **Open in VS Code** launches `code -n` with the repo path; the app falls
   back to the macOS application path if the `code` shell command is missing.
 - **Commit** opens a checklist of changed and untracked files with an editable
-  message. Paths matching `.gitignore` are hidden from selection, including
-  tracked files that later became ignored; the API rejects them too. Build
-  noise (`__pycache__`, `.pyc`, `.DS_Store`, `node_modules`, `.venv`) starts
-  unchecked. Nothing is committed until you click; no auto-commit and no bulk
-  commit.
+  message. A rename is listed once as `new ← old` and commits with both sides,
+  so Git records the move (plus further edits) instead of a new copy; a staged
+  deletion commits the same way. Paths matching `.gitignore` are hidden from
+  selection, including tracked files that later became ignored; the API rejects
+  them too. Build noise (`__pycache__`, `.pyc`, `.DS_Store`, `node_modules`,
+  `.venv`) starts unchecked. Nothing is committed until you click; no
+  auto-commit and no bulk commit.
 - **Push** sends only the current branch to GitHub, setting upstream on the
   first push and never forcing. Authentication is the operator's existing git
   credential helper; the console never stores or uses a GitHub token for

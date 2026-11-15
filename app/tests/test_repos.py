@@ -488,6 +488,55 @@ class CommitTests(unittest.TestCase):
             self.assertTrue((local / "other.txt").read_text() == "changed\n")
             self.assertEqual(len(store.events), 1)
 
+    def test_commit_staged_rename_with_worktree_edits(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp).resolve() / "repos"
+            root.mkdir()
+            local = root / "demo"
+            make_repo(local)
+            (local / "keep.txt").write_text("keep\n")
+            run("git", "add", "keep.txt", cwd=local)
+            run("git", "commit", "-qm", "keep", cwd=local)
+            run("git", "mv", "f.txt", "moved.txt", cwd=local)
+            (local / "moved.txt").write_text("one\nplus an edit\n")
+            (local / "keep.txt").write_text("keep\nplus an edit\n")
+            settings = configure_gitea(Settings.load(Path(tmp).resolve() / "console"))
+            settings.values["repo_root"] = str(root)
+            fleet = repos.RepoFleet(settings, StoreStub())
+            with mock.patch.object(fleet, "recheck_gitea_async", return_value=True):
+                result = fleet.commit("demo", ["moved.txt"], "demo: rename f.txt")
+            self.assertTrue(result["ok"])
+            names = run("git", "ls-tree", "-r", "--name-only", "HEAD", cwd=local).stdout.split()
+            self.assertEqual(names, ["keep.txt", "moved.txt"])
+            self.assertEqual(
+                run("git", "show", "HEAD:moved.txt", cwd=local).stdout,
+                "one\nplus an edit\n",
+            )
+            status = run("git", "status", "--porcelain", cwd=local).stdout
+            self.assertEqual(status, " M keep.txt\n")
+
+    def test_commit_staged_deletion(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp).resolve() / "repos"
+            root.mkdir()
+            local = root / "demo"
+            make_repo(local)
+            (local / "keep.txt").write_text("keep\n")
+            run("git", "add", "keep.txt", cwd=local)
+            run("git", "commit", "-qm", "keep", cwd=local)
+            run("git", "rm", "-q", "f.txt", cwd=local)
+            (local / "keep.txt").write_text("keep\nplus an edit\n")
+            settings = configure_gitea(Settings.load(Path(tmp).resolve() / "console"))
+            settings.values["repo_root"] = str(root)
+            fleet = repos.RepoFleet(settings, StoreStub())
+            with mock.patch.object(fleet, "recheck_gitea_async", return_value=True):
+                result = fleet.commit("demo", ["f.txt"], "demo: drop f.txt")
+            self.assertTrue(result["ok"])
+            names = run("git", "ls-tree", "-r", "--name-only", "HEAD", cwd=local).stdout.split()
+            self.assertEqual(names, ["keep.txt"])
+            status = run("git", "status", "--porcelain", cwd=local).stdout
+            self.assertEqual(status, " M keep.txt\n")
+
     def test_refresh_after_console_commit_maps_the_checkout(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp).resolve() / "repos"

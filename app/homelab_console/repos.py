@@ -824,6 +824,23 @@ def _parse_status(text: str) -> dict[str, Any]:
     }
 
 
+def _stage_paths(repo: Path, paths: list[str]) -> list[str]:
+    """Return the subset of *paths* that ``git add -A`` can actually match.
+
+    A rename's source and an already-staged deletion exist only in HEAD, so
+    ``git add`` rejects them as unmatched pathspecs ("did not match any
+    files"). The index already records that side of the change; the commit
+    pathspec still needs it, but the staging call must skip it.
+    """
+    if not paths:
+        return []
+    listed = _git(repo, "ls-files", "-z", "--", *paths, timeout=30)
+    indexed: set[str] = set()
+    if listed.returncode == 0:
+        indexed = {item for item in listed.stdout.split("\0") if item}
+    return [value for value in paths if value in indexed or os.path.lexists(repo / value)]
+
+
 def _ahead_behind(repo: Path, upstream: str) -> tuple[int | None, int | None]:
     result = _git(repo, "rev-list", "--left-right", "--count", f"HEAD...{upstream}", timeout=15)
     if result.returncode != 0:
@@ -2395,13 +2412,15 @@ class RepoFleet:
             entry = by_path[value]
             if entry.get("ignored"):
                 raise RepoError(f"{value} is ignored by .gitignore and cannot be committed from the console")
-            paths.append(entry["path"])
-            if entry.get("orig_path") and entry["orig_path"] not in paths:
-                paths.append(entry["orig_path"])
+            for candidate in (entry["path"], entry.get("orig_path") or ""):
+                if candidate and candidate not in paths:
+                    paths.append(candidate)
+        stage_paths = _stage_paths(path, paths)
         with self._lock_for(repo_id):
-            add = _git(path, "add", "-A", "--", *paths, timeout=60)
-            if add.returncode != 0:
-                raise RepoError(f"git add failed: {redact((add.stderr or add.stdout).strip())}")
+            if stage_paths:
+                add = _git(path, "add", "-A", "--", *stage_paths, timeout=60)
+                if add.returncode != 0:
+                    raise RepoError(f"git add failed: {redact((add.stderr or add.stdout).strip())}")
             commit = _git(path, "commit", "-m", message, "--", *paths, timeout=180)
             if commit.returncode != 0:
                 detail = redact((commit.stderr or commit.stdout).strip())
