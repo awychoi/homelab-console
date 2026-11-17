@@ -7,10 +7,8 @@ banner_alt: Homelab Console fleet dashboard, status, and container counts.
 logo: docs/assets/workbench-logo.svg
 logo_light: docs/assets/workbench-logo-light.svg
 meta:
-  - label: The experiment
-    value: Engineer my way out of managing a fleet of Raspberry Pis, a sprawl of services, repos to review and sync, and Gitea backups.
-  - label: What I learned
-    value: Snapshot and rollback functions are critical. Knowing what not to build.
+  - label: How it started
+    value: I can never remember how or where I installed my self-hosted services, let alone when they were last updated and I definitely don't have the patience for a manual log. What started as a simple tracker slowly turned into a dashboard that does way more.
 
 link:
   href: https://github.com/awychoi/homelab-console
