@@ -1113,6 +1113,19 @@ class AppAssociationTests(unittest.TestCase):
         self.assertEqual(row["app"]["version"], "0.1.0")
         self.assertEqual(row["app"]["path"], str(self.bundle))
 
+    def test_write_and_read_return_the_same_app_shape(self):
+        """Regression: the write reply once omitted "exists".
+
+        The modal renders a missing-bundle warning when that field is absent,
+        so linking an app immediately looked broken even though it launched.
+        """
+        chosen = self.fleet.set_repo_app("demo", str(self.bundle))
+        read = self.fleet.app_candidates("demo")
+        self.assertTrue(chosen["app"]["exists"])
+        self.assertEqual(set(chosen["app"]), set(read["app"]))
+        self.assertEqual(chosen["app"]["path"], read["app"]["path"])
+        self.assertEqual(chosen["app"]["version"], "0.1.0")
+
     def test_path_that_is_not_a_bundle_is_rejected(self):
         with self.assertRaises(repos.RepoError):
             self.fleet.set_repo_app("demo", str(self.repo / "dist"))

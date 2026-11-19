@@ -64,10 +64,10 @@ function bodyHtml(state) {
       <div class="app-choice-main">
         <div class="app-choice-name"><strong>${esc(app.name)}</strong>${versionPill(app)}</div>
         <div class="mono tiny">${esc(app.path)}</div>
-        ${app.exists ? '' : '<div class="warn-box mt-1">' + icon('alert') + '<div>This bundle is missing or unreadable. Pick another app below.</div></div>'}
+        ${app.exists === false ? '<div class="warn-box mt-1">' + icon('alert') + '<div>This bundle is missing or unreadable. Pick another app below.</div></div>' : ''}
       </div>
       <div class="btn-group">
-        <button class="btn primary sm" type="button" data-app-launch ${app.exists ? '' : 'disabled'}>${icon('play', 12)} Open app</button>
+        <button class="btn primary sm" type="button" data-app-launch ${app.exists === false ? 'disabled' : ''}>${icon('play', 12)} Open app</button>
         <button class="btn ghost sm" type="button" data-app-clear>${icon('x', 12)} Remove</button>
       </div>
     </div>` : `<div class="info-box">${icon('info')}<div>No app is linked yet. The console only launches it and compares versions — building and updating stay inside the app.</div></div>`}
@@ -142,10 +142,23 @@ export async function showRepoApps(ctx, repo) {
     }
   };
 
+  const reloadApp = async () => {
+    // Re-read instead of trusting the write response: the modal then always
+    // renders exactly what the next page load will show.
+    try {
+      const fresh = await api.get(`/api/repos/${encodeURIComponent(repo.id)}/apps`);
+      state.app = fresh.app || null;
+      state.candidates = fresh.candidates || state.candidates;
+    } catch {
+      /* keep the previous state; the row still reflects the change */
+    }
+  };
+
   const applyApp = async (path) => {
     try {
       const result = await api.post(`/api/repos/${encodeURIComponent(repo.id)}/app`, { path });
       state.app = result.app || null;
+      await reloadApp();
       if (state.app) toast('App linked', 'ok', `${state.app.name} · ${repo.rel}`);
       else toast('App unlinked', 'ok', repo.rel);
       repaint();

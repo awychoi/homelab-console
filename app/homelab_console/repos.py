@@ -2215,7 +2215,9 @@ class RepoFleet:
             self._bundles[chosen] = (apps.bundle_stamp(chosen), bundle)
         self.store.add_event("repo", "success", f"{identity['rel']}: app set to {bundle.name}")
         self.request_refresh()
-        return {"ok": True, "app": bundle.public()}
+        # Same shape the read endpoint returns: a raw Bundle has no "exists",
+        # and the UI paints a missing-bundle warning when that field is absent.
+        return {"ok": True, "app": self._app_entry(chosen, bundle)}
 
     def launch_app(self, repo_id: str) -> dict[str, Any]:
         path, identity = self.resolve(repo_id)
