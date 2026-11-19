@@ -109,6 +109,7 @@ workspace resolution and logs.
 |---|---|
 | [Console reference](docs/console.md) | Architecture, behavior, API, safety model and limits. |
 | [macOS app bundle](docs/macos-app.md) | Signing, workspace resolution and logs. |
+| [App manifest](docs/app-manifest.md) | Let a project's app report the dependency versions it bundles. |
 | [Example workspace](docs/example-workspace.md) | The sample fleet layout. |
 | [Security policy](SECURITY.md) | Threat model, secrets, reporting and scope. |
 | [Third-party notices](THIRD_PARTY_NOTICES.md) | Bundled Python, OpenSSL and native-library licenses. |

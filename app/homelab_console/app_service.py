@@ -36,6 +36,7 @@ class AppService:
         self._stop = threading.Event()
         self._auto_thread: threading.Thread | None = None
         self._boot_gitea_thread: threading.Thread | None = None
+        self._boot_deps_thread: threading.Thread | None = None
         self._boot_started = 0.0
         self._started = False
         self._last_auto_sweep = 0.0
@@ -49,6 +50,10 @@ class AppService:
         self.repos.start()
         self._boot_gitea_thread = threading.Thread(target=self._boot_gitea, name="hlc-boot-gitea", daemon=True)
         self._boot_gitea_thread.start()
+        self._boot_deps_thread = threading.Thread(
+            target=self._boot_dependencies, name="hlc-boot-deps", daemon=True
+        )
+        self._boot_deps_thread.start()
         self._auto_thread = threading.Thread(target=self._auto_loop, name="hlc-auto", daemon=True)
         self._auto_thread.start()
         log.info("console service started (repo=%s, state=%s)", self.settings.repo, self.settings.state_dir)
@@ -59,6 +64,8 @@ class AppService:
         self.repos.stop()
         if self._boot_gitea_thread:
             self._boot_gitea_thread.join(timeout=5)
+        if self._boot_deps_thread:
+            self._boot_deps_thread.join(timeout=5)
         if self._auto_thread:
             self._auto_thread.join(timeout=5)
         self.store.close()
@@ -116,6 +123,27 @@ class AppService:
             self.repos.check_gitea_async()
         except Exception:
             log.exception("startup Gitea check failed")
+
+    def _boot_dependencies(self) -> None:
+        """One upstream version pass per process start.
+
+        Shaped like the Gitea boot check: wait for the first scan so the rows
+        exist, then let the cached comparison fill in.  ``Check now`` in the
+        Projects header does the same thing on demand.
+        """
+        if not self.settings.get("dependencies_check_on_start", True):
+            return
+        deadline = time.monotonic() + 30
+        while not self._stop.is_set() and time.monotonic() < deadline:
+            if self.repos.state().get("generated_at"):
+                break
+            self._stop.wait(0.2)
+        if self._stop.is_set() or not self.repos.dependencies_configured():
+            return
+        try:
+            self.repos.check_dependencies_async()
+        except Exception:
+            log.exception("startup dependency check failed")
 
     def _wait_for_gitea(self, *, timeout: float) -> dict[str, Any] | None:
         """Block until the async ref check leaves "checking" (or time out)."""

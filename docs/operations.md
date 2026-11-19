@@ -128,6 +128,16 @@ Repos is optional and not needed to deploy to a Pi.
   in place and do not mark the backup as behind.
 - A missing Gitea project relies on Gitea's push-to-create. The GitHub owner must
   match `gitea_owner`.
+- **Apps and dependencies** are per project, not per root. The gear on a
+  Projects row links one built `.app` bundle and the upstream `owner/name`
+  repositories that bundle vendors. Suggestions come from a bounded scan of the
+  project; the choice is confirmed once and stored per project path. The
+  console launches the app and compares the newest GitHub release with the
+  version the bundle reports in `Contents/Resources/homelab-app.json`; it never
+  downloads or rebuilds anything. **Check app dependencies at startup** runs
+  one cached lookup per launch, and **Check deps** on the Projects header runs
+  it on demand. A bundle without that file shows *version unknown* rather than
+  "behind". See [App manifest](app-manifest.md).
 - In the native app, the Gitea token is owned by the app: use
   **Homelab Console → Settings… (⌘,)** and it goes to the macOS Keychain. The web
   page hides the field and links there.

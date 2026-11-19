@@ -83,6 +83,7 @@ function repoSettingsHtml(ctx) {
           <div id="set-gitea-prune-warning" data-no-dismiss class="warn-box mt-1 ${settings.gitea_prune !== false ? '' : 'hidden'}">${icon('alert')}<div><strong>Prune deletes refs from Gitea.</strong> Branches and tags missing locally are removed on the next Gitea sync. Only enable this if Gitea is a disposable backup, not a merge target. The sync itself will not ask again.</div></div>
           <label class="check"><input type="checkbox" id="set-gitea-force" ${settings.gitea_force !== false ? 'checked' : ''}><span><strong>Force-update Gitea refs.</strong> Allow a rewritten local history to replace the Gitea backup. Never applies to GitHub.</span></label>
           <label class="check"><input type="checkbox" id="set-gitea-startup" ${settings.gitea_check_on_start !== false ? 'checked' : ''}><span><strong>Check Gitea automatically.</strong> One ref comparison at startup, plus the affected project after a commit or GitHub push. No timer; <strong>Check Gitea</strong> still works at any time.</span></label>
+          <label class="check"><input type="checkbox" id="set-deps-startup" ${settings.dependencies_check_on_start !== false ? 'checked' : ''}><span><strong>Check app dependencies at startup.</strong> One GitHub releases lookup for the repositories linked to a project's app, cached for six hours. The Projects header has <strong>Check deps</strong> for anything on demand.</span></label>
           <div class="btn-group mt-1"><button class="btn primary" data-action="save-repo-settings">Save project settings</button><button class="btn ghost" type="button" data-action="manage-repos">Manage projects…</button><a class="btn ghost" href="#/repos">Open Projects</a></div>
         </div>
       </div>
@@ -791,6 +792,7 @@ export default {
             gitea_prune: page.querySelector('#set-gitea-prune').checked,
             gitea_force: page.querySelector('#set-gitea-force').checked,
             gitea_check_on_start: page.querySelector('#set-gitea-startup').checked,
+            dependencies_check_on_start: page.querySelector('#set-deps-startup').checked,
           });
           ctx.uiState.repoRootsDraft = draft;
           const bootstrap = await ctx.reloadBootstrap();

@@ -35,6 +35,10 @@ class _StubRepos:
         self.refreshed = 0
         self.opened: list[str] = []
         self.queued: list[list[str]] = []
+        self.apps: dict[str, dict] = {}
+        self.deps: dict[str, list] = {}
+        self.launched: list[str] = []
+        self.deps_checked = 0
         self.selection: dict[str, list[str]] = {}
         self.nested_selection: dict[str, list[str]] = {}
         self.state_data = {
@@ -102,6 +106,46 @@ class _StubRepos:
     def open_in_vscode(self, repo_id):
         self.opened.append(repo_id)
         return {"ok": True, "path": "/tmp/repos/homelab"}
+
+    def app_candidates(self, repo_id):
+        return {
+            "repo": repo_id,
+            "path": "/tmp/repos/homelab",
+            "app": self.apps.get(repo_id),
+            "candidates": [],
+            "manifest_name": "homelab-app.json",
+        }
+
+    def set_repo_app(self, repo_id, path):
+        if path:
+            self.apps[repo_id] = {
+                "path": path,
+                "name": "Demo",
+                "version": "0.1.0",
+                "identifier": "local.demo",
+                "manifest": True,
+                "exists": True,
+            }
+        else:
+            self.apps.pop(repo_id, None)
+        return {"ok": True, "app": self.apps.get(repo_id)}
+
+    def launch_app(self, repo_id):
+        if repo_id not in self.apps:
+            raise RuntimeError("no app")
+        self.launched.append(repo_id)
+        return {"ok": True, "path": self.apps[repo_id]["path"], "name": "Demo"}
+
+    def set_repo_dependencies(self, repo_id, raw):
+        self.deps[repo_id] = list(raw or [])
+        return {"ok": True, "dependencies": self.deps[repo_id]}
+
+    def dependencies_configured(self):
+        return bool(self.deps)
+
+    def check_dependencies_async(self, force=False):
+        self.deps_checked += 1
+        return True
 
 
 class _StubApp:
@@ -188,6 +232,45 @@ class RepoApiTests(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assertTrue(payload["ok"])
         self.assertEqual(self.app.repos.opened, ["dsh-extensions/dsh-agents-md"])
+
+    def test_app_and_dependency_endpoints(self):
+        status, payload = self.request("GET", "/api/repos/homelab/apps")
+        self.assertEqual(status, 200)
+        self.assertIsNone(payload["app"])
+
+        status, payload = self.request(
+            "POST", "/api/repos/homelab/app", {"path": "/tmp/repos/homelab/dist/Demo.app"}
+        )
+        self.assertEqual(status, 200)
+        self.assertTrue(payload["app"]["exists"])
+
+        status, payload = self.request("POST", "/api/repos/homelab/app/open")
+        self.assertEqual(status, 200)
+        self.assertEqual(self.app.repos.launched, ["homelab"])
+
+        status, payload = self.request(
+            "POST",
+            "/api/repos/dependencies/check",
+        )
+        self.assertEqual(status, 400)
+
+        status, payload = self.request(
+            "POST",
+            "/api/repos/homelab/dependencies",
+            {"dependencies": [{"repo": "ip7z/7zip"}]},
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(payload["dependencies"], [{"repo": "ip7z/7zip"}])
+
+        status, payload = self.request("POST", "/api/repos/dependencies/check")
+        self.assertEqual(status, 202)
+        self.assertEqual(self.app.repos.deps_checked, 1)
+
+    def test_clearing_an_app_association(self):
+        self.request("POST", "/api/repos/homelab/app", {"path": "/tmp/x.app"})
+        status, payload = self.request("POST", "/api/repos/homelab/app", {"path": ""})
+        self.assertEqual(status, 200)
+        self.assertIsNone(payload["app"])
 
     def test_queue_actions(self):
         status, payload = self.request("POST", "/api/repos/connectivity/check")

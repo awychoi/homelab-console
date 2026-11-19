@@ -3,6 +3,7 @@ import { pageHead, stateBanner, statTile, emptyState, giteaAuthBanner } from './
 import { nativePick } from '../native.js';
 import { addRoot, bindRootRemoval, openRepoSelection, readDraft, rootsDraft, rootsFromSettings, rootsHtml, rootsLabel } from '../repoRoots.js';
 import { syncGitea, showPushBoth, showRepoCommit, refreshRemoteSoon } from '../flows.js';
+import { showRepoApps } from '../appSetup.js';
 
 const { esc, icon } = ui;
 
@@ -12,6 +13,7 @@ const FILTERS = [
   { id: 'push', label: 'To push' },
   { id: 'behind', label: 'Updates' },
   { id: 'gitea', label: 'Gitea' },
+  { id: 'deps', label: 'Deps' },
   { id: 'clean', label: 'Clean' },
 ];
 
@@ -37,6 +39,10 @@ function isGiteaAttention(repo) {
   return ['behind', 'missing', 'auth', 'unreachable', 'error'].includes(repo.gitea?.status);
 }
 
+function hasDependencyUpdates(repo) {
+  return Number(repo.deps?.behind || 0) > 0;
+}
+
 function filteredRepos(ctx) {
   const state = initUi(ctx);
   const query = state.q.trim().toLowerCase();
@@ -45,11 +51,13 @@ function filteredRepos(ctx) {
     if (state.filter === 'push' && !repo.needs?.push) return false;
     if (state.filter === 'behind' && !(repo.behind > 0)) return false;
     if (state.filter === 'gitea' && !isGiteaAttention(repo)) return false;
+    if (state.filter === 'deps' && !hasDependencyUpdates(repo)) return false;
     if (state.filter === 'clean' && !isClean(repo)) return false;
     if (!query) return true;
     const haystack = [
       repo.rel, repo.name, repo.container, repo.branch, repo.origin,
       repo.github?.owner, repo.github?.repo, repo.gitea?.target,
+      repo.app?.name, ...(repo.deps?.items || []).map((item) => item.repo),
     ].filter(Boolean).join(' ').toLowerCase();
     return haystack.includes(query);
   });
@@ -63,6 +71,7 @@ function filterCounts(ctx) {
     push: repos.filter((repo) => repo.needs?.push).length,
     behind: repos.filter((repo) => repo.behind > 0).length,
     gitea: repos.filter(isGiteaAttention).length,
+    deps: repos.filter(hasDependencyUpdates).length,
     clean: repos.filter(isClean).length,
   };
 }
@@ -90,6 +99,40 @@ function ensureSelection(ctx) {
 function short(text, length = 46) {
   const value = String(text || '');
   return value.length > length ? `${value.slice(0, length - 1)}…` : value;
+}
+
+function dependencyChip(item) {
+  const name = esc(String(item.repo || '').split('/').pop() || item.repo);
+  if (item.status === 'behind') {
+    const title = `${item.repo}: this app bundles ${item.installed || 'unknown'}, newest release is ${item.latest || 'unknown'}`;
+    return `<a class="chip chip-action warn" href="${esc(item.url || '#')}" target="_blank" rel="noopener noreferrer" title="${esc(title)}">${icon('download', 11)} ${name} ${esc(item.installed)} → ${esc(item.latest)}</a>`;
+  }
+  if (item.status === 'current') {
+    return `<span class="chip good" title="${esc(item.repo)}: ${esc(item.installed)} is the newest release"><span class="repo-update-icon">${icon('check', 11)}</span> ${name} ${esc(item.installed)}</span>`;
+  }
+  if (item.status === 'error') {
+    return `<span class="chip neutral" title="${esc(item.repo)}: ${esc(item.error || 'check failed')}">${name} ?</span>`;
+  }
+  return `<span class="chip neutral" title="${esc(item.repo)}: the app does not report which version it bundles">${name} ?</span>`;
+}
+
+function dependencyRow(repo) {
+  const deps = repo.deps;
+  if (!deps || !deps.items?.length) return '';
+  const when = deps.state === 'checking'
+    ? 'checking…'
+    : deps.checked_at ? `checked ${ui.ago(deps.checked_at)}` : 'not checked yet';
+  return `<div class="repo-deps">${deps.items.map(dependencyChip).join('')}<span class="sub">${esc(when)}</span></div>`;
+}
+
+function appHintRow(repo) {
+  const found = repo.app_hint?.apps || [];
+  if (repo.app || !found.length) return '';
+  const first = found[0];
+  const label = `${first.name}${first.version ? ` ${first.version}` : ''}`;
+  return `<div class="repo-app-hint"><span class="sub">app found</span>
+    <button class="chip chip-action" type="button" data-repo-action="use-app" data-app-path="${esc(first.path)}" title="Link ${esc(first.path)} to this project">${icon('play', 11)} ${esc(label)}</button>
+    ${found.length > 1 ? `<span class="sub">+${found.length - 1} more in the app menu</span>` : ''}</div>`;
 }
 
 function giteaCell(repo) {
@@ -176,12 +219,19 @@ function lastCommitCell(repo) {
 
 function actionsCell(repo) {
   const actions = [];
+  if (repo.app) {
+    const title = repo.app.exists
+      ? `Open ${repo.app.name}${repo.app.version ? ` ${repo.app.version}` : ''}`
+      : `${repo.app.name} is missing — choose another app`;
+    actions.push(`<button class="btn ghost sm icon" type="button" data-repo-action="launch" ${repo.app.exists ? '' : 'disabled'} title="${esc(title)}" aria-label="${esc(title)}">${icon('play', 13)}</button>`);
+  }
   actions.push(`<button class="btn ghost sm icon" type="button" data-repo-action="open" title="Open ${esc(repo.rel)} in VS Code" aria-label="Open ${esc(repo.rel)} in VS Code">${icon('code', 13)}</button>`);
   if (repo.github?.url) {
     actions.push(`<a class="btn ghost sm icon" href="${esc(repo.github.url)}" target="_blank" rel="noopener noreferrer" title="Open ${esc(repo.rel)} on GitHub" aria-label="Open ${esc(repo.rel)} on GitHub">${icon('external', 13)}</a>`);
   } else {
     actions.push(`<span class="btn ghost sm icon disabled" title="No GitHub origin" aria-hidden="true">${icon('external', 13)}</span>`);
   }
+  actions.push(`<button class="btn ghost sm icon" type="button" data-repo-action="configure" title="App and dependencies" aria-label="App and dependencies for ${esc(repo.rel)}">${icon('settings', 13)}</button>`);
   return actions.join('');
 }
 
@@ -202,6 +252,8 @@ function rowHtml(ctx, repo, selected) {
       <div class="repo-name"><span class="status-dot ${repo.error ? 'bad' : isClean(repo) ? 'ok' : repo.needs?.commit || repo.needs?.push ? 'warn' : ''}"></span><strong>${esc(repo.name)}</strong>${container}${badges}</div>
       <div class="repo-path mono tiny" title="${esc(repo.path)}">${esc(repo.rel)}</div>
       <div class="repo-branch">${branch}${repo.upstream ? `<span class="sub mono">→ ${esc(repo.upstream)}</span>` : ''}</div>
+      ${appHintRow(repo)}
+      ${dependencyRow(repo)}
       <div class="repo-last">${lastCommitCell(repo)}</div>
     </td>
     <td data-label="Working tree">${repo.error ? `<span class="chip bad">read failed</span><span class="sub" title="${esc(repo.error)}">${esc(short(repo.error, 42))}</span>` : workingTreeCell(repo)}</td>
@@ -300,6 +352,10 @@ function contentHtml(ctx) {
   const roots = snapshot?.roots?.length ? snapshot.roots : rootsFromSettings(ctx.bootstrap?.settings);
   const rootError = snapshot?.root_error || '';
   const giteaConfigError = snapshot?.gitea_config_error || '';
+  const depsConfigured = Boolean(snapshot?.dependencies_configured);
+  const depsMeta = snapshot?.dependencies || {};
+  const depsChecking = depsMeta.state === 'checking';
+  const depsBehind = Number(summary.deps_behind || 0);
   const discoveryWarnings = snapshot?.discovery_warnings || [];
   const nestedPending = (snapshot?.discovered || [])
     .filter((entry) => entry.nested && !entry.selected).length;
@@ -311,12 +367,16 @@ function contentHtml(ctx) {
     <button class="btn ghost sm" type="button" data-repo-manage title="Choose which discovered projects Repos manages">${icon('settings', 12)} Manage</button>
     <button class="btn ghost sm" type="button" data-repo-refresh title="Rescan local projects" aria-label="Rescan local projects">${icon('refresh', 12)} Rescan</button>
     <button class="btn ghost sm" type="button" data-repo-check-gitea ${checking || !giteaConfigured ? 'disabled' : ''} title="${giteaConfigured ? 'Compare local refs with Gitea' : 'Set a Gitea URL and owner in Settings first'}">${checking ? '<span class="spinner sm"></span> Checking…' : `${icon('git', 12)} Check Gitea`}</button>
+    ${depsConfigured ? `<button class="btn ghost sm" type="button" data-repo-check-deps ${depsChecking ? 'disabled' : ''} title="Compare every tracked dependency with its newest GitHub release">${depsChecking ? '<span class="spinner sm"></span> Checking deps…' : `${icon('download', 12)} Check deps`}</button>` : ''}
     <button class="btn primary sm" type="button" data-repo-push-both ${selected.size ? '' : 'disabled'}>${icon('layers', 12)} Queue both${selected.size ? ` (${selected.size})` : ''}</button>`;
   return `${pageHead({
     title: 'Projects',
     subtitle: `<strong>${summary.total || 0}</strong> projects<span class="dot">·</span><strong>${summary.attention || 0}</strong> need attention<span class="dot">·</span><span class="mono" title="${esc(roots.join('\n'))}">${esc(rootsLabel(roots))}</span>`,
     actions,
-    badges: gitea.checked_at ? ui.pill('ok', `Gitea checked ${ui.ago(gitea.checked_at)}`) : ui.pill('neutral', 'Gitea on demand'),
+    badges: [
+      gitea.checked_at ? ui.pill('ok', `Gitea checked ${ui.ago(gitea.checked_at)}`) : ui.pill('neutral', 'Gitea on demand'),
+      depsBehind ? ui.pill('warn', `${depsBehind} dependency update${depsBehind === 1 ? '' : 's'}`) : '',
+    ].join(' '),
   })}
   ${rootError ? `<div class="banner bad">${icon('alert')}<span><strong>Project folder unavailable.</strong> ${esc(rootError)}</span><a class="btn sm ghost" href="#/settings">Settings</a></div>` : ''}
   ${discoveryWarnings.length ? `<div class="warn-box mb-2">${icon('alert')}<div><strong>Scan stopped early.</strong> ${esc(discoveryWarnings.join(' · '))} Narrow the folder or remove generated directories to see everything.</div></div>` : ''}
@@ -347,7 +407,7 @@ function contentHtml(ctx) {
     <tbody id="repo-rows">${rowsHtml(ctx)}</tbody>
   </table></div></div>
   ${queueHtml(ctx)}
-  <div class="hint mt-2">VS Code opens a new window per project. GitHub links use your browser's existing session, so private projects work without exposing a token to the console. Gitea is a backup mirror: it is only synced when you ask.</div>`;
+  <div class="hint mt-2">VS Code opens a new window per project. The play button launches the app linked to a project; the gear links an app and the upstream repositories it bundles. GitHub links use your browser's existing session, so private projects work without exposing a token to the console. Gitea is a backup mirror: it is only synced when you ask.</div>`;
 }
 
 function repoById(ctx, id) {
@@ -503,6 +563,41 @@ export default {
             }
             return;
           }
+          if (action === 'configure') {
+            showRepoApps(ctx, repo);
+            return;
+          }
+          if (action === 'launch') {
+            const original = button.innerHTML;
+            button.disabled = true;
+            try {
+              await ctx.api.post(`/api/repos/${encodeURIComponent(repo.id)}/app/open`);
+              ui.toast('Opening app', 'ok', repo.app?.name || repo.rel);
+            } catch (error) {
+              ui.toast('Could not open the app', 'err', ui.errorText(error));
+            } finally {
+              button.disabled = false;
+              button.innerHTML = original;
+            }
+            return;
+          }
+          if (action === 'use-app') {
+            const original = button.innerHTML;
+            button.disabled = true;
+            button.innerHTML = '<span class="spinner sm"></span> Linking…';
+            try {
+              await ctx.api.post(`/api/repos/${encodeURIComponent(repo.id)}/app`, {
+                path: button.dataset.appPath || '',
+              });
+              ui.toast('App linked', 'ok', repo.rel);
+              await ctx.refreshState({ force: true });
+            } catch (error) {
+              ui.toast('Could not link the app', 'err', ui.errorText(error));
+              button.disabled = false;
+              button.innerHTML = original;
+            }
+            return;
+          }
           if (action === 'open') {
             const original = button.innerHTML;
             button.disabled = true;
@@ -586,6 +681,22 @@ export default {
         button.disabled = false;
         button.innerHTML = `${icon('git', 12)} Check Gitea`;
         ui.toast('Could not start the Gitea check', 'err', ui.errorText(error));
+      }
+    });
+
+    root.querySelector('[data-repo-check-deps]')?.addEventListener('click', async (event) => {
+      const button = event.currentTarget;
+      button.disabled = true;
+      button.innerHTML = '<span class="spinner sm"></span> Checking deps…';
+      try {
+        await ctx.api.post('/api/repos/dependencies/check');
+        ui.toast('Checking upstream releases', 'ok', 'Rows update as the cache fills.');
+        setTimeout(() => ctx.refreshState({ force: true }), 1500);
+        setTimeout(() => ctx.refreshState({ force: true }), 5000);
+      } catch (error) {
+        ui.toast('Could not start the dependency check', 'err', ui.errorText(error));
+        button.disabled = false;
+        button.innerHTML = `${icon('download', 12)} Check deps`;
       }
     });
 

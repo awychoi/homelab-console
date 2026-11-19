@@ -197,6 +197,9 @@ DEFAULTS: dict[str, Any] = {
     "repo_deep_roots": [],
     "repo_exclusions": {},
     "repo_nested_selected": {},
+    "repo_apps": {},
+    "repo_dependencies": {},
+    "dependencies_check_on_start": True,
     "dismissed_notices": {},
     "gitea_url": "",
     "gitea_owner": "",
@@ -329,6 +332,18 @@ class Settings:
             if isinstance(raw_deep, list)
             else []
         )
+        # Imported lazily: apps reads the release manifest, and releases imports
+        # Settings from this module.
+        try:
+            from . import apps as apps_mod
+
+            merged["repo_apps"] = apps_mod.normalize_repo_apps(merged.get("repo_apps"))
+            merged["repo_dependencies"] = apps_mod.normalize_repo_dependencies(
+                merged.get("repo_dependencies")
+            )
+        except (ImportError, ValueError):
+            merged["repo_apps"] = {}
+            merged["repo_dependencies"] = {}
         merged["repo_exclusions"] = normalize_repo_exclusions(merged.get("repo_exclusions"))
         merged["repo_nested_selected"] = normalize_repo_exclusions(
             merged.get("repo_nested_selected")

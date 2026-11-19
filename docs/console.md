@@ -329,7 +329,8 @@ HTTP API and git commands still use repository terminology.
   current branch with your credential helper; **Check Gitea** compares refs, and
   the Gitea action runs the dry run and mirrors heads/tags in one step;
   **Queue both** runs GitHub → Gitea serially.
-  **Open in VS Code** launches `code -n`.
+  **Open in VS Code** launches `code -n`, and the play button next to it opens
+  the app linked to the project.
 
 ![Project pulse metrics](assets/screenshots/repo-pulse.png)
 
@@ -373,6 +374,21 @@ pull, network call or destructive git action is performed by Pulse.
   on the last fetch, and the fetch age is shown in Pulse coverage.
 - **Open in VS Code** launches `code -n` with the repo path; the app falls
   back to the macOS application path if the `code` shell command is missing.
+- **Apps and dependencies** are optional per project and never touch git. The
+  gear on a project row links one `.app` bundle and lists the upstream
+  repositories that bundle vendors. Discovery is a bounded walk inside the
+  project (bundles are leaves, hidden and dependency folders are skipped) and
+  the result is a suggestion only — the operator confirms a bundle once, and
+  the choice is stored per project path. The play button launches the stored
+  bundle with `open -a`; a bundle that disappeared is labelled "missing"
+  instead of launching something else. Upstream versions come from the GitHub
+  releases API (tag fallback, six-hour cache, five-minute retry after a
+  failure) and the installed version comes from
+  `Contents/Resources/homelab-app.json` inside the bundle, so an app that
+  self-updates and rewrites that file clears the flag with no console action.
+  A bundle without the manifest shows *version unknown*, never "behind". The
+  console never downloads, builds or updates an app; see
+  [App manifest](app-manifest.md) for the contract.
 - **Commit** opens a checklist of changed and untracked files with an editable
   message. A rename is listed once as `new ← old` and commits with both sides,
   so Git records the move (plus further edits) instead of a new copy; a staged
@@ -698,6 +714,11 @@ must carry a same-origin `Origin`. SSE uses a short-lived, run-scoped
 | GET/POST | `/api/git`, `/api/git/commit` | status / local commit |
 | GET | `/api/repos` | project snapshot (also in `/api/state`) |
 | GET | `/api/repos/discovered` | every discovered repo plus its selected state |
+| GET | `/api/repos/<id>/apps` | linked app plus the bundles found in that project |
+| POST | `/api/repos/<id>/app` | link an app (`{"path": "..."}`, empty to clear) |
+| POST | `/api/repos/<id>/app/open` | launch the linked app |
+| POST | `/api/repos/<id>/dependencies` | replace the tracked upstream repositories |
+| POST | `/api/repos/dependencies/check` | refresh newest releases for every tracked dependency |
 | POST | `/api/repos/selection` | save per-root repo exclusions |
 | POST | `/api/repos/refresh` | rescan local project status |
 | POST | `/api/repos/gitea/check` | start an on-demand Gitea ref check |
@@ -742,6 +763,9 @@ Persisted in `.hlc/config.json` (mode 600) and editable in Settings.
 | `repo_root` | empty | legacy alias for the first entry of `repo_roots` |
 | `repo_exclusions` | `{}` | per-root projects hidden from Repos |
 | `repo_nested_selected` | `{}` | nested projects opted into Repos |
+| `repo_apps` | `{}` | project path → linked `.app` bundle |
+| `repo_dependencies` | `{}` | project path → `[{ "repo": "owner/name" }]` |
+| `dependencies_check_on_start` | true | one cached upstream release lookup at startup |
 | `dismissed_notices` | `{}` | page banners/warnings closed by the operator; restored from Appearance |
 | `gitea_url` | empty | backup server base URL; empty disables Gitea |
 | `gitea_owner` | empty | must match the GitHub owner; empty disables Gitea |

@@ -30,6 +30,7 @@ import re
 import shutil
 import socket
 import subprocess
+import sys
 import threading
 import time
 from collections import Counter
@@ -42,7 +43,7 @@ from urllib import error as urlerror
 from urllib import request as urlrequest
 from urllib.parse import urlparse
 
-from . import util
+from . import apps, util
 from .config import Settings
 
 if TYPE_CHECKING:  # avoid importing the runner at module load time
@@ -51,6 +52,10 @@ if TYPE_CHECKING:  # avoid importing the runner at module load time
 log = logging.getLogger("hlc.repos")
 
 DEFAULT_TIMEOUT = 120.0
+# App discovery is a courtesy: one bounded walk per project, refreshed rarely,
+# always on a background thread so a big checkout cannot slow the scan loop.
+APP_HINT_TTL = 600
+APP_HINT_BUDGET = 40
 TOKEN_RE = re.compile(r"^[A-Za-z0-9._~-]{20,300}$")
 OWNER_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
 DISCOVERY_SKIP_DIRS = {
@@ -1799,6 +1804,27 @@ class RepoFleet:
         self._queue: RepoQueue | None = None
         self._repo_locks: dict[str, threading.Lock] = {}
         self._locks_lock = threading.Lock()
+        # App bundles: parsed lazily, cached by the bundle's own mtime so a
+        # self-update that rewrites the manifest is picked up on the next poll.
+        self._apps_lock = threading.Lock()
+        self._bundles: dict[str, tuple[float, apps.Bundle | None]] = {}
+        self._app_hints: dict[str, dict[str, Any]] = {}
+        self._hint_thread: threading.Thread | None = None
+        # Upstream dependency versions: one network pass on demand, never in
+        # the ten-second scan loop.
+        self._deps_checking = False
+        self._deps_thread: threading.Thread | None = None
+        self._deps_meta: dict[str, Any] = {
+            "state": "never",
+            "checked_at": 0,
+            "checked": 0,
+            "errors": 0,
+            "message": "",
+        }
+        self._releases = apps.ReleaseCache(
+            settings.cache_dir / "app-releases.json",
+            ttl=int(settings.get("release_ttl_s") or 6 * 3600),
+        )
 
     # ------------------------------------------------------------ lifecycle
     def start(self) -> None:
@@ -1817,6 +1843,10 @@ class RepoFleet:
             self._gitea_thread.join(timeout=5)
         if self._connectivity_thread:
             self._connectivity_thread.join(timeout=5)
+        if self._hint_thread:
+            self._hint_thread.join(timeout=5)
+        if self._deps_thread:
+            self._deps_thread.join(timeout=5)
 
     def _loop(self) -> None:
         while not self._stop.is_set():
@@ -1905,6 +1935,7 @@ class RepoFleet:
             for row in rows:
                 if counts.get(row.get("id"), 0) > 1:
                     row["id"] = row.get("path") or row["id"]
+            self._enrich_rows(rows)
             if gitea_error:
                 for row in rows:
                     row["gitea"] = {"status": "error", "detail": gitea_error, "target": None, "checked_at": 0}
@@ -1951,6 +1982,9 @@ class RepoFleet:
                 }
                 self._refresh_needs(rows)
                 snapshot = self._snapshot
+            # Bundle discovery is a background walk: the rows keep whatever the
+            # previous pass found and gain a suggestion on the next poll.
+            self._kick_app_hints(rows)
             return snapshot
         finally:
             with self._lock:
@@ -1970,6 +2004,327 @@ class RepoFleet:
             row.setdefault("needs", {})
             row["needs"]["gitea"] = gitea.get("status") in ("behind", "missing")
         self._snapshot["summary"] = self._summary(rows, self._snapshot.get("discovered") or [])
+
+    # --------------------------------------------------- apps + deps
+    def _bundle(self, path: str) -> apps.Bundle | None:
+        """Cached bundle description; invalidated by the bundle's own mtimes."""
+        if not apps.is_bundle(path):
+            # A deleted or gutted bundle must stop looking usable immediately,
+            # even when the remaining files kept their timestamps.
+            with self._apps_lock:
+                self._bundles.pop(path, None)
+            return None
+        stamp = apps.bundle_stamp(path)
+        with self._apps_lock:
+            cached = self._bundles.get(path)
+            if cached and cached[0] == stamp:
+                return cached[1]
+        bundle = apps.read_bundle(path) if stamp else None
+        with self._apps_lock:
+            self._bundles[path] = (stamp, bundle)
+        return bundle
+
+    @staticmethod
+    def _app_entry(path: str, bundle: apps.Bundle | None) -> dict[str, Any]:
+        return {
+            "path": path,
+            "name": bundle.name if bundle else Path(path).stem,
+            "version": bundle.version if bundle else "",
+            "identifier": bundle.identifier if bundle else "",
+            "manifest": bool(bundle and bundle.manifest),
+            "exists": bundle is not None,
+        }
+
+    def _enrich_rows(self, rows: list[dict[str, Any]]) -> None:
+        """Attach the app association and the dependency comparison.
+
+        Everything here is local: the bundle is read from disk and upstream
+        versions come from the release cache.  A row therefore never waits on
+        the network, and an unreachable GitHub shows "unknown", not "behind".
+        """
+        apps_map = self.settings.get("repo_apps") or {}
+        deps_map = self.settings.get("repo_dependencies") or {}
+        slugs: list[str] = []
+        seen: set[str] = set()
+        for configured in deps_map.values():
+            for item in configured:
+                slug = str((item or {}).get("repo") or "")
+                if slug and slug.casefold() not in seen:
+                    seen.add(slug.casefold())
+                    slugs.append(slug)
+        releases = self._releases.rows(slugs)
+        meta = dict(self._deps_meta)
+        with self._apps_lock:
+            # Snapshot once: the hint thread replaces entries, never mutates
+            # them, so one copy keeps every row on the same pass.
+            hints = {path: copy.deepcopy(value) for path, value in self._app_hints.items()}
+        for row in rows:
+            path = str(row.get("path") or "")
+            chosen = str(apps_map.get(path) or "")
+            bundle = self._bundle(chosen) if chosen else None
+            row["app"] = self._app_entry(chosen, bundle) if chosen else None
+            row["app_hint"] = None if chosen else hints.get(path)
+            configured = deps_map.get(path) or []
+            if not configured:
+                row["deps"] = None
+                continue
+            items: list[dict[str, Any]] = []
+            behind = unknown = errors = 0
+            for item in configured:
+                slug = str((item or {}).get("repo") or "")
+                installed = bundle.installed(slug) if bundle else ""
+                release = releases.get(slug)
+                status = apps.dependency_status(installed, release)
+                if status == "behind":
+                    behind += 1
+                elif status == "unknown":
+                    unknown += 1
+                elif status == "error":
+                    errors += 1
+                items.append(
+                    {
+                        "repo": slug,
+                        "installed": installed,
+                        "latest": release.tag if release else "",
+                        "url": release.url if release else "",
+                        "published_at": release.published_at if release else "",
+                        "source": release.source if release else "",
+                        "error": release.error if release else "",
+                        "checked_at": release.fetched_at if release else 0,
+                        "status": status,
+                    }
+                )
+            row["deps"] = {
+                "items": items,
+                "behind": behind,
+                "unknown": unknown,
+                "errors": errors,
+                "state": str(meta.get("state") or "never"),
+                "checked_at": int(meta.get("checked_at") or 0),
+            }
+
+    def _kick_app_hints(self, rows: list[dict[str, Any]]) -> None:
+        """Queue a bounded bundle walk for projects without an app.
+
+        Runs on its own thread and only once per TTL: a project may hold a
+        dozen bundles, and the operator still confirms the choice, so a stale
+        suggestion is not worth slowing the scan for.
+        """
+        apps_map = self.settings.get("repo_apps") or {}
+        moment = util.now_ts()
+        pending: list[str] = []
+        with self._apps_lock:
+            for row in rows:
+                path = str(row.get("path") or "")
+                if not path or apps_map.get(path):
+                    continue
+                cached = self._app_hints.get(path)
+                if cached and moment - int(cached.get("at") or 0) < APP_HINT_TTL:
+                    continue
+                pending.append(path)
+            if not pending:
+                return
+            if self._hint_thread and self._hint_thread.is_alive():
+                return
+            self._hint_thread = threading.Thread(
+                target=self._scan_hints,
+                args=(pending[:APP_HINT_BUDGET],),
+                name="hlc-app-hints",
+                daemon=True,
+            )
+            self._hint_thread.start()
+
+    def _scan_hints(self, paths: list[str]) -> None:
+        for path in paths:
+            if self._stop.is_set():
+                return
+            try:
+                found = apps.scan_apps(path, limit=4)
+            except OSError:
+                found = []
+            with self._apps_lock:
+                self._app_hints[path] = {
+                    "at": util.now_ts(),
+                    "apps": [bundle.public() for bundle in found],
+                }
+        # Let the next poll pick the suggestions up instead of waiting for the
+        # ten-second tick to come around.
+        self.request_refresh()
+
+    def dependency_slugs(self) -> list[str]:
+        slugs: list[str] = []
+        seen: set[str] = set()
+        for configured in (self.settings.get("repo_dependencies") or {}).values():
+            for item in configured:
+                slug = str((item or {}).get("repo") or "")
+                if slug and slug.casefold() not in seen:
+                    seen.add(slug.casefold())
+                    slugs.append(slug)
+        return slugs
+
+    def dependencies_configured(self) -> bool:
+        return bool(self.dependency_slugs())
+
+    def app_candidates(self, repo_id: str) -> dict[str, Any]:
+        path, identity = self.resolve(repo_id)
+        found = apps.scan_apps(path, limit=8)
+        chosen = str((self.settings.get("repo_apps") or {}).get(str(path)) or "")
+        with self._apps_lock:
+            self._app_hints[str(path)] = {
+                "at": util.now_ts(),
+                "apps": [bundle.public() for bundle in found[:4]],
+            }
+        return {
+            "repo": identity["rel"],
+            "path": str(path),
+            "app": self._app_entry(chosen, self._bundle(chosen)) if chosen else None,
+            "candidates": [bundle.public() for bundle in found],
+            "manifest_name": apps.MANIFEST_NAME,
+        }
+
+    def set_repo_app(self, repo_id: str, raw: Any) -> dict[str, Any]:
+        """Point a project at an app bundle, or clear the association.
+
+        The path is validated as a readable bundle but not required to live
+        inside the project: copying a build to /Applications is normal, and the
+        console should follow the copy the operator actually launches.
+        """
+        path, identity = self.resolve(repo_id)
+        text = str(raw or "").strip()
+        mapping = dict(self.settings.get("repo_apps") or {})
+        key = str(path)
+        if not text:
+            mapping.pop(key, None)
+            self.settings.update({"repo_apps": mapping})
+            with self._apps_lock:
+                self._app_hints.pop(key, None)
+            self.store.add_event("repo", "info", f"{identity['rel']}: app association cleared")
+            self.request_refresh()
+            return {"ok": True, "app": None}
+        try:
+            chosen = apps.normalize_app_path(text)
+        except apps.AppError as exc:
+            raise RepoError(str(exc)) from exc
+        bundle = apps.read_bundle(chosen)
+        if bundle is None:
+            raise RepoError(f"{chosen} is not a readable .app bundle")
+        mapping[key] = chosen
+        self.settings.update({"repo_apps": mapping})
+        with self._apps_lock:
+            self._app_hints.pop(key, None)
+            self._bundles[chosen] = (apps.bundle_stamp(chosen), bundle)
+        self.store.add_event("repo", "success", f"{identity['rel']}: app set to {bundle.name}")
+        self.request_refresh()
+        return {"ok": True, "app": bundle.public()}
+
+    def launch_app(self, repo_id: str) -> dict[str, Any]:
+        path, identity = self.resolve(repo_id)
+        chosen = str((self.settings.get("repo_apps") or {}).get(str(path)) or "")
+        if not chosen:
+            raise RepoError("no app is associated with this project")
+        bundle = self._bundle(chosen)
+        if bundle is None:
+            raise RepoError(f"the app is missing or unreadable: {chosen}")
+        if sys.platform != "darwin":
+            raise RepoError("launching apps requires macOS")
+        try:
+            subprocess.Popen(
+                ["open", "-a", bundle.path],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                stdin=subprocess.DEVNULL,
+                env=util.child_env(),
+                start_new_session=True,
+            )
+        except OSError as exc:
+            raise RepoError(f"could not launch {bundle.name}: {exc}") from exc
+        self.store.add_event("repo", "success", f"launched {bundle.name} for {identity['rel']}")
+        return {"ok": True, "path": bundle.path, "name": bundle.name}
+
+    def set_repo_dependencies(self, repo_id: str, raw: Any) -> dict[str, Any]:
+        path, identity = self.resolve(repo_id)
+        try:
+            dependencies = apps.validate_dependencies(raw)
+        except apps.AppError as exc:
+            raise RepoError(str(exc)) from exc
+        mapping = dict(self.settings.get("repo_dependencies") or {})
+        key = str(path)
+        if dependencies:
+            mapping[key] = dependencies
+        else:
+            mapping.pop(key, None)
+        self.settings.update({"repo_dependencies": mapping})
+        self.store.add_event(
+            "repo",
+            "info",
+            f"{identity['rel']}: {len(dependencies)} tracked dependenc"
+            f"{'y' if len(dependencies) == 1 else 'ies'}",
+        )
+        if dependencies:
+            self.check_dependencies_async(force=True)
+        self.request_refresh()
+        return {"ok": True, "dependencies": dependencies}
+
+    def check_dependencies_async(self, force: bool = False) -> bool:
+        """One background pass over every configured upstream repository."""
+        if not self.dependency_slugs():
+            return False
+        with self._lock:
+            if self._deps_checking:
+                return False
+            self._deps_checking = True
+            self._deps_meta = {**self._deps_meta, "state": "checking"}
+        self._deps_thread = threading.Thread(
+            target=self._check_dependencies,
+            args=(force,),
+            name="hlc-deps",
+            daemon=True,
+        )
+        self._deps_thread.start()
+        return True
+
+    def _check_dependencies(self, force: bool) -> None:
+        try:
+            slugs = self.dependency_slugs()
+            try:
+                ttl = int(self.settings.get("release_ttl_s") or 6 * 3600)
+            except (TypeError, ValueError):
+                ttl = 6 * 3600
+            rows = self._releases.ensure(
+                slugs,
+                self.settings.github_token,
+                force=force,
+                ttl=ttl,
+            )
+            errors = sum(1 for release in rows.values() if release.error)
+            with self._lock:
+                self._deps_meta = {
+                    "state": "error" if errors and errors == len(rows) else "ok",
+                    "checked_at": util.now_ts(),
+                    "checked": len(rows),
+                    "errors": errors,
+                    "message": (
+                        "every lookup failed — check the network or add a token"
+                        if errors and errors == len(rows)
+                        else f"{errors} lookup(s) failed" if errors else ""
+                    ),
+                }
+            if errors:
+                log.warning("dependency check: %s of %s lookups failed", errors, len(rows))
+        except Exception as exc:  # noqa: BLE001 - a check must never kill the thread silently
+            log.exception("dependency check failed")
+            with self._lock:
+                self._deps_meta = {
+                    "state": "error",
+                    "checked_at": util.now_ts(),
+                    "checked": 0,
+                    "errors": 1,
+                    "message": str(exc) or "dependency check failed",
+                }
+        finally:
+            with self._lock:
+                self._deps_checking = False
+            self.request_refresh()
 
     def discovered(self) -> dict[str, Any]:
         """Return every discovered repo and whether Repos manages it."""
@@ -2028,6 +2383,9 @@ class RepoFleet:
             payload["connectivity"] = copy.deepcopy(self._connectivity)
             payload["queue"] = self._queue.public() if self._queue else None
             payload["vscode"] = {"available": vscode_available()}
+            payload["dependencies"] = copy.deepcopy(self._deps_meta)
+            payload["app_manifest"] = apps.MANIFEST_NAME
+        payload["dependencies_configured"] = self.dependencies_configured()
         configured = self.gitea_configured()
         if not configured and payload["gitea"].get("state") != "checking":
             payload["gitea"] = {
@@ -2650,6 +3008,12 @@ def _summarise(rows: list[dict[str, Any]]) -> dict[str, Any]:
     )
     gitea_behind = sum(1 for row in rows if (row.get("gitea") or {}).get("status") in ("behind", "missing"))
     gitea_errors = sum(1 for row in rows if (row.get("gitea") or {}).get("status") in ("auth", "unreachable", "error"))
+    deps_behind = sum(int((row.get("deps") or {}).get("behind") or 0) for row in rows)
+    deps_unknown = sum(int((row.get("deps") or {}).get("unknown") or 0) for row in rows)
+    apps_linked = sum(1 for row in rows if (row.get("app") or {}).get("exists"))
+    apps_missing = sum(
+        1 for row in rows if row.get("app") and not row["app"].get("exists")
+    )
     unknown = sum(1 for row in rows if (row.get("gitea") or {}).get("status") == "unknown")
     activity_days = [0] * ACTIVITY_DAYS
     commits_7d = commits_30d = 0
@@ -2706,6 +3070,10 @@ def _summarise(rows: list[dict[str, Any]]) -> dict[str, Any]:
         "gitea_behind": gitea_behind,
         "gitea_errors": gitea_errors,
         "gitea_unknown": unknown,
+        "deps_behind": deps_behind,
+        "deps_unknown": deps_unknown,
+        "apps_linked": apps_linked,
+        "apps_missing": apps_missing,
         "attention": attention,
         "clean": clean,
         "commits_7d": commits_7d,

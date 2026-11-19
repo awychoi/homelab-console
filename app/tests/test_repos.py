@@ -7,6 +7,7 @@ import os
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -1043,3 +1044,209 @@ class BehindsTests(unittest.TestCase):
             self.assertEqual(summary["behind_repos"], 1)
             self.assertEqual(summary["behind_commits"], 1)
             self.assertGreaterEqual(summary["attention"], 1)
+
+
+def make_test_bundle(
+    path: Path,
+    *,
+    version: str = "0.1.0",
+    dependency: str = "26.06",
+    with_manifest: bool = True,
+) -> Path:
+    """A minimal .app bundle carrying the console's dependency manifest."""
+    import plistlib
+
+    resources = path / "Contents" / "Resources"
+    resources.mkdir(parents=True)
+    (path / "Contents" / "Info.plist").write_bytes(
+        plistlib.dumps(
+            {
+                "CFBundleName": path.stem,
+                "CFBundleIdentifier": f"local.{path.stem.lower()}",
+                "CFBundleShortVersionString": version,
+            }
+        )
+    )
+    if with_manifest:
+        payload = {
+            "schema": 1,
+            "app": {"name": path.stem, "version": version},
+            "dependencies": [{"repo": "ip7z/7zip", "version": dependency}],
+        }
+        (resources / "homelab-app.json").write_text(json.dumps(payload))
+    return path
+
+
+class AppAssociationTests(unittest.TestCase):
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.base = Path(self._tmp.name).resolve()
+        self.root = self.base / "repos"
+        self.root.mkdir()
+        self.repo = self.root / "demo"
+        make_repo(self.repo)
+        self.bundle = make_test_bundle(self.repo / "dist" / "Demo.app")
+        settings = configure_gitea(Settings.load(self.base / "console"))
+        settings.values["repo_root"] = str(self.root)
+        settings.values["repo_roots"] = [str(self.root)]
+        self.settings = settings
+        self.fleet = repos.RepoFleet(settings, StoreStub())
+
+    def tearDown(self):
+        self.fleet.stop()
+        self._tmp.cleanup()
+
+    def test_candidates_are_offered_and_confirmed(self):
+        found = self.fleet.app_candidates("demo")
+        names = [item["name"] for item in found["candidates"]]
+        self.assertIn("Demo", names)
+        self.assertIsNone(found["app"])
+
+        chosen = self.fleet.set_repo_app("demo", found["candidates"][0]["path"])
+        self.assertTrue(chosen["ok"])
+        self.assertEqual(self.settings.get("repo_apps")[str(self.repo)], str(self.bundle))
+
+        state = self.fleet.refresh()
+        row = next(item for item in state["repos"] if item["id"] == "demo")
+        self.assertIsNotNone(row["app"])
+        self.assertTrue(row["app"]["exists"])
+        self.assertEqual(row["app"]["version"], "0.1.0")
+        self.assertEqual(row["app"]["path"], str(self.bundle))
+
+    def test_path_that_is_not_a_bundle_is_rejected(self):
+        with self.assertRaises(repos.RepoError):
+            self.fleet.set_repo_app("demo", str(self.repo / "dist"))
+        with self.assertRaises(repos.RepoError):
+            self.fleet.set_repo_app("demo", "/tmp/NotAnApp")
+
+    def test_clearing_removes_the_association(self):
+        self.fleet.set_repo_app("demo", str(self.bundle))
+        self.fleet.set_repo_app("demo", "")
+        self.assertNotIn(str(self.repo), self.settings.get("repo_apps") or {})
+
+    def test_launch_opens_the_stored_bundle(self):
+        self.fleet.set_repo_app("demo", str(self.bundle))
+        with mock.patch.object(repos.subprocess, "Popen") as popen, mock.patch.object(
+            repos.sys, "platform", "darwin"
+        ):
+            result = self.fleet.launch_app("demo")
+        self.assertTrue(result["ok"])
+        self.assertEqual(popen.call_args.args[0], ["open", "-a", str(self.bundle)])
+
+    def test_launch_without_an_app_is_a_user_error(self):
+        with self.assertRaises(repos.RepoError):
+            self.fleet.launch_app("demo")
+
+    def test_missing_bundle_is_reported_not_hidden(self):
+        self.fleet.set_repo_app("demo", str(self.bundle))
+        (self.bundle / "Contents" / "Info.plist").unlink()
+        state = self.fleet.refresh()
+        row = next(item for item in state["repos"] if item["id"] == "demo")
+        self.assertFalse(row["app"]["exists"])
+        self.assertEqual(state["summary"]["apps_missing"], 1)
+
+
+class DependencyTrackingTests(unittest.TestCase):
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.base = Path(self._tmp.name).resolve()
+        self.root = self.base / "repos"
+        self.root.mkdir()
+        self.repo = self.root / "sevenzip-gui"
+        make_repo(self.repo)
+        self.bundle = make_test_bundle(self.repo / "dist" / "SevenZip.app")
+        settings = configure_gitea(Settings.load(self.base / "console"))
+        settings.values["repo_root"] = str(self.root)
+        settings.values["repo_roots"] = [str(self.root)]
+        settings.values["repo_apps"] = {str(self.repo): str(self.bundle)}
+        settings.values["repo_dependencies"] = {
+            str(self.repo): [{"repo": "ip7z/7zip"}]
+        }
+        self.settings = settings
+        self.fleet = repos.RepoFleet(settings, StoreStub())
+        with self.fleet._releases._lock:
+            self.fleet._releases._load()["ip7z/7zip"] = repos.apps.Release(
+                slug="ip7z/7zip",
+                tag="26.07",
+                url="https://github.com/ip7z/7zip/releases/tag/26.07",
+                published_at="2026-12-01T00:00:00Z",
+                source="release",
+                fetched_at=int(time.time()),
+            )
+
+    def tearDown(self):
+        self.fleet.stop()
+        self._tmp.cleanup()
+
+    def row(self):
+        state = self.fleet.refresh()
+        return next(item for item in state["repos"] if item["id"] == "sevenzip-gui")
+
+    def test_behind_when_the_bundle_carries_an_older_engine(self):
+        row = self.row()
+        self.assertEqual(row["deps"]["behind"], 1)
+        self.assertEqual(row["deps"]["items"][0]["installed"], "26.06")
+        self.assertEqual(row["deps"]["items"][0]["latest"], "26.07")
+        self.assertEqual(row["deps"]["items"][0]["status"], "behind")
+
+    def test_updating_the_bundle_clears_the_flag_by_itself(self):
+        self.assertEqual(self.row()["deps"]["behind"], 1)
+        manifest = self.bundle / "Contents" / "Resources" / "homelab-app.json"
+        manifest.write_text(
+            json.dumps(
+                {
+                    "schema": 1,
+                    "app": {"name": "SevenZip", "version": "0.2.0"},
+                    "dependencies": [{"repo": "ip7z/7zip", "version": "26.07"}],
+                }
+            )
+        )
+        # A self-update rewrites the manifest in place; the mtime is the signal
+        # the console caches on.
+        stamp = manifest.stat().st_mtime + 5
+        os.utime(manifest, (stamp, stamp))
+        row = self.row()
+        self.assertEqual(row["deps"]["behind"], 0)
+        self.assertEqual(row["deps"]["items"][0]["status"], "current")
+
+    def test_no_manifest_means_unknown_not_behind(self):
+        plain = make_test_bundle(self.repo / "dist" / "Plain.app", with_manifest=False)
+        self.settings.values["repo_apps"] = {str(self.repo): str(plain)}
+        self.fleet._bundles.clear()
+        row = self.row()
+        self.assertEqual(row["deps"]["behind"], 0)
+        self.assertEqual(row["deps"]["unknown"], 1)
+        self.assertEqual(row["deps"]["items"][0]["status"], "unknown")
+
+    def test_setting_dependencies_persists_and_starts_a_check(self):
+        with mock.patch.object(repos.RepoFleet, "check_dependencies_async", return_value=True) as check:
+            result = self.fleet.set_repo_dependencies(
+                "sevenzip-gui", [{"repo": "ip7z/7zip"}, {"repo": "owner/other"}]
+            )
+        self.assertTrue(result["ok"])
+        self.assertEqual(len(result["dependencies"]), 2)
+        self.assertEqual(
+            [item["repo"] for item in self.settings.get("repo_dependencies")[str(self.repo)]],
+            ["ip7z/7zip", "owner/other"],
+        )
+        check.assert_called_once()
+
+    def test_check_records_success_and_failure(self):
+        fetched = repos.apps.Release(
+            slug="ip7z/7zip", tag="26.07", source="release", fetched_at=int(time.time())
+        )
+        with mock.patch.object(repos.apps, "fetch_release", return_value=fetched):
+            self.assertTrue(self.fleet.check_dependencies_async(force=True))
+            self.fleet._deps_thread.join(timeout=5)
+        meta = self.fleet.state()["dependencies"]
+        self.assertEqual(meta["state"], "ok")
+        self.assertEqual(meta["checked"], 1)
+        self.assertEqual(meta["errors"], 0)
+
+        broken = repos.apps.Release(slug="ip7z/7zip", error="offline", fetched_at=int(time.time()))
+        with mock.patch.object(repos.apps, "fetch_release", return_value=broken):
+            self.fleet.check_dependencies_async(force=True)
+            self.fleet._deps_thread.join(timeout=5)
+        meta = self.fleet.state()["dependencies"]
+        self.assertEqual(meta["state"], "error")
+        self.assertEqual(meta["errors"], 1)

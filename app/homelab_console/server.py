@@ -1141,6 +1141,8 @@ class ConsoleHandler(BaseHTTPRequestHandler):
                 return self._send_json(200, {"queue": queue})
             if rest == ["discovered"]:
                 return self._send_json(200, self.app.repos.discovered())
+            if len(rest) == 2 and rest[1] == "apps":
+                return self._send_json(200, self.app.repos.app_candidates(rest[0]))
             raise ApiError(404, "unknown repos endpoint")
         if method != "POST":
             raise ApiError(405, "method not allowed")
@@ -1165,6 +1167,18 @@ class ConsoleHandler(BaseHTTPRequestHandler):
                 raise ApiError(400, "Gitea is not configured — set a URL and owner in Settings")
             started = self.app.repos.check_gitea_async()
             return self._send_json(202, {"ok": True, "started": started, "gitea": self.app.repos.state().get("gitea")})
+        if rest == ["dependencies", "check"]:
+            if not self.app.repos.dependencies_configured():
+                raise ApiError(400, "no project tracks an upstream dependency yet")
+            started = self.app.repos.check_dependencies_async(force=True)
+            return self._send_json(
+                202,
+                {
+                    "ok": True,
+                    "started": started,
+                    "dependencies": self.app.repos.state().get("dependencies"),
+                },
+            )
         if rest == ["connectivity", "check"]:
             started = self.app.repos.check_connectivity_async()
             return self._send_json(202, {"ok": True, "started": started, "connectivity": self.app.repos.state().get("connectivity")})
@@ -1181,6 +1195,23 @@ class ConsoleHandler(BaseHTTPRequestHandler):
         action = rest[1] if len(rest) > 1 else ""
         if action == "open" and len(rest) == 2:
             return self._send_json(200, self.app.repos.open_in_vscode(repo_id))
+        if action == "app" and len(rest) == 2:
+            body = self._body()
+            if "path" not in body:
+                # An omitted key must not read as "clear the association".
+                raise ApiError(400, "path is required; send an empty string to clear it")
+            return self._send_json(200, self.app.repos.set_repo_app(repo_id, body.get("path")))
+        if action == "app" and len(rest) == 3 and rest[2] == "open":
+            self._body()
+            return self._send_json(200, self.app.repos.launch_app(repo_id))
+        if action == "dependencies" and len(rest) == 2:
+            body = self._body()
+            if "dependencies" not in body:
+                raise ApiError(400, "dependencies is required; send [] to clear them")
+            return self._send_json(
+                200,
+                self.app.repos.set_repo_dependencies(repo_id, body.get("dependencies")),
+            )
         if action == "commit" and len(rest) == 2:
             body = self._body()
             result = self.app.repos.commit(repo_id, body.get("files"), body.get("message"))
@@ -1441,6 +1472,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
             for key in (
                 "auto_update_enabled",
                 "check_releases_on_start",
+                "dependencies_check_on_start",
                 "gitea_prune",
                 "gitea_force",
                 "gitea_check_on_start",
