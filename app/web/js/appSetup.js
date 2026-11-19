@@ -11,7 +11,7 @@ function versionPill(candidate) {
   if (candidate.version) bits.push(`<span class="pill tiny neutral">v${esc(candidate.version)}</span>`);
   bits.push(candidate.manifest
     ? ui.pill('ok', 'reports versions')
-    : ui.pill('neutral', 'no manifest'));
+    : `<span class="pill tiny neutral" title="The bundle has no Contents/Resources/homelab-app.json, so the console cannot tell which dependency versions it carries">no version file</span>`);
   return bits.join(' ');
 }
 
@@ -26,25 +26,31 @@ function choiceHtml(candidate, current) {
   </div>`;
 }
 
-function dependencyStatus(item) {
-  if (!item) return '<span class="chip neutral">not checked yet</span>';
-  if (item.status === 'behind') {
-    return `<span class="chip warn" title="${esc(item.url || '')}">${esc(item.installed)} → ${esc(item.latest)}</span>`;
+function installedChip(item) {
+  if (!item || !item.installed) {
+    return '<span class="chip neutral" title="The bundle does not report this dependency; newest release is shown next to it">installed unknown</span>';
   }
-  if (item.status === 'current') return `<span class="chip good">${esc(item.installed)} up to date</span>`;
-  if (item.status === 'error') {
-    return `<span class="chip bad" title="${esc(item.error || '')}">check failed</span>`;
-  }
-  return `<span class="chip neutral" title="The app does not report which version it bundles">version unknown</span>`;
+  if (item.status === 'behind') return `<span class="chip warn">installed ${esc(item.installed)}</span>`;
+  if (item.status === 'current') return `<span class="chip good">installed ${esc(item.installed)}</span>`;
+  return `<span class="chip neutral">installed ${esc(item.installed)}</span>`;
+}
+
+function latestChip(item) {
+  if (!item) return '<span class="chip neutral">latest not checked</span>';
+  if (item.error) return `<span class="chip bad" title="${esc(item.error)}">latest unavailable</span>`;
+  if (!item.latest) return '<span class="chip neutral">latest unknown</span>';
+  return `<span class="chip neutral">latest ${esc(item.latest)}</span>`;
 }
 
 function dependencyRow(item, status) {
+  const behind = status && status.status === 'behind';
   return `<div class="dep-row">
     <div class="dep-main">
       <span class="mono">${esc(item.repo)}</span>
-      ${dependencyStatus(status)}
-      ${status && status.latest && status.status === 'behind'
-        ? `<a class="sub" href="${esc(status.url)}" target="_blank" rel="noopener noreferrer">release notes</a>`
+      ${installedChip(status)}
+      ${latestChip(status)}
+      ${behind && status.url
+        ? `<a class="sub" href="${esc(status.url)}" target="_blank" rel="noopener noreferrer">update available · release notes</a>`
         : ''}
     </div>
     <button class="btn ghost sm icon" type="button" data-dep-remove="${esc(item.repo)}" title="Stop tracking ${esc(item.repo)}" aria-label="Stop tracking ${esc(item.repo)}">${icon('trash', 12)}</button>
@@ -97,7 +103,7 @@ function bodyHtml(state) {
       <input id="dep-slug" placeholder="owner/repository" autocomplete="off" spellcheck="false">
       <button class="btn ghost sm" type="button" data-dep-add>Add</button>
     </div>
-    <div class="hint">The installed version comes from <span class="mono">${esc(state.manifestName)}</span> inside the bundle, so a self-update that rewrites it clears the flag by itself. An app without that file shows <em>version unknown</em> rather than a guess.</div>
+    <div class="hint">The installed version comes from <span class="mono">${esc(state.manifestName)}</span> inside the bundle, so a self-update that rewrites it clears the flag by itself. An app without that file shows <em>installed unknown</em> rather than a guess.</div>
   </div>`;
 }
 

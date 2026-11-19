@@ -14,7 +14,8 @@ YourApp.app/Contents/Resources/homelab-app.json
 ```
 
 Apps without the file still get the launch button. Their dependencies show
-*version unknown* — never a guessed "update available".
+*installed unknown* next to the newest release — never a guessed
+"update available".
 
 ## Schema
 

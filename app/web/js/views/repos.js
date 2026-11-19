@@ -111,9 +111,13 @@ function dependencyChip(item) {
     return `<span class="chip good" title="${esc(item.repo)}: ${esc(item.installed)} is the newest release"><span class="repo-update-icon">${icon('check', 11)}</span> ${name} ${esc(item.installed)}</span>`;
   }
   if (item.status === 'error') {
-    return `<span class="chip neutral" title="${esc(item.repo)}: ${esc(item.error || 'check failed')}">${name} ?</span>`;
+    return `<span class="chip neutral" title="${esc(item.repo)}: ${esc(item.error || 'check failed')}">${name} · latest ?</span>`;
   }
-  return `<span class="chip neutral" title="${esc(item.repo)}: the app does not report which version it bundles">${name} ?</span>`;
+  if (item.latest) {
+    // Left of the arrow is always the installed side, matching "26.05 → 26.06".
+    return `<span class="chip neutral" title="${esc(item.repo)}: installed version unknown — the bundle ships no version file — newest release is ${esc(item.latest)}">${name} ? → ${esc(item.latest)}</span>`;
+  }
+  return `<span class="chip neutral" title="${esc(item.repo)}: installed version unknown and no release lookup yet">${name} ?</span>`;
 }
 
 function dependencyRow(repo) {

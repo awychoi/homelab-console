@@ -386,7 +386,8 @@ pull, network call or destructive git action is performed by Pulse.
   failure) and the installed version comes from
   `Contents/Resources/homelab-app.json` inside the bundle, so an app that
   self-updates and rewrites that file clears the flag with no console action.
-  A bundle without the manifest shows *version unknown*, never "behind". The
+  A bundle without the manifest shows *installed unknown* beside the newest
+  release, never "behind". The
   console never downloads, builds or updates an app; see
   [App manifest](app-manifest.md) for the contract.
 - **Commit** opens a checklist of changed and untracked files with an editable

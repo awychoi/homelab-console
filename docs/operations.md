@@ -136,8 +136,8 @@ Repos is optional and not needed to deploy to a Pi.
   version the bundle reports in `Contents/Resources/homelab-app.json`; it never
   downloads or rebuilds anything. **Check app dependencies at startup** runs
   one cached lookup per launch, and **Check deps** on the Projects header runs
-  it on demand. A bundle without that file shows *version unknown* rather than
-  "behind". See [App manifest](app-manifest.md).
+  it on demand. A bundle without that file shows *installed unknown* next to
+  the newest release rather than a guessed "behind". See [App manifest](app-manifest.md).
 - In the native app, the Gitea token is owned by the app: use
   **Homelab Console → Settings… (⌘,)** and it goes to the macOS Keychain. The web
   page hides the field and links there.
