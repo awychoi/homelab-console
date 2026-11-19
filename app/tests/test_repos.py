@@ -7,6 +7,7 @@ import os
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 import unittest
 from pathlib import Path
@@ -1125,6 +1126,51 @@ class AppAssociationTests(unittest.TestCase):
         self.assertEqual(set(chosen["app"]), set(read["app"]))
         self.assertEqual(chosen["app"]["path"], read["app"]["path"])
         self.assertEqual(chosen["app"]["version"], "0.1.0")
+
+    def test_concurrent_refreshes_are_serialised(self):
+        """Two scans must never interleave: the loser could publish a snapshot
+        captured before the caller's own change."""
+        active = peak = 0
+        guard = threading.Lock()
+        original = repos.RepoFleet._refresh
+
+        def tracked(fleet, *args, **kwargs):
+            nonlocal active, peak
+            with guard:
+                active += 1
+                peak = max(peak, active)
+            try:
+                time.sleep(0.05)
+                return original(fleet, *args, **kwargs)
+            finally:
+                with guard:
+                    active -= 1
+
+        with mock.patch.object(repos.RepoFleet, "_refresh", tracked):
+            threads = [threading.Thread(target=self.fleet.refresh) for _ in range(4)]
+            for thread in threads:
+                thread.start()
+            for thread in threads:
+                thread.join(timeout=10)
+        self.assertEqual(peak, 1)
+
+    def test_hint_scan_does_not_refresh_behind_the_caller(self):
+        """The suggestion walk runs off-thread; it must not start a second scan
+        that races the state the caller is already rendering."""
+        calls = 0
+        original = repos.RepoFleet._refresh
+
+        def counting(fleet, *args, **kwargs):
+            nonlocal calls
+            calls += 1
+            return original(fleet, *args, **kwargs)
+
+        with mock.patch.object(repos.RepoFleet, "_refresh", counting):
+            self.fleet.refresh()
+            thread = self.fleet._hint_thread
+            if thread is not None:
+                thread.join(timeout=5)
+        self.assertEqual(calls, 1)
 
     def test_path_that_is_not_a_bundle_is_rejected(self):
         with self.assertRaises(repos.RepoError):

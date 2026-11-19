@@ -1804,6 +1804,10 @@ class RepoFleet:
         self._queue: RepoQueue | None = None
         self._repo_locks: dict[str, threading.Lock] = {}
         self._locks_lock = threading.Lock()
+        # One scan at a time.  A second caller would otherwise publish its
+        # snapshot after this one returned it, so a caller could read a state
+        # that was captured before its own change.
+        self._scan_lock = threading.Lock()
         # App bundles: parsed lazily, cached by the bundle's own mtime so a
         # self-update that rewrites the manifest is picked up on the next poll.
         self._apps_lock = threading.Lock()
@@ -1872,6 +1876,11 @@ class RepoFleet:
                 log.exception("repo scan failed")
 
     def refresh(self) -> dict[str, Any]:
+        """Serialise scans so concurrent callers cannot publish stale state."""
+        with self._scan_lock:
+            return self._refresh()
+
+    def _refresh(self) -> dict[str, Any]:
         with self._lock:
             self._snapshot["scanning"] = True
         try:
@@ -2147,9 +2156,11 @@ class RepoFleet:
                     "at": util.now_ts(),
                     "apps": [bundle.public() for bundle in found],
                 }
-        # Let the next poll pick the suggestions up instead of waiting for the
-        # ten-second tick to come around.
-        self.request_refresh()
+        # Wake the scan loop so the suggestion lands on its next pass, but never
+        # refresh from here: this thread would race the caller whose snapshot is
+        # already on screen (and, with no loop running, run a second full scan).
+        if self._thread and self._thread.is_alive():
+            self._wake.set()
 
     def dependency_slugs(self) -> list[str]:
         slugs: list[str] = []
