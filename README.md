@@ -116,7 +116,7 @@ workspace resolution and logs.
 
 | Design notes | |
 |---|---|
-| [App releases (proposal)](docs/app-releases.md) | Source → image → stack release lanes for image-based apps. |
+| [App releases (proposal)](docs/app-releases.md) | UI-managed app view joining source, stack profile, pin and release history. |
 
 ## Status
 

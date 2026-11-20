@@ -655,10 +655,10 @@ snapshot repo files
   by the console; the CLI can still handle unusual stacks.
 - **Tag-based update detection.** A registry re-push of the same tag with a new
   digest is not detected. Digest-pinned stacks are reported as digest-pinned.
-- **Image provenance is tag-based.** The console can read an OCI source label
-  when an image exposes one, but it does not yet model the source repository,
-  build lane, version policy or migration state behind an image. See
-  [App releases (proposal)](app-releases.md).
+- **App provenance is split.** Update sources describe where release checks
+  look, and stack profiles describe safety and backups, but the console does
+  not yet join them into an app view with build lane, version policy and
+  migration state. See [App releases (proposal)](app-releases.md).
 - **Single operator, local.** No users, no auth server, no remote access. Use
   an SSH tunnel for remote use.
 - **Repos is GitHub/Gitea, not a general Git host manager.** It pushes

@@ -1,9 +1,9 @@
 # App releases: source → image → stack
 
-**Status:** proposal. None of this is implemented. The current console checks
-image tags and deploys stacks; it does not yet model the source repository,
-build, version policy and migration state behind an image as one durable
-contract. This document proposes that contract and a phased way to add it.
+**Status:** proposal. None of this is implemented. It deliberately does **not**
+add a hand-edited manifest: the console already owns UI-managed source records
+and stack safety profiles. The feature is the missing join between them, plus
+release and migration orchestration.
 
 ## Why this exists
 
@@ -16,29 +16,48 @@ The unjobs migration exposed a repeatable shape:
 - cleanup and credential revocation that are easy to forget;
 - a decision about what "latest" means and when a pin moves.
 
-Today the console knows the stack and the image tag. It may know a release
-source or read an OCI label, but it does not treat the source repo, build,
-version policy and migration state as one durable contract. It cannot tell
-whether the tag is a real release, which stacks are the same app, or what a
-safe migration looks like. Future apps would repeat the same runbook.
+The console already has most of the pieces:
 
-**Generalize the contract, not the runbook.** A small app manifest in the
-workspace declares source, image, versioning, deploy contract and migration
-scope. The console uses it for visibility, preflight, release planning,
-verification and guided migration.
+- **Settings → Update sources** owns the per-image release source (source type,
+  GitHub/Docker Hub repository, label, guidance). It is a real form and is
+  stored in `.hlc/config.json`.
+- **Stack → Safety & backup** owns the per-stack data paths, backup note,
+  criticality, DNS warning and PostgreSQL plan. It is also a real form.
+- **Stacks** own the compose pin, deploy gate, health check and rollback.
+
+What is missing is the app-level record that connects them: the build lane,
+version policy, cross-stack release, and migration state. The unjobs runbook is
+what that gap looks like in practice.
+
+## Correction: no hand-edited JSON
+
+The first draft of this proposal put `apps/<slug>/app.json` in the workspace.
+That was wrong:
+
+1. It duplicated the existing source editor.
+2. It made an operator hand-edit a file the console already has a form for.
+3. It created a third place to say "the image comes from this repo", beside
+   `release_sources`, the stack image pin and the OCI labels.
+
+The console should extend what it already has. JSON is an internal storage
+format, not an operator workflow.
 
 ## Design principles
 
-- **The workspace is desired state.** The app manifest lives in the private
-  workspace at `apps/<slug>/app.json` and is committed like `stacks/`.
+- **One editor per fact.** Source metadata is edited only in the existing
+  update-source dialog. Deploy/safety metadata is edited only in the existing
+  stack profile. The new app form owns only what has no home today: build lane,
+  version policy and migration scope.
+- **The app is a view, not a file.** An app page joins the existing records by
+  image repository. There is no `apps/` workspace folder to maintain.
 - **Build stays outside the console.** CI or a local script produces the image.
   The console manages version intent, provenance, pinning, deployment and
-  verification. It does not become a CI system or registry.
+  verification.
 - **Image-based stacks only.** No source checkout on a Pi, no build context on
   a Pi. The image is the deployable artifact.
 - **Releases are immutable by convention.** Tags are never overwritten; a
-  rebuild gets a new tag. Digest pinning is available where strict immutability
-  matters. No force-push anywhere.
+  rebuild gets a new tag. Digest pinning is available where strict
+  immutability matters. No force-push anywhere.
 - **Read-only first, then gated writes.** Inventory and preflight never mutate.
   Release and migration plans require a reviewed plan hash; data backups and
   destructive cleanup require explicit acknowledgement.
@@ -46,100 +65,68 @@ verification and guided migration.
   pushes, `updates.py` for pin mutation and rollback, `runner.py` for runs,
   `store.py` for history, and the existing health gate.
 
-## The manifest
+## What an app is made of
 
-A per-app folder keeps the contract, notes and future migration evidence
-together beside the existing stacks:
+An app is a logical join keyed by an image repository. Every part already has
+an owner; the rows marked **new** are the only additions.
 
-```text
-workspace/
-├── apps/
-│   └── unjobs/
-│       ├── app.json
-│       └── README.md      # optional operator notes
-├── stacks/<host>/<service>/
-├── scripts/hosts.json
-└── .hlc/                  # local state; never committed
-```
+| Part | Existing or new | Stored in | Edited in |
+|---|---|---|---|
+| Source repo, source type, guidance | existing | `.hlc/config.json` → `release_sources` | Settings → Update sources |
+| Bound stacks and pins | existing | `stacks/<host>/<stack>/` | Stack editor / deploy |
+| Safety, data paths, backup note, criticality | existing | `.hlc/config.json` → `stack_profiles` | Stack → Safety & backup |
+| Build lane, platforms, version policy | new, small | `.hlc/config.json` → `apps` | App → Setup |
+| Migration scope and cleanup paths | new, small | `.hlc/config.json` → `apps` | App → Migration |
+| Release history, per-host results | new | `.hlc/console.db` | generated |
+| Migration acknowledgements and evidence | new | `.hlc/console.db` | generated by the wizard |
 
-Minimal manifest for the current unjobs setup:
+The new record is deliberately small because it only holds what the console
+cannot already infer:
 
 ```json
 {
-  "schema": 1,
-  "name": "unjobs",
-  "title": "UN Vacancy Monitor",
-  "source": {
-    "provider": "github",
-    "repo": "awychoi/vacancy_classifier",
-    "tag_pattern": "v*",
-    "default_branch": "main",
-    "version_file": "unjobs/__init__.py"
-  },
-  "images": [
-    {
-      "repo": "ghcr.io/awychoi/vacancy_classifier",
-      "role": "app",
-      "platforms": ["linux/arm64"],
-      "visibility": "private",
+  "apps": {
+    "ghcr.io/awychoi/vacancy_classifier": {
+      "name": "unjobs",
+      "title": "UN Vacancy Monitor",
+      "tag_pattern": "v*",
       "build": {
         "provider": "github-actions",
         "workflow": ".github/workflows/image.yml"
+      },
+      "platforms": ["linux/arm64"],
+      "versioning": {
+        "scheme": "semver",
+        "pin": "tag",
+        "immutable_tags": true
+      },
+      "migration": {
+        "legacy_build_context": "/srv/unjobs/src",
+        "legacy_image": "unjobs:local",
+        "cleanup_paths": [
+          "/srv/unjobs/src",
+          "/srv/unjobs/venv",
+          "/srv/unjobs/about_me",
+          "/srv/unjobs/keys"
+        ],
+        "revoke": [
+          "GitHub deploy key used by /srv/unjobs/src",
+          "DeepSeek API key in the old Pi .env"
+        ]
       }
     }
-  ],
-  "versioning": {
-    "scheme": "semver",
-    "pin": "tag",
-    "tag_prefix": "v",
-    "immutable_tags": true
-  },
-  "deploy": {
-    "health": "/api/health",
-    "ports": [8765],
-    "data": ["/srv/unjobs/data"],
-    "backup": {
-      "kind": "sqlite",
-      "path": "/srv/unjobs/data/unjobs.db",
-      "max_age_hours": 24
-    },
-    "required_env": ["UNJOBS_API_TOKEN"],
-    "forbidden_env_prefixes": [
-      "UNJOBS_GIT_",
-      "UNJOBS_AGENT_",
-      "UNJOBS_ABOUT_ME_"
-    ]
-  },
-  "migration": {
-    "legacy_build_context": "/srv/unjobs/src",
-    "legacy_image": "unjobs:local",
-    "cleanup_paths": [
-      "/srv/unjobs/src",
-      "/srv/unjobs/venv",
-      "/srv/unjobs/about_me",
-      "/srv/unjobs/keys"
-    ],
-    "revoke": [
-      "GitHub deploy key used by /srv/unjobs/src",
-      "DeepSeek API key in the old Pi .env"
-    ]
   }
 }
 ```
 
-Field notes:
+This is a config record, not a file to hand-edit. It is created by the app setup
+form and can be exported later if the workspace should own it.
 
-| Field | Meaning |
-|---|---|
-| `source` | Where releases are defined. `tag_pattern` is authoritative; GitHub releases are optional. `version_file` is used only when a local checkout is available. |
-| `images` | One entry per artifact. Binding to stacks is by `images[].repo`; compose files need no console-specific metadata. Multi-image apps list every image and may share a release group. |
-| `build` | Descriptive, not executable. `github-actions` links a workflow; `external` points at a script or runbook. The console never runs arbitrary build commands. |
-| `versioning` | `scheme` is `semver`, `calver`, `sha` or `custom`; `pin` is `tag` or `digest`; `immutable_tags` states the policy the preflight enforces. |
-| `deploy` | The contract a recreate must preserve: health path, ports, data paths, backup source and age, required environment *names*, and forbidden legacy prefixes. Values are never stored or displayed. |
-| `migration` | Exact legacy paths and credentials. Cleanup paths are explicit, absolute and validated; no globs or shell. Revocation is a human checklist because the console cannot revoke provider credentials. |
-
-The existing per-image `release_sources` config remains the fallback for images
-without an app manifest. When an app exists, its `source` wins.
+The source repo itself is **not** repeated here: it comes from
+`release_sources`, which the screenshot's dialog already edits. Deploy fields
+are **not** repeated here: they come from `stack_profiles`. If an app has no
+source record yet, the app page shows the existing "Add source" action instead
+of inventing a second field.
 
 ## What the console does with it
 
@@ -158,7 +145,7 @@ Preflight checks, all read-only:
 | Check | What it proves |
 |---|---|
 | Source repo reachable with the available token | private tags can be read |
-| Tag matches `tag_pattern` and exists | the release is real |
+| Tag matches the app's `tag_pattern` and exists | the release is real |
 | Image tag exists in the registry | the pull can succeed |
 | Image supports the target host's architecture | no `no matching manifest` at deploy time |
 | OCI labels `source`, `version`, `revision` match | the artifact came from that source release |
@@ -220,13 +207,14 @@ For an existing build-on-the-Pi stack, the console detects:
 
 The guided migration is the unjobs runbook made explicit:
 
-1. Create or select the app manifest.
+1. Select the existing source record; add the small build/version/migration
+   fields in the app form if they are missing.
 2. Preflight source, image, architecture, registry auth, data path and backup.
 3. Show the environment contract diff: keys that will be added, keys that will
    disappear (the old git/agent/about-me keys), and required keys that are
    missing. Values are never shown.
 4. Require a data backup acknowledgement; offer a measured SQLite backup action
-   where the manifest declares one.
+   where the app declares one.
 5. Replace the compose file with the image-based version; show the combined
    diff and review hash.
 6. Deploy and verify image tag, app version, health and loopback port.
@@ -236,8 +224,9 @@ The guided migration is the unjobs runbook made explicit:
    explicit, validated list; key revocation is a human acknowledgement.
 
 The same machinery drives onboarding of a new app: pick a local checkout or
-enter the source repo, detect the Dockerfile/workflow/image, suggest a manifest,
-bind the stacks that already use the image, and run the same preflight.
+enter the source repo, let the console prefill the source record, add the
+build/version fields, bind the stacks that already use the image, and run the
+same preflight.
 
 ### 4. Release creation (later, opt-in)
 
@@ -260,9 +249,10 @@ force-push or rewrite history in any phase.
 - Automatic data-volume backups or silent destructive cleanup.
 - Branch management, force-push, rebase or tag rewriting.
 - A general Git-host or registry UI.
+- A second source editor or a hand-maintained manifest file.
 - Replacing the existing per-image update page for images without an app.
 
-## UI, API and storage
+## UI and API
 
 Suggested surface:
 
@@ -270,68 +260,95 @@ Suggested surface:
   be confused with the existing macOS app-bundle feature inside a Repos project;
   label that one **Desktop app** if needed.
 - Detail tabs: **Overview**, **Releases**, **Stacks**, **Setup**, **Migration**.
+- **Setup** has three cards:
+  - **Source** — read-only summary and **Edit source**, which opens the existing
+    update-source dialog. No duplicated fields. Once a source exists, a
+    **Manage app** action opens the small app form prefilled from that source,
+    the local checkout and the image labels.
+  - **Build & version** — the new app form: build provider, workflow,
+    platforms, tag pattern, version scheme/pin/immutability. It is a
+    confirmation form, not a blank manifest: the source comes from
+    `release_sources`, the image and bound stacks from the compose files, the
+    workflow from the local checkout when present, and platforms from the
+    registry manifest. The operator fills only what cannot be detected.
+  - **Deploy** — the bound stacks and their existing safety profiles, each with
+    the existing **Edit safety & backup** action.
 - Stack page: an app chip (`unjobs · v1.2.2 · source`) linking to the app, plus
   the normal deploy controls.
-- Updates page: group image targets by app when an app manifest matches; keep
-  the flat list for everything else.
+- Updates page: group image targets by app when an app record matches; keep the
+  flat list for everything else.
 - CLI: `hlc app list`, `hlc app check <slug>`, `hlc app plan <slug>`,
   `hlc app migrate <slug>`.
 
-Proposed API:
+Proposed API, built around the existing endpoints rather than replacing them:
 
 | Method | Path | Purpose |
 |---|---|---|
-| GET | `/api/apps` | app list with current/latest state |
-| GET | `/api/apps/<slug>` | detail: source, images, stacks, preflight, releases |
-| POST | `/api/apps` | create or import a manifest |
-| PUT | `/api/apps/<slug>` | validated manifest update |
-| POST | `/api/apps/<slug>/check` | refresh source, image and preflight checks |
-| POST | `/api/apps/<slug>/release/plan` | combined release plan + review hash |
-| POST | `/api/apps/<slug>/release/apply` | gated apply (`review_hash`, acknowledgements) |
-| POST | `/api/apps/<slug>/release/rollback` | restore a previous release |
-| POST | `/api/apps/<slug>/migrate/plan` | detect and plan a legacy conversion |
-| POST | `/api/apps/<slug>/migrate/apply` | gated migration |
-| GET | `/api/apps/<slug>/releases` | release history with per-host results |
+| GET | `/api/apps` | joined app list: source, stacks, profiles, version |
+| GET | `/api/apps/<key>` | detail: provenance, preflight, releases, migration |
+| POST | `/api/apps/<key>` | save the small build/version/migration record |
+| POST | `/api/apps/<key>/check` | refresh source, image and preflight checks |
+| POST | `/api/apps/<key>/release/plan` | combined release plan + review hash |
+| POST | `/api/apps/<key>/release/apply` | gated apply (`review_hash`, acknowledgements) |
+| POST | `/api/apps/<key>/release/rollback` | restore a previous release |
+| POST | `/api/apps/<key>/migrate/plan` | detect and plan a legacy conversion |
+| POST | `/api/apps/<key>/migrate/apply` | gated migration |
+| GET | `/api/apps/<key>/releases` | release history with per-host results |
+
+`<key>` is the normalized image repository, the same key the release source
+dialog already uses. The existing `/api/release-sources` and
+`/api/stacks/<host>/<name>/profile` endpoints stay authoritative for their
+fields.
 
 Storage split:
 
-- `apps/<slug>/app.json` and optional notes: desired state, committed.
-- `.hlc/console.db`: `app_releases` and `app_release_targets` tables for
-  history, per-host status, run ids and previous pins. Existing `runs` and
-  `events` provide logs and the audit trail.
+- `.hlc/config.json`: existing `release_sources`, existing `stack_profiles`,
+  new small `apps` record. All three are UI-managed and mode 600; adding
+  `apps` to the existing settings payload keeps it in the workspace backup.
+- `.hlc/console.db`: `app_releases`, `app_release_targets`, and migration
+  acknowledgements/evidence. Existing `runs` and `events` provide logs and the
+  audit trail.
 - `.hlc/snapshots/`: unchanged per-stack snapshots used by rollback.
-- Workspace backup: include `apps/` alongside `stacks/`, `hosts.json` and
-  non-secret settings.
+- No `apps/` workspace folder in the MVP.
+
+The trade-off is explicit: app metadata is local state, not git-versioned. The
+versioned truth stays in the source tags and the compose pins, which are
+committed. If app records should be portable across Macs or reviewable in the
+workspace repo, a later **Export app records** action can write
+`apps/apps.json` and commit it through the existing Repos flow. That is an
+export, not a hand-edited primary store.
 
 ## Adding the next app
 
-The repeatable onboarding path should be short:
+The repeatable onboarding path should be short and entirely in the console:
 
 1. **Make the artifact releasable.** The repo tags a version, CI builds an
    image for the target architectures, and the image carries the standard OCI
-   source/version/revision labels. A local build is acceptable if it adds the
-   same labels and records the artifact somewhere the Pi can pull.
-2. **Add `apps/<slug>/app.json`.** Declare the source repo and tag pattern, the
-   image repo, the versioning policy, and the deploy contract (health, data,
-   backup, required/forbidden env names).
-3. **Point a stack at the image.** If the stack already uses the image, the
-   console binds it automatically. If it is still build-based, run the migration
-   plan instead of hand-editing the compose file.
-4. **Run `hlc app check <slug>`.** Resolve the preflight: source token, tag,
+   source/version/revision labels.
+2. **Add the update source.** Settings → Update sources, exactly as today:
+   image repository, source type, GitHub/Docker Hub repository, label,
+   guidance.
+3. **Add the app record.** On the Apps page, **Add app** (or **Configure** on
+   a detected image) opens the small build/version form. It is prefilled from
+   the source record, the stacks that use the image, the local checkout's
+   workflow files and the registry manifest; confirm or correct the few fields
+   that cannot be inferred.
+4. **Bind the stack.** If a stack already uses the image, it appears
+   automatically. If the stack is still build-based, run the migration plan
+   instead of hand-editing the compose file.
+5. **Run `hlc app check <slug>`.** Resolve the preflight: source token, tag,
    architecture, registry auth, env contract, data path, backup, legacy
    leftovers.
-5. **Release.** Pick the source tag, review the combined plan, apply it serially,
+6. **Release.** Pick the source tag, review the combined plan, apply it serially,
    and keep the release record as the rollback target.
-
-That is the whole feature from the operator's side. The console owns the
-contract and the evidence; CI or the local build script owns the artifact.
 
 ## Phases
 
-**Phase 0 — manifest and read-only inventory.** Parse and validate
-`apps/<slug>/app.json`; match images to stacks; show the app list/detail,
-version chain and preflight; `hlc app check`; attention items; tests. Done when
-unjobs is legible without any deploy write.
+**Phase 0 — read-only join and the small app form.** Match images to stacks;
+join `release_sources` and `stack_profiles`; add the `apps` config record and
+its Setup form; show the Apps list/detail, version chain, preflight and
+attention; `hlc app check`; tests. Done when unjobs is legible without any
+deploy write and without a new file to maintain.
 
 **Phase 1 — app release plan/apply/rollback.** Group targets across stacks,
 resolve digest and labels, produce a combined plan hash, apply serially through
@@ -355,11 +372,24 @@ Docker.
 
 ## Unjobs as the first user
 
-The first manifest is the JSON above. Expected initial findings:
+The source record already exists in the screenshot: GitHub releases,
+`awychoi/vacancy_classifier`, image
+`ghcr.io/awychoi/vacancy_classifier`, with a display label and guidance. No new
+source dialog is needed.
+
+What is missing is the small app record:
+
+- build lane `github-actions`, workflow `.github/workflows/image.yml`;
+- platform `linux/arm64`;
+- version policy semver/tag/immutable;
+- migration scope: legacy build context, old local image, cleanup paths and
+  revocation checklist.
+
+The preflight should immediately show:
 
 - source repo private, so a read-only GitHub token is required for release
   checks;
-- image is private, and pi3 already has `ghcr.io` auth;
+- image private, and pi3 already has `ghcr.io` auth;
 - the image is arm64 and the host is aarch64;
 - the live stack is still legacy (`build.context: /srv/unjobs/src`,
   `unjobs:local`), so migration is pending;
@@ -374,14 +404,16 @@ on the Pi, no manual two-repo version bump.
 
 ## Open decisions
 
+- **Local state vs exported workspace record.** The MVP keeps the small app
+  record in `.hlc/config.json` beside the existing source and stack-profile
+  stores. If app metadata must survive a Mac reinstall without a backup, or be
+  reviewed in git, add an explicit export to `apps/apps.json`. Do not make a
+  hand-edited file the primary store.
 - **Naming.** "Apps" is the clearest word but collides with macOS app bundles in
   Repos. Alternatives: "Releases", "Products", "Ship".
 - **Binding.** Matching by image repo avoids new stack metadata and handles
   multiple hosts naturally. An explicit stack link is more robust for apps with
   several images or local builds.
-- **Manifest format.** JSON keeps the console stdlib-only and matches
-  `hosts.json`; YAML is friendlier but adds a dependency to a deliberately
-  dependency-free app.
 - **Partial-failure policy.** Stop-and-report versus roll-back-all. The release
   record should make either explicit.
 - **Release creation.** Whether the console should ever create tags or dispatch
@@ -392,9 +424,12 @@ on the Pi, no manual two-repo version bump.
 
 ## Recommendation
 
-Build Phase 0 first. It is read-only, small, and immediately useful for unjobs
-and every future app; it also produces the schema that later phases depend on.
-Then add Phase 1, reusing the update machinery. Treat the migration wizard as a
-workflow layer on top of those primitives, not as the first thing to build.
-Keep CI as the build lane; a local build lane can remain an external script
-that records provenance.
+Build Phase 0 first. It is read-only plus one small form, it reuses the existing
+source and stack-profile editors instead of duplicating them, and it gives
+immediate value: the Apps page would show the live legacy stack, the
+private-source token gap, and the v1.2.2 image already on the Pi without
+touching anything. Phase 1 then makes version bumps one reviewed action.
+
+The app record should stay small. Source belongs in the source dialog; deploy
+and safety belong in the stack profile; build, version and migration are the
+only new facts.
