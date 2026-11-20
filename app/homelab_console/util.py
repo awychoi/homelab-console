@@ -345,6 +345,7 @@ SECRET_NAMES = frozenset(
         ".netrc",
         ".pgpass",
         ".htpasswd",
+        "accounts.conf",
         "htpasswd",
         "credentials",
         "credentials.json",

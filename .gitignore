@@ -16,6 +16,7 @@
 **/.pgpass
 **/.htpasswd
 **/htpasswd
+**/accounts.conf
 **/credentials
 **/credentials.json
 **/id_rsa

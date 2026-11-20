@@ -201,6 +201,7 @@ class PathAndPlanTests(unittest.TestCase):
         self.assertTrue(util.is_secret_file("/Users/you/.ssh/.htpasswd"))
         self.assertTrue(util.is_secret_file(".env.production"))
         self.assertTrue(util.is_secret_file("id_ed25519_sk"))
+        self.assertTrue(util.is_secret_file("stacks/nas/copyparty/accounts.conf"))
         # A public key is not a secret and must stay committable.
         self.assertFalse(util.is_secret_file("id_ed25519.pub"))
         self.assertFalse(util.is_secret_file("docker-compose.yml"))
