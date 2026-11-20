@@ -114,6 +114,10 @@ workspace resolution and logs.
 | [Security policy](SECURITY.md) | Threat model, secrets, reporting and scope. |
 | [Third-party notices](THIRD_PARTY_NOTICES.md) | Bundled Python, OpenSSL and native-library licenses. |
 
+| Design notes | |
+|---|---|
+| [App releases (proposal)](docs/app-releases.md) | Source → image → stack release lanes for image-based apps. |
+
 ## Status
 
 Personal and experimental. Interfaces and storage formats can change; your
