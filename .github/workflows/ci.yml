@@ -8,6 +8,16 @@ permissions:
   contents: read
 
 jobs:
+  secret-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Full history: a credential deleted from the tree is still leaked.
+          fetch-depth: 0
+      - name: Scan every commit for credential material
+        run: ./tools/secret_scan.sh --history
+
   tests:
     runs-on: macos-15
     strategy:

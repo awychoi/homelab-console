@@ -118,6 +118,18 @@ hides the app and keeps the backend running for an instant reopen; **Quit
 `~/Library/Logs/Homelab Console/sidecar.log` and
 `<workspace>/.hlc/logs/console.log`.
 
+## Checks before you commit
+
+```sh
+cd app && ../.venv/bin/python -m unittest discover -s tests
+../tools/secret_scan.sh            # tracked files
+../tools/secret_scan.sh --history  # every commit reachable from any ref
+```
+
+CI runs the same suite plus the history scan on every push. The scan is
+high-confidence only — private keys, provider token prefixes and credentials in
+URLs — so a clean result is meaningful and a failure is never a test fixture.
+
 ## Troubleshooting
 
 - **`swiftc` not found** — `xcode-select --install`, or install Xcode.

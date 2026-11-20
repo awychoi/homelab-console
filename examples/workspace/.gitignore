@@ -7,6 +7,28 @@ backups/
 **/.env.*
 **/*.env
 
+# credential material — never commit
+**/*.pem
+**/*.key
+**/*.p12
+**/*.pfx
+**/*.jks
+**/*.keystore
+**/*.kdbx
+**/*.ovpn
+**/.netrc
+**/.pgpass
+**/.htpasswd
+**/htpasswd
+**/credentials
+**/credentials.json
+**/id_rsa
+**/id_dsa
+**/id_ecdsa
+**/id_ed25519
+**/id_ecdsa_sk
+**/id_ed25519_sk
+
 # tooling noise
 __pycache__/
 *.pyc

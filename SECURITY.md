@@ -23,9 +23,12 @@ multi-user layer, or remote-access story.
   scoped to its base; redirects strip credentials; non-loopback Gitea requires
   HTTPS (`HLC_GITEA_ALLOW_HTTP=1` is an explicit override).
 - **Trust:** onboarding requires fingerprint verification and pins
-  `known_hosts`; SSH passwords are used once and never stored. `.env`-family
-  files and tokens are filtered from commits; config/snapshots/backups are
-  mode 600; child processes get a sanitized environment.
+  `known_hosts`; SSH passwords are used once and never stored. Credential
+  files (`.env`-family secrets, private keys, keystores, `credentials.json`,
+  `.netrc`) are hidden from the file list and refused by the commit dialog,
+  and `.gitignore` blocks them independently. `tools/secret_scan.sh` scans the
+  tracked tree and the full history in CI. Config/snapshots/backups are mode
+  600; child processes get a sanitized environment.
 
 ## Not protected
 
@@ -41,6 +44,11 @@ The native app keeps the Gitea token in the Keychain; a source run stores it in
 `HLC_GITEA_TOKEN` → `GITEA_TOKEN` → stored setting, and
 `HLC_GITHUB_TOKEN` → `GITHUB_TOKEN` → `GH_TOKEN` → stored setting. SSH keys live
 in `~/.ssh`; per-stack secrets live in `.env`-family files under `stacks/`.
+
+Run `tools/secret_scan.sh` before publishing a checkout, or
+`tools/secret_scan.sh --history` to scan every commit reachable from any ref.
+CI runs the history scan on every push, so a credential removed from the tree
+but left in history still fails the build.
 
 Backups include every stack file, including `.env` secrets, but exclude tokens
 and `.hlc/` state. They are written 600 and restore writes a safety backup

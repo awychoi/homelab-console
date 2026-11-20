@@ -3,6 +3,28 @@
 **/.env.*
 **/*.env
 
+# credential material — never commit (kept in sync with util.is_secret_file)
+**/*.pem
+**/*.key
+**/*.p12
+**/*.pfx
+**/*.jks
+**/*.keystore
+**/*.kdbx
+**/*.ovpn
+**/.netrc
+**/.pgpass
+**/.htpasswd
+**/htpasswd
+**/credentials
+**/credentials.json
+**/id_rsa
+**/id_dsa
+**/id_ecdsa
+**/id_ed25519
+**/id_ecdsa_sk
+**/id_ed25519_sk
+
 # macOS noise
 .DS_Store
 
@@ -19,6 +41,9 @@ backups/
 .venv/
 __pycache__/
 *.pyc
+
+# uv-managed interpreters (they self-ignore, but be explicit)
+/.pythons/
 
 # PyInstaller bundle output
 /dist/

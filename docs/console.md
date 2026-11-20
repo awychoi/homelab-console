@@ -241,8 +241,12 @@ settings. The archive is mode 600. Full behavior:
   longer matches the repo and the stack is marked *drift*. The fix is a repo
   edit plus deploy — not an SSH edit.
 - **Secrets stay gitignored.** `.env`, `.env.*` and `*.env` files are pushed
-  to the Pi but never committed. `.hlc/` only ever contains secret material in
-  mode-600 files inside a gitignored directory.
+  to the Pi but never committed, and the same guard covers private keys,
+  keystores and credential files (`*.pem`, `*.key`, `id_ed25519`,
+  `credentials.json`, `.netrc`, …). They are hidden from the file list, the
+  commit dialog refuses them, and `tools/secret_scan.sh` gates CI.
+  `.hlc/` only ever contains secret material in mode-600 files inside a
+  gitignored directory.
 
 ## What it does
 

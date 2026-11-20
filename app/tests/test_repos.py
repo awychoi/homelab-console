@@ -568,6 +568,20 @@ class CommitTests(unittest.TestCase):
                 with self.assertRaises(repos.RepoError):
                     fleet.commit("demo", bad, "bad")
 
+    def test_rejects_secret_files(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp).resolve() / "repos"
+            root.mkdir()
+            local = root / "demo"
+            make_repo(local)
+            (local / "id_ed25519").write_text("PRIVATE\n")
+            settings = configure_gitea(Settings.load(Path(tmp).resolve() / "console"))
+            settings.values["repo_root"] = str(root)
+            fleet = repos.RepoFleet(settings, StoreStub())
+            for bad in (["id_ed25519"], [".env"], ["stacks/app/server.pem"], ["htpasswd"]):
+                with self.assertRaises(repos.RepoError):
+                    fleet.commit("demo", bad, "nope")
+
 
 class PushTests(unittest.TestCase):
     def test_push_refreshes_gitea_and_connectivity(self):

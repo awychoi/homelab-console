@@ -180,6 +180,32 @@ class PathAndPlanTests(unittest.TestCase):
         self.assertIn("stacks/pi/app/docker-compose.yml", paths)
         self.assertFalse(any(util.is_secret_file(path) for path in paths))
 
+    def test_workspace_commit_filters_private_keys_and_credentials(self):
+        git = ["git", "-C", str(self.root)]
+        subprocess.run([*git, "init", "-q"], check=True)
+        (self.root / ".gitignore").write_text("*.log\n")
+        planted = {
+            "stacks/pi/app/id_ed25519": "PRIVATE\n",
+            "stacks/pi/app/credentials.json": "{}\n",
+            "stacks/pi/app/server.pem": "x\n",
+            "stacks/pi/app/vault.kdbx": "x\n",
+        }
+        for rel in planted:
+            target = self.root / rel
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text(planted[rel])
+        paths = stacks.workspace_commit_paths(self.settings)
+        for rel in planted:
+            self.assertNotIn(rel, paths)
+            self.assertTrue(util.is_secret_file(rel), rel)
+        self.assertTrue(util.is_secret_file("/Users/you/.ssh/.htpasswd"))
+        self.assertTrue(util.is_secret_file(".env.production"))
+        self.assertTrue(util.is_secret_file("id_ed25519_sk"))
+        # A public key is not a secret and must stay committable.
+        self.assertFalse(util.is_secret_file("id_ed25519.pub"))
+        self.assertFalse(util.is_secret_file("docker-compose.yml"))
+        self.assertFalse(util.is_secret_file(""))
+
     def test_review_hash_binds_the_value(self):
         target = {
             "host": "pi",

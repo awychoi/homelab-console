@@ -338,10 +338,40 @@ def safe_slug(value: str) -> str:
     return re.sub(r"[^A-Za-z0-9._-]+", "_", value).strip("_") or "unnamed"
 
 
+# Credential-bearing file names that must never reach a commit.  Kept in sync
+# with the "credential material" block in .gitignore.
+SECRET_NAMES = frozenset(
+    {
+        ".netrc",
+        ".pgpass",
+        ".htpasswd",
+        "htpasswd",
+        "credentials",
+        "credentials.json",
+        "id_dsa",
+        "id_ecdsa",
+        "id_ecdsa_sk",
+        "id_ed25519",
+        "id_ed25519_sk",
+        "id_rsa",
+    }
+)
+
+SECRET_SUFFIXES = (".jks", ".kdbx", ".key", ".keystore", ".ovpn", ".p12", ".pem", ".pfx")
+
+
 def is_secret_file(name: str) -> bool:
-    """True for the workspace's .env-family secret names."""
-    base = os.path.basename(str(name or ""))
-    return base == ".env" or base.startswith(".env.") or base.endswith(".env")
+    """True for credential-bearing names that must never be committed.
+
+    Covers the workspace's .env family plus private keys, keystores and
+    credential files.  Public keys (``*.pub``) are deliberately not secret.
+    """
+    base = os.path.basename(str(name or "")).lower()
+    if not base or base.endswith(".pub"):
+        return False
+    if base == ".env" or base.startswith(".env.") or base.endswith(".env"):
+        return True
+    return base in SECRET_NAMES or base.endswith(SECRET_SUFFIXES)
 
 
 # ---------------------------------------------------------------- json ----
