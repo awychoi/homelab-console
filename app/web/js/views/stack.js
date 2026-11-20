@@ -176,7 +176,7 @@ function filesTab(ctx, host, name, detail) {
         ${icon(item.secret ? 'lock' : 'file', 12)}<span class="name">${esc(item.path)}</span><span class="size">${ui.bytes(item.bytes)}</span></button>`).join('')}
     </div>
     <div>
-      ${file ? `<div class="editor">
+      ${file ? `<div class="editor" data-file-editor data-dirty="false">
         <div class="editor-bar">
           <span class="editor-path">${esc(file.path)}</span>
           <span class="dirty" id="file-dirty" style="display:none">unsaved</span>
@@ -353,11 +353,64 @@ export default {
     const page = root.querySelector('#stack-page');
     if (!page) return;
 
+    const setEditorDirty = (dirty) => {
+      const wrapper = page.querySelector('[data-file-editor]');
+      if (wrapper) wrapper.dataset.dirty = dirty ? 'true' : 'false';
+      const saveButton = page.querySelector('[data-action="save-file"]');
+      if (saveButton) saveButton.disabled = !dirty;
+      const dirtyLabel = page.querySelector('#file-dirty');
+      if (dirtyLabel) dirtyLabel.style.display = dirty ? '' : 'none';
+    };
+
+    const captureEditorState = () => {
+      const editor = page.querySelector('#file-editor');
+      const wrapper = page.querySelector('[data-file-editor]');
+      return {
+        pageX: window.scrollX,
+        pageY: window.scrollY,
+        editor: editor
+          ? {
+              path: editor.dataset.path || '',
+              value: editor.value,
+              dirty: wrapper?.dataset.dirty === 'true',
+              scrollTop: editor.scrollTop,
+              selectionStart: editor.selectionStart,
+              selectionEnd: editor.selectionEnd,
+              focused: document.activeElement === editor,
+            }
+          : null,
+      };
+    };
+
+    const restoreEditorState = (state) => {
+      const editor = page.querySelector('#file-editor');
+      if (editor && state.editor && (editor.dataset.path || '') === state.editor.path) {
+        // A repaint while the file is dirty (manual refresh, profile save,
+        // host-file cleanup) must not replace the textarea with the cached
+        // contents. Keep the draft and its caret exactly where they were.
+        if (state.editor.dirty) {
+          editor.value = state.editor.value;
+          setEditorDirty(true);
+        } else {
+          try {
+            editor.setSelectionRange(state.editor.selectionStart, state.editor.selectionEnd);
+          } catch {
+            /* selection is best-effort */
+          }
+        }
+        editor.scrollTop = state.editor.scrollTop;
+        if (state.editor.focused) editor.focus({ preventScroll: true });
+      }
+      window.scrollTo(state.pageX, state.pageY);
+    };
+
     const paint = () => {
       const stateRow = (ctx.state?.stacks || []).find((row) => row.host === host && row.name === name);
       const cached = getCache(ctx, host, name);
+      const saved = captureEditorState();
       page.innerHTML = filterNoticeHtml(contentHtml(ctx, host, name, cached?.data || null, stateRow));
       attach();
+      restoreEditorState(saved);
     };
 
     const load = async ({ force = false } = {}) => {
@@ -569,6 +622,9 @@ export default {
           content,
           base_hash: file.hash,
         });
+        // The editor is no longer dirty: let the reload paint the saved copy
+        // instead of preserving the pre-reload draft.
+        setEditorDirty(false);
         const cached = getCache(ctx, host, name);
         if (cached) {
           const entry = cached.data.files.find((item) => item.path === file.path);
@@ -580,17 +636,39 @@ export default {
           cached.fetchedAt = 0;
         }
         await load({ force: true });
-        await ctx.refreshState({ force: true });
+        // The stack page has already been repainted by load(); a second full
+        // render here would reset the editor scroll and caret.
+        await ctx.refreshState({ force: true, render: false });
         ui.toast('File saved', 'ok', file.path);
       } catch (error) {
-        saveButton.disabled = false;
+        setEditorDirty(true);
         ui.toast('Save failed', 'err', ui.errorText(error));
       }
     };
 
     const attach = () => {
       const tabButtons = [...page.querySelectorAll('[data-tab]')];
-      const activateTab = (id) => {
+      const hasUnsavedEdits = () => page.querySelector('[data-file-editor][data-dirty="true"]') !== null;
+      const activateTab = async (id) => {
+        const current = getTab(ctx, host, name);
+        if (id === current) {
+          page.querySelector(`[data-tab="${id}"]`)?.focus();
+          return;
+        }
+        if (hasUnsavedEdits()) {
+          const proceed = await ui.confirmDialog({
+            title: 'Discard unsaved changes?',
+            message: 'The file editor has unsaved edits. Switching sections will discard them.',
+            confirmLabel: 'Discard',
+            danger: true,
+          });
+          if (!proceed) {
+            page.querySelector(`[data-tab="${current}"]`)?.focus();
+            return;
+          }
+          // Discard explicitly; otherwise paint() would preserve the draft.
+          setEditorDirty(false);
+        }
         setTab(ctx, host, name, id);
         paint();
         page.querySelector(`[data-tab="${id}"]`)?.focus();
@@ -670,27 +748,19 @@ export default {
       // file editor
       const editor = page.querySelector('#file-editor');
       const saveButton = page.querySelector('[data-action="save-file"]');
-      const dirtyLabel = page.querySelector('#file-dirty');
       if (editor && saveButton) {
         const file = selectedFileContent();
         editor.addEventListener('input', () => {
-          const dirty = editor.value !== (file?.content || '');
-          saveButton.disabled = !dirty;
-          if (dirtyLabel) dirtyLabel.style.display = dirty ? '' : 'none';
+          setEditorDirty(editor.value !== (file?.content || ''));
         });
         saveButton.addEventListener('click', () => saveFile(editor, file));
         page.querySelector('[data-action="revert-file"]')?.addEventListener('click', () => {
           if (file) {
             editor.value = file.content;
-            saveButton.disabled = true;
-            if (dirtyLabel) dirtyLabel.style.display = 'none';
+            setEditorDirty(false);
+            editor.focus({ preventScroll: true });
           }
         });
-        const active = document.activeElement;
-        if (active && active.id === 'file-editor') {
-          editor.focus();
-          editor.setSelectionRange(editor.value.length, editor.value.length);
-        }
       }
       page.querySelectorAll('[data-file]').forEach((button) => {
         button.addEventListener('click', async () => {
@@ -704,6 +774,8 @@ export default {
               danger: true,
             });
             if (!proceed) return;
+            // Prevent paint() from restoring the discarded draft on the way out.
+            setEditorDirty(false);
           }
           setSelectedFile(ctx, host, name, button.dataset.file);
           paint();

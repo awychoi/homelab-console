@@ -192,6 +192,11 @@ document.addEventListener('click', (event) => {
 });
 
 function isEditing() {
+  // A dirty editor is still in use even after focus moves to its toolbar, the
+  // scrollbar, another window, or the sidebar. Replacing the view from a
+  // background poll would swap in the cached file contents, discard the edit
+  // and leave Save disabled.
+  if (document.querySelector('#view [data-dirty="true"]')) return true;
   const element = document.activeElement;
   if (!element || element.closest('.topbar')) return false;
   const tag = element.tagName;
@@ -201,6 +206,57 @@ function isEditing() {
   return Boolean(element.closest('#view') && element.matches(
     '[data-tab], [data-activity-tab], [data-host], [data-theme-choice], [data-policy], [data-settings-jump], [data-log-tail] button, [data-root-path], [data-root-deep], [data-remove-root], [data-add-repo-root], [data-add-repo-root-first], [data-pick-repo-roots], [data-pick-repo-roots-first], [data-save-repo-root], [data-repo-choice]',
   ));
+}
+
+/**
+ * The browser serializes boolean attributes with an empty value (`disabled`
+ * becomes `disabled=""`) and re-encodes entities. Comparing a render string
+ * to `innerHTML` directly therefore reports a change on every poll on views
+ * with a disabled button, even when nothing changed. Replay that normalization
+ * through an inert template before deciding whether to replace the view.
+ */
+const htmlNormalizer = document.createElement('template');
+function normalizedHtml(html) {
+  htmlNormalizer.innerHTML = html;
+  return htmlNormalizer.innerHTML;
+}
+
+/**
+ * Keep the operator's place in the file editor across a legitimate repaint
+ * (state banner change, save reload, manual refresh). Background polls skip
+ * dirty editors entirely; this covers the repaints that must happen.
+ */
+function captureViewState(container) {
+  const editor = container.querySelector('#file-editor');
+  const active = document.activeElement;
+  return {
+    scrollX: window.scrollX,
+    scrollY: window.scrollY,
+    editor: editor
+      ? {
+          path: editor.dataset.path || '',
+          scrollTop: editor.scrollTop,
+          selectionStart: editor.selectionStart,
+          selectionEnd: editor.selectionEnd,
+          focused: active === editor,
+        }
+      : null,
+  };
+}
+
+function restoreViewState(container, state) {
+  if (!state) return;
+  const editor = container.querySelector('#file-editor');
+  if (editor && state.editor && (editor.dataset.path || '') === state.editor.path) {
+    try {
+      editor.setSelectionRange(state.editor.selectionStart, state.editor.selectionEnd);
+    } catch {
+      /* selection is best-effort for textareas without a text control */
+    }
+    editor.scrollTop = state.editor.scrollTop;
+    if (state.editor.focused) editor.focus({ preventScroll: true });
+  }
+  window.scrollTo(state.scrollX, state.scrollY);
 }
 
 function parseRoute() {
@@ -465,12 +521,17 @@ function renderCurrent() {
   }
   html = filterNoticeHtml(html);
   // If nothing changed, keep the existing DOM and its listeners. This avoids
-  // pointless replacement on poll ticks (especially on static views).
-  if (container.innerHTML === html) { updateChrome(); return; }
+  // pointless replacement on poll ticks (especially on static views). Compare
+  // normalized HTML: a raw string comparison fails on boolean attributes such
+  // as the file editor's `disabled` Save button and replays the view (and its
+  // scroll position) on every poll.
+  if (normalizedHtml(container.innerHTML) === normalizedHtml(html)) { updateChrome(); return; }
+  const viewState = captureViewState(container);
   container.innerHTML = html;
   if (typeof view.mount === 'function') {
     try { view.mount(container, ctx, route.params); } catch (error) { console.error(error); }
   }
+  restoreViewState(container, viewState);
   updateChrome();
 }
 

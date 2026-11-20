@@ -479,6 +479,34 @@ class ServiceMetadataApiTests(unittest.TestCase):
         env = self.settings.stacks_dir / "pi-a" / "app" / "config" / ".env.local"
         self.assertEqual(env.stat().st_mode & 0o777, 0o600)
 
+    def test_edit_existing_stack_file_checks_base_hash(self):
+        status, detail = self.request("GET", "/api/stacks/pi-a/app")
+        self.assertEqual(status, 200)
+        compose = next(item for item in detail["files"] if item["path"] == "docker-compose.yml")
+        updated = compose["content"].rstrip() + "\n# saved from the editor\n"
+        target = self.settings.stacks_dir / "pi-a" / "app" / "docker-compose.yml"
+        status, payload = self.request(
+            "PUT",
+            "/api/stacks/pi-a/app/file",
+            {"path": "docker-compose.yml", "content": updated, "base_hash": compose["hash"]},
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(payload["path"], "stacks/pi-a/app/docker-compose.yml")
+        self.assertEqual(target.read_text(), updated)
+
+        # A save based on the old content is a conflict, not a silent overwrite.
+        status, _payload = self.request(
+            "PUT",
+            "/api/stacks/pi-a/app/file",
+            {
+                "path": "docker-compose.yml",
+                "content": "services:\n  app:\n    image: ghcr.io/paperless-ngx/paperless-ngx:2.11.0\n",
+                "base_hash": compose["hash"],
+            },
+        )
+        self.assertEqual(status, 409)
+        self.assertEqual(target.read_text(), updated)
+
     def test_stack_detail_uses_profile_immediately(self):
         self.request(
             "POST",

@@ -308,7 +308,9 @@ The **Files** tab can create a new text file at any relative path; parent
 folders are created automatically, and `.env`, `.env.*` and `*.env` files are
 written mode 600. This is how service configs (`prometheus.yml`,
 `mosquitto.conf`, a `Caddyfile`, and so on) get into the repo without leaving
-the app.
+the app. Unsaved edits survive the console's background refresh, and saving
+keeps the editor's scroll and caret in place; switching files or sections asks
+before discarding a dirty editor.
 
 The tab also lists *host-only paths*: files that exist only on the Pi (old
 configs, runtime state). They are never uploaded and never deleted by a deploy.
@@ -829,8 +831,9 @@ sent as a header, so prefer HTTPS.
 .venv/bin/python -m unittest discover -s app/tests -v
 ```
 
-The suite is stdlib-only (174 tests) and covers compose parsing, nested file
-creation, stack-layout warnings, plan hashing, pin rewriting, host round-trips,
+The suite is stdlib-only (254 tests) and covers compose parsing, nested file
+creation, stack-file saves with base hashes, stack-layout warnings, plan
+hashing, pin rewriting, host round-trips,
 SSH config edits, version selection, managed targets, release-age metadata,
 source normalization/overrides, per-stack safety profiles, database-dump
 listing, path safety, snapshots, recursive project discovery and selection, and
