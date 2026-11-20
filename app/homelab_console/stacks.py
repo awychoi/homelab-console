@@ -742,6 +742,10 @@ def _compose_command(stack_name: str, action: str, remote_root: str, extra: str 
     base = f"cd {shlex.quote(directory)} && docker compose"
     if action == "up":
         return f"{base} up -d --remove-orphans"
+    if action == "recreate":
+        # Rotation changes a container's environment through .env; force the
+        # recreate so the new value is guaranteed to be applied.
+        return f"{base} up -d --remove-orphans --force-recreate"
     if action == "pull":
         return f"{base} pull && {base} up -d --remove-orphans"
     if action == "down":

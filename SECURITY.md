@@ -50,6 +50,14 @@ Run `tools/secret_scan.sh` before publishing a checkout, or
 CI runs the history scan on every push, so a credential removed from the tree
 but left in history still fails the build.
 
+Credential rotation follows the same rules: a secret is only eligible when the
+workspace declares it in `scripts/rotation.json`, the target file must already be
+one the console treats as secret, and the request carries no path or command.
+The new value is derived before review (a copyparty verifier is produced inside
+the pinned image with the password on stdin), bound to the file's current
+content by a review hash, written 600, and verified by restarting the stack. A
+stack that does not come back healthy gets the previous value back.
+
 Backups include every stack file, including `.env` secrets, but exclude tokens
 and `.hlc/` state. They are written 600 and restore writes a safety backup
 first. Treat an archive like the `.env` files: keep it off shared storage.

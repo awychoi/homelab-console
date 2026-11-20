@@ -225,6 +225,29 @@ file (including `.env`-family secrets) and all non-secret settings; tokens and
 settings. The archive is mode 600. Full behavior:
 [Using the console → Backup and restore](operations.md#backup-and-restore).
 
+### Credential rotation
+
+A workspace can declare rotatable secrets in `scripts/rotation.json`; the
+stack page then grows a **Secrets** tab. Rotation is a plan, not a command:
+
+1. **Plan** — the console generates a 24-character password (or takes one you
+   type) and derives the value that will be written. For `env` that is the
+   password itself; for `copyparty-accounts` it is an argon2 verifier produced
+   by the pinned image, with the password on **stdin** so it never reaches
+   argv, `ps` or a log line.
+2. **Review** — the dialog shows the generated password once (it is never
+   stored), the exact line that changes, and a review hash bound to the file's
+   current content. An edit in between is rejected, not silently merged.
+3. **Apply** — the file is written mode 600, the stack is pushed and
+   restarted, and health is checked. If the stack does not come back, the
+   console restores the previous content, redeploys it, and reports the
+   failure instead of leaving the service locked out.
+
+Only files the console already treats as secret can be rewritten, and only
+values that pass a strict shape check reach the file. Database-internal
+credentials (for example immich's `DB_PASSWORD`) are deliberately not
+rotatable: they must also change inside the database.
+
 ## The mental model, kept intact
 
 - **The repo is desired state.** The console writes compose files in
@@ -247,6 +270,10 @@ settings. The archive is mode 600. Full behavior:
   commit dialog refuses them, and `tools/secret_scan.sh` gates CI.
   `.hlc/` only ever contains secret material in mode-600 files inside a
   gitignored directory.
+- **Rotation is a plan, not a shell.** Secrets declared in
+  `scripts/rotation.json` are rewritten by a fixed mechanism — the request
+  never names a path, a file or a command, the plaintext is shown once, and a
+  failed restart restores the previous credential.
 
 ## What it does
 

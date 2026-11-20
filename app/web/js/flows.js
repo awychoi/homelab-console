@@ -225,6 +225,40 @@ export async function showRollback(ctx, host, name, snapshotId) {
   }
 }
 
+export async function showRotateSecret(ctx, host, name, key) {
+  let plan;
+  try {
+    plan = await api.post(`/api/stacks/${encodeURIComponent(host)}/${encodeURIComponent(name)}/secrets/plan`, { key });
+  } catch (error) {
+    toast('Could not prepare the rotation', 'err', ui.errorText(error));
+    return;
+  }
+  const preview = plan.preview || {};
+  const password = plan.password
+    ? `<div class="danger-box mb-2">${icon('key')}<div><strong>New password — copy it now, it is not stored anywhere.</strong><div class="mono mt-1">${esc(plan.password)}</div></div></div>`
+    : '';
+  const confirmed = await confirmDialog({
+    title: `Rotate ${plan.label || key} · ${host}/${name}`,
+    message: 'The console rewrites the secret, pushes the stack, and restarts it. If the stack does not come back healthy the previous value is restored automatically.',
+    detail: `${password}
+      <div class="kv-row"><div class="kv-key">${esc(plan.file)} line ${esc(preview.line || '')}</div><div class="kv-val mono tiny">${esc(preview.after || plan.value)}</div></div>
+      <div class="kv-row"><div class="kv-key">Mechanism</div><div class="kv-val">${esc(plan.mechanism)}</div></div>`,
+    confirmLabel: 'Rotate credential',
+    danger: true,
+  });
+  if (!confirmed) return;
+  try {
+    const result = await api.post(`/api/stacks/${encodeURIComponent(host)}/${encodeURIComponent(name)}/secrets/apply`, {
+      key,
+      value: plan.value,
+      review_hash: plan.review_hash,
+    });
+    ui.runModal(ctx, result.run_id, `rotate ${key} · ${host}/${name}`);
+  } catch (error) {
+    toast('Rotation failed to start', 'err', ui.errorText(error));
+  }
+}
+
 /* ------------------------------------------------------------ bulk update */
 export function showBulkUpdate(ctx) {
   const actionable = (ctx.state?.updates || []).filter((target) => (target.actions || []).includes('update'));

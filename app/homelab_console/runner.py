@@ -637,6 +637,22 @@ class TaskManager:
 
         return self.start("rollback", work, host=host_alias, svc=stack_name, title=f"rollback {host_alias}/{stack_name}")
 
+    # ------------------------------------------------------------- secrets
+    def rotate(self, host_alias: str, stack_name: str, rotation) -> Run:
+        active = self.active_for(host_alias, stack_name)
+        if active:
+            raise RunError(f"a run is already active for {host_alias}/{stack_name}: {active.id}")
+        host = self.host_store.get(host_alias)
+        if host.local:
+            raise RunError("local stacks cannot be rotated")
+        spec = rotation.spec
+
+        def work(run: Run) -> dict[str, Any]:
+            rotate_secret(self.settings, self.store, run, host, host_alias, stack_name, rotation)
+            return {"key": spec.key, "file": spec.file, "mechanism": spec.mechanism}
+
+        return self.start("secrets", work, host=host_alias, svc=stack_name, title=f"rotate {spec.key} on {host_alias}/{stack_name}")
+
     # -------------------------------------------------------- auto updates
     def auto_sweep(self) -> str | None:
         """Start at most one auto-update; called by the app service loop."""
@@ -687,6 +703,64 @@ class TaskManager:
             )
             return run.id
         return None
+
+
+def _push_and_restart(settings, run: Run, host, host_alias: str, stack_name: str, spec) -> None:
+    """Push the stack and restart it so the new credential is live."""
+    stack = stacks.get_stack(settings, host_alias, stack_name)
+    run.emit(f">> pushing {len(stack.files)} files to {host_alias}")
+    push = stacks.push_files(host, stack_name, stack.files, settings.remote_root, base=stack.path)
+    if not push.get("ok"):
+        raise stacks.StackError(f"push failed: {push.get('error')}")
+    # accounts files are read at startup, so the container must restart; .env
+    # changes need compose to recreate with the new environment.
+    action = "restart" if spec.mechanism == "copyparty-accounts" else "recreate"
+    run.emit(f">> docker compose {action}")
+    result = stacks.compose(host, stack_name, action, settings.remote_root, timeout=300)
+    _emit_result(run, result)
+    if result.returncode != 0:
+        raise stacks.StackError(f"docker compose {action} failed (rc={result.returncode})")
+    run.emit(">> waiting for health")
+    health = updates.wait_healthy(
+        host, stack, settings.remote_root, run.emit,
+        timeout=int(settings.get("health_timeout_s", 120)),
+    )
+    if not health.get("ok"):
+        raise stacks.StackError(f"containers not healthy: {updates.describe_health(health)}")
+
+
+def rotate_secret(settings, store, run: Run, host, host_alias: str, stack_name: str, rotation) -> None:
+    """Write, push, restart and verify a rotation; restore the old value on failure."""
+    spec = rotation.spec
+    run.emit(f">> rotate {spec.key} on {host_alias}/{stack_name} ({spec.mechanism})")
+    try:
+        stacks.write_file(settings, host_alias, stack_name, spec.file, rotation.new_content)
+        run.emit(f"   wrote {spec.file}")
+        _push_and_restart(settings, run, host, host_alias, stack_name, spec)
+    except Exception:
+        # Never leave the stack on a credential the host rejects.
+        run.emit("!! rotation failed — restoring the previous credential")
+        try:
+            stacks.write_file(settings, host_alias, stack_name, spec.file, rotation.old_content)
+            _push_and_restart(settings, run, host, host_alias, stack_name, spec)
+            run.emit("   previous credential restored and healthy")
+            store.add_event(
+                "secrets", "warning",
+                f"{host_alias}/{stack_name}: rotation of {spec.key} failed and was rolled back",
+                host=host_alias, svc=stack_name,
+            )
+        except Exception as restore_exc:
+            run.emit(f"!! restore failed as well: {restore_exc}")
+            store.add_event(
+                "secrets", "error",
+                f"{host_alias}/{stack_name}: rotation of {spec.key} failed and the restore failed",
+                host=host_alias, svc=stack_name,
+            )
+        raise
+    run.emit(f"✓ rotated {spec.key}")
+    store.add_event(
+        "secrets", "success", f"{host_alias}/{stack_name}: rotated {spec.key}", host=host_alias, svc=stack_name
+    )
 
 
 def _emit_result(run: Run, result) -> None:

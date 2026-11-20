@@ -9,6 +9,7 @@ Copy it, or generate the same layout with `./hlc init --example ~/homelab/worksp
 ```text
 workspace/
 ├── scripts/hosts.json
+├── scripts/rotation.json      # optional: which secrets may be rotated
 ├── stacks/example/whoami/docker-compose.yml
 └── .gitignore
 ```
@@ -25,3 +26,7 @@ HLC_REPO="$HOME/homelab/workspace" ./hlc
 
 For the native app, use **Homelab Console → Choose Workspace…** and select this
 folder. Replace `example` with your own host once you have one.
+
+`scripts/rotation.json` is optional. When it is absent the Secrets tab does
+not appear; when present it lists which `.env` keys (or copyparty accounts)
+the console may rotate. See [Console → Credential rotation](console.md#credential-rotation).

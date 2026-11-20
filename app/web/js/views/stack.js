@@ -1,6 +1,6 @@
 import * as ui from '../ui.js';
 import { pageHead, stateBanner, runtimePill, syncPill, safetyBadge, containerStatePill } from './common.js';
-import { showDeploy, showLifecycle, showUpdate, showRollback, renderPlan } from '../flows.js';
+import { showDeploy, showLifecycle, showUpdate, showRollback, showRotateSecret, renderPlan } from '../flows.js';
 import { filterNoticeHtml } from '../notices.js';
 import { openHostTerminal } from '../terminal.js';
 
@@ -270,6 +270,27 @@ function snapshotsTab(ctx, host, name, detail) {
     </table></div></div>`;
 }
 
+function secretsTab(ctx, host, name, detail) {
+  if (detail.secrets_error) {
+    return `<div class="danger-box">${icon('alert')}<div><strong>Rotation config error</strong><div class="mono tiny">${esc(detail.secrets_error)}</div></div></div>`;
+  }
+  const rows = detail.secrets || [];
+  if (!rows.length) {
+    return `<div class="empty">${icon('key', 26)}<strong>No rotatable secrets declared</strong><p>Add entries to <span class="mono">scripts/rotation.json</span> in the workspace to rotate credentials from here.</p></div>`;
+  }
+  return `<div class="toolbar"><span class="muted tiny">Rotation rewrites one line, pushes the stack, restarts it, and restores the old value if the stack does not come back healthy.</span></div>
+    <div class="card"><div class="table-wrap"><table class="data">
+      <thead><tr><th>Secret</th><th>File</th><th>Mechanism</th><th>Status</th><th class="actions"></th></tr></thead>
+      <tbody>${rows.map((row) => `<tr>
+        <td><span class="cell-strong">${esc(row.label)}</span><div class="mono muted tiny">${esc(row.key)}</div></td>
+        <td class="mono tiny">${esc(row.file)}</td>
+        <td class="muted tiny">${esc(row.mechanism)}</td>
+        <td>${row.ready ? ui.pill('ok', 'ready') : `${ui.pill('warn', 'not ready')}${row.reason ? `<div class="muted tiny">${esc(row.reason)}</div>` : ''}`}</td>
+        <td class="actions"><button class="btn ghost sm" data-rotate-secret="${esc(row.key)}" ${row.ready ? '' : 'disabled'}>${icon('key', 12)} Rotate</button></td>
+      </tr>`).join('')}</tbody>
+    </table></div></div>`;
+}
+
 function contentHtml(ctx, host, name, detail, stateRow) {
   const runtime = detail?.runtime || stateRow?.runtime || {};
   const stack = detail?.stack || {};
@@ -281,12 +302,14 @@ function contentHtml(ctx, host, name, detail, stateRow) {
     <button class="btn ghost sm" data-action="restart">${icon('restart', 12)} Restart</button>
     <button class="btn ghost sm" data-action="down">${icon('power', 12)} Down</button>
     <button class="btn primary sm" data-action="deploy">${icon('upload', 12)} Deploy</button>`;
+  const secretRows = detail?.secrets || [];
   const tabs = [
     ['overview', 'Overview'],
     ['files', `Files${files.length ? ` (${files.length})` : ''}`],
     ['folders', 'Folders'],
     ['diff', 'Diff'],
     ['logs', 'Logs'],
+    ...(secretRows.length || detail?.secrets_error ? [['secrets', `Secrets${secretRows.length ? ` (${secretRows.length})` : ''}`]] : []),
     ['snapshots', `Snapshots${detail?.snapshots?.length ? ` (${detail.snapshots.length})` : ''}`],
   ];
   let tabContent = '';
@@ -294,6 +317,7 @@ function contentHtml(ctx, host, name, detail, stateRow) {
   else if (tab === 'folders') tabContent = foldersTab(ctx, host, name, detail || {});
   else if (tab === 'diff') tabContent = diffTab(ctx, host, name, detail || {});
   else if (tab === 'logs') tabContent = logsTab(ctx, host, name, detail || {});
+  else if (tab === 'secrets') tabContent = secretsTab(ctx, host, name, detail || {});
   else if (tab === 'snapshots') tabContent = snapshotsTab(ctx, host, name, detail || {});
   else tabContent = overviewTab(ctx, host, name, detail || {});
 
@@ -587,6 +611,9 @@ export default {
       page.querySelector('[data-action="down"]')?.addEventListener('click', () => showLifecycle(ctx, host, name, 'down'));
       page.querySelector('[data-action="logs-jump"]')?.addEventListener('click', () => { setTab(ctx, host, name, 'logs'); paint(); });
       page.querySelector('[data-action="edit-profile"]')?.addEventListener('click', openProfileEditor);
+      page.querySelectorAll('[data-rotate-secret]').forEach((button) => {
+        button.addEventListener('click', () => showRotateSecret(ctx, host, name, button.dataset.rotateSecret));
+      });
       page.querySelector('[data-action="new-file"]')?.addEventListener('click', openNewFile);
       page.querySelectorAll('[data-update-target]').forEach((button) => {
         button.addEventListener('click', () => {

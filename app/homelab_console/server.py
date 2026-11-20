@@ -26,7 +26,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path, PurePosixPath
 from typing import Any
 
-from . import __version__, appbackup, backups, hosts as hosts_mod, profiles, releases, repos, sshkeys, stacks, updates, util
+from . import __version__, appbackup, backups, hosts as hosts_mod, profiles, releases, repos, secrets, sshkeys, stacks, updates, util
 from .app_service import AppService
 from .config import APP_NAME, MAX_DISMISSED_NOTICES, VERSION
 from .hosts import HostError
@@ -769,6 +769,10 @@ class ConsoleHandler(BaseHTTPRequestHandler):
             return self._lifecycle(host, name, self._body())
         if method == "POST" and tail == ["rollback"]:
             return self._rollback(host, name, self._body())
+        if method == "POST" and tail == ["secrets", "plan"]:
+            return self._secret_plan(host, name, self._body())
+        if method == "POST" and tail == ["secrets", "apply"]:
+            return self._secret_apply(host, name, self._body())
         raise ApiError(404, "unknown stack endpoint")
 
     def _stack_detail(self, host: str, name: str) -> None:
@@ -802,7 +806,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
                     "content": text,
                     "bytes": len(text.encode()),
                     "hash": stack.hashes.get(rel, ""),
-                    "secret": rel == ".env" or rel.endswith(".env"),
+                    "secret": util.is_secret_file(rel),
                 }
             )
         remote_files = sorted(
@@ -812,6 +816,11 @@ class ConsoleHandler(BaseHTTPRequestHandler):
             ["git", "-C", str(self.app.settings.repo), "status", "--porcelain", "--", str(stack.path)],
             timeout=10,
         )
+        try:
+            declared_secrets = secrets.describe(secrets.load_specs(self.app.settings), stack)
+            secrets_error = ""
+        except secrets.RotationError as exc:
+            declared_secrets, secrets_error = [], str(exc)
         self._send_json(
             200,
             {
@@ -827,6 +836,8 @@ class ConsoleHandler(BaseHTTPRequestHandler):
                 "remote_path": f"{self.app.settings.remote_root.rstrip('/')}/{name}",
                 "snapshots": updates.list_snapshots(self.app.settings, host, name),
                 "git": {"dirty": bool(git.stdout.strip()), "porcelain": git.stdout.strip()},
+                "secrets": declared_secrets,
+                "secrets_error": secrets_error,
             },
         )
 
@@ -972,6 +983,66 @@ class ConsoleHandler(BaseHTTPRequestHandler):
             raise ApiError(404, "snapshot not found for this stack")
         run = self.app.tasks.rollback(host, name, snapshot_id)
         self._send_json(202, {"run_id": run.id, "run": run.public()})
+
+    def _secret_plan(self, host: str, name: str, body: dict[str, Any]) -> None:
+        host_obj, stack = self._require_stack(host, name)
+        if host_obj.local:
+            raise ApiError(400, "local stacks cannot be rotated")
+        key = str(body.get("key") or "").strip()
+        password = body.get("password")
+        supplied = None if password in (None, "") else str(password)
+        try:
+            rotation = secrets.plan(self.app.settings, host_obj, stack, key, supplied)
+        except secrets.RotationError as exc:
+            raise ApiError(400, str(exc))
+        except Exception as exc:  # SSH/hasher failures are not client errors
+            raise ApiError(502, f"could not derive the new credential: {exc}")
+        self._send_json(
+            200,
+            {
+                "key": rotation.spec.key,
+                "label": rotation.spec.label,
+                "file": rotation.spec.file,
+                "mechanism": rotation.spec.mechanism,
+                "value": rotation.value,
+                "password": rotation.generated,
+                "review_hash": rotation.review,
+                "preview": secrets.changed_lines(rotation.old_content, rotation.new_content),
+            },
+        )
+
+    def _secret_apply(self, host: str, name: str, body: dict[str, Any]) -> None:
+        host_obj, stack = self._require_stack(host, name)
+        if host_obj.local:
+            raise ApiError(400, "local stacks cannot be rotated")
+        key = str(body.get("key") or "").strip()
+        value = str(body.get("value") or "")
+        review = str(body.get("review_hash") or "").strip()
+        if not review:
+            raise ApiError(428, "review the rotation first and send its review_hash")
+        try:
+            spec = secrets.find(self.app.settings, host, name, key)
+        except secrets.RotationError as exc:
+            raise ApiError(400, str(exc))
+        current = stack.files.get(spec.file)
+        if current is None:
+            raise ApiError(409, f"{spec.file} is not in this stack any more — plan it again")
+        if review != secrets.reapply_review(spec, current, value):
+            raise ApiError(409, "the file changed since this rotation was reviewed — plan it again")
+        try:
+            new_content = secrets.apply_value(spec, current, value)
+        except secrets.RotationError as exc:
+            raise ApiError(400, str(exc))
+        rotation = secrets.Rotation(
+            spec=spec, old_content=current, new_content=new_content,
+            value=value, review=review, generated=None,
+        )
+        try:
+            run = self.app.tasks.rotate(host, name, rotation)
+        except RunError as exc:
+            raise ApiError(409, str(exc))
+        self._send_json(202, {"run_id": run.id, "run": run.public(), "key": key})
+
 
     def _create_stack(self, body: dict[str, Any]) -> None:
         host = str(body.get("host") or "")
