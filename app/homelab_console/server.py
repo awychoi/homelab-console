@@ -19,6 +19,7 @@ import shlex
 import shutil
 import socket
 import sys
+import threading
 import time
 import urllib.parse
 from http import HTTPStatus
@@ -37,6 +38,10 @@ from .templates import TEMPLATES
 log = logging.getLogger("hlc.http")
 
 MAX_BODY = 2 * 1024 * 1024
+# A reviewed rotation plan is a single-use capability held by the server.  The
+# client never has to hand the value back, and an unreviewed value cannot be
+# applied even though the review hash itself is not a secret.
+SECRET_PLAN_TTL = 600
 # In a checkout this is app/web; inside the macOS bundle it is <bundle>/web.
 WEB_DIR = util.bundle_root() / "web"
 
@@ -72,6 +77,8 @@ class ConsoleHTTPServer(ThreadingHTTPServer):
         self.token = token
         self.bind_host = str(address[0])
         self.started_at = util.now_ts()
+        self.pending_plans: dict[str, tuple[float, Any]] = {}
+        self.pending_lock = threading.Lock()
         super().__init__(address, ConsoleHandler)
         self.allowed_hosts = self._allowed_hosts()
 
@@ -984,6 +991,22 @@ class ConsoleHandler(BaseHTTPRequestHandler):
         run = self.app.tasks.rollback(host, name, snapshot_id)
         self._send_json(202, {"run_id": run.id, "run": run.public()})
 
+    def _remember_secret_plan(self, rotation) -> None:
+        now = time.time()
+        with self.server.pending_lock:
+            for token, (deadline, _) in list(self.server.pending_plans.items()):
+                if deadline <= now:
+                    self.server.pending_plans.pop(token, None)
+            self.server.pending_plans[rotation.review] = (now + SECRET_PLAN_TTL, rotation)
+
+    def _take_secret_plan(self, review: str):
+        with self.server.pending_lock:
+            entry = self.server.pending_plans.pop(review, None)
+        if entry is None:
+            return None
+        deadline, rotation = entry
+        return rotation if deadline > time.time() else None
+
     def _secret_plan(self, host: str, name: str, body: dict[str, Any]) -> None:
         host_obj, stack = self._require_stack(host, name)
         if host_obj.local:
@@ -997,6 +1020,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
             raise ApiError(400, str(exc))
         except Exception as exc:  # SSH/hasher failures are not client errors
             raise ApiError(502, f"could not derive the new credential: {exc}")
+        self._remember_secret_plan(rotation)
         self._send_json(
             200,
             {
@@ -1020,23 +1044,31 @@ class ConsoleHandler(BaseHTTPRequestHandler):
         review = str(body.get("review_hash") or "").strip()
         if not review:
             raise ApiError(428, "review the rotation first and send its review_hash")
+        rotation = self._take_secret_plan(review)
+        if rotation is None:
+            raise ApiError(428, "this rotation plan has expired or was already applied — plan it again")
+        spec = rotation.spec
+        if spec.host != host or spec.stack != name or spec.key != key:
+            raise ApiError(409, "the reviewed plan does not match this stack or key — plan it again")
         try:
-            spec = secrets.find(self.app.settings, host, name, key)
+            current_spec = secrets.find(self.app.settings, host, name, key)
         except secrets.RotationError as exc:
-            raise ApiError(400, str(exc))
+            raise ApiError(409, str(exc))
+        if (current_spec.mechanism, current_spec.file, current_spec.service) != (
+            spec.mechanism, spec.file, spec.service,
+        ):
+            raise ApiError(409, "the rotation config changed since it was reviewed — plan it again")
         current = stack.files.get(spec.file)
         if current is None:
             raise ApiError(409, f"{spec.file} is not in this stack any more — plan it again")
-        if review != secrets.reapply_review(spec, current, value):
+        if util.sha256_text(current) != rotation.base:
             raise ApiError(409, "the file changed since this rotation was reviewed — plan it again")
+        if value and value != rotation.value:
+            raise ApiError(409, "the value does not match the reviewed plan — plan it again")
         try:
-            new_content = secrets.apply_value(spec, current, value)
+            secrets.check_target(spec, stack)
         except secrets.RotationError as exc:
             raise ApiError(400, str(exc))
-        rotation = secrets.Rotation(
-            spec=spec, old_content=current, new_content=new_content,
-            value=value, review=review, generated=None,
-        )
         try:
             run = self.app.tasks.rotate(host, name, rotation)
         except RunError as exc:

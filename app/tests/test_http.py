@@ -318,6 +318,10 @@ class ServiceMetadataApiTests(unittest.TestCase):
         (stack / "docker-compose.yml").write_text(
             "services:\n  app:\n    image: ghcr.io/paperless-ngx/paperless-ngx:2.10.0\n"
         )
+        (stack / ".env").write_text("APP_SECRET=old\n")
+        (root / "scripts" / "rotation.json").write_text(
+            json.dumps({"pi-a/app": [{"key": "APP_SECRET"}]})
+        )
         self.settings = Settings.load(root)
         self.app = AppService(self.settings)
         self.addCleanup(self.app.store.close)
@@ -375,6 +379,57 @@ class ServiceMetadataApiTests(unittest.TestCase):
         status, _ = self.request("POST", "/api/release-sources", {"repo": key, "delete": True})
         self.assertEqual(status, 200)
         self.assertNotIn(key, self.app.settings.get("release_sources"))
+
+    def test_rotation_plan_is_server_held_and_single_use(self):
+        fake_run = mock.MagicMock()
+        fake_run.id = "run-1"
+        fake_run.public.return_value = {"id": "run-1", "status": "running"}
+        self.app.tasks.rotate = mock.MagicMock(return_value=fake_run)
+
+        status, plan = self.request(
+            "POST", "/api/stacks/pi-a/app/secrets/plan", {"key": "APP_SECRET"}
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(plan["password"], plan["value"])
+        self.assertRegex(plan["value"], r"^[A-Za-z0-9]{24}$")
+
+        status, applied = self.request(
+            "POST",
+            "/api/stacks/pi-a/app/secrets/apply",
+            {"key": "APP_SECRET", "value": plan["value"], "review_hash": plan["review_hash"]},
+        )
+        self.assertEqual(status, 202)
+        self.assertEqual(applied["run_id"], "run-1")
+        self.app.tasks.rotate.assert_called_once()
+
+        # The reviewed plan is single-use.
+        status, _ = self.request(
+            "POST",
+            "/api/stacks/pi-a/app/secrets/apply",
+            {"key": "APP_SECRET", "value": plan["value"], "review_hash": plan["review_hash"]},
+        )
+        self.assertEqual(status, 428)
+
+        # A different value cannot ride on a reviewed review hash.
+        status, plan2 = self.request(
+            "POST", "/api/stacks/pi-a/app/secrets/plan", {"key": "APP_SECRET"}
+        )
+        self.assertEqual(status, 200)
+        status, _ = self.request(
+            "POST",
+            "/api/stacks/pi-a/app/secrets/apply",
+            {"key": "APP_SECRET", "value": "forged-value-123", "review_hash": plan2["review_hash"]},
+        )
+        self.assertEqual(status, 409)
+        self.assertEqual(self.app.tasks.rotate.call_count, 1)
+
+        # No plan, no apply.
+        status, _ = self.request(
+            "POST",
+            "/api/stacks/pi-a/app/secrets/apply",
+            {"key": "APP_SECRET", "value": "forged-value-123", "review_hash": "no-such-plan"},
+        )
+        self.assertEqual(status, 428)
 
     def test_stack_profile_round_trip_and_validation(self):
         status, payload = self.request(

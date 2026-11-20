@@ -21,6 +21,7 @@ from . import stacks, updates, util
 from .config import Settings
 from .hosts import HostStore
 from .monitor import FleetMonitor
+from .secrets import verify_account
 from .store import Store
 
 log = logging.getLogger("hlc.runs")
@@ -205,22 +206,25 @@ class TaskManager:
             runs = sorted(self.runs.values(), key=lambda run: run.started, reverse=True)[:limit]
             return [run.public(since=10**9) for run in runs]
 
+    def _active_locked(self, host: str = "", svc: str = "") -> Run | None:
+        for run in self.runs.values():
+            if run.status != "running":
+                continue
+            if host and run.host and run.host != host:
+                continue
+            if svc and run.svc and run.svc != svc:
+                continue
+            if run.kind == "deploy":
+                if host and run.host != host:
+                    continue
+                if svc and run.svc != svc:
+                    continue
+            return run
+        return None
+
     def active_for(self, host: str = "", svc: str = "") -> Run | None:
         with self._lock:
-            for run in self.runs.values():
-                if run.status != "running":
-                    continue
-                if host and run.host and run.host != host:
-                    continue
-                if svc and run.svc and run.svc != svc:
-                    continue
-                if run.kind == "deploy":
-                    if host and run.host != host:
-                        continue
-                    if svc and run.svc != svc:
-                        continue
-                return run
-        return None
+            return self._active_locked(host, svc)
 
     def active_count(self) -> int:
         with self._lock:
@@ -234,7 +238,16 @@ class TaskManager:
         with self._lock:
             return any(batch.status in ("queued", "running") for batch in self.batches.values())
 
-    def start(self, kind: str, fn: Callable[[Run], dict[str, Any]], *, host: str = "", svc: str = "", title: str = "") -> Run:
+    def start(
+        self,
+        kind: str,
+        fn: Callable[[Run], dict[str, Any]],
+        *,
+        host: str = "",
+        svc: str = "",
+        title: str = "",
+        idle_for: tuple[str, str] | None = None,
+    ) -> Run:
         run_id = f"{time.strftime('%Y%m%d-%H%M%S')}-{secrets.token_hex(3)}"
         log_path = self.settings.runs_dir / f"{run_id}.log"
         util.ensure_dir(log_path.parent, 0o700)
@@ -245,6 +258,12 @@ class TaskManager:
             pass
         run = Run(id=run_id, kind=kind, host=host, svc=svc, title=title or kind, log_path=log_path)
         with self._lock:
+            if idle_for:
+                active = self._active_locked(*idle_for)
+                if active:
+                    raise RunError(
+                        f"a run is already active for {idle_for[0]}/{idle_for[1]}: {active.id}"
+                    )
             self.runs[run_id] = run
         self.store.start_run(run_id, kind, host, svc, str(log_path))
         thread = threading.Thread(target=self._execute, args=(run, fn), name=f"hlc-run-{run_id}", daemon=True)
@@ -291,9 +310,6 @@ class TaskManager:
             raise RunError("deploy action must be up, pull or sync")
         if not str(plan_hash or "").strip():
             raise RunError("a reviewed plan hash is required before deploying")
-        active = self.active_for(host_alias, stack_name)
-        if active:
-            raise RunError(f"a run is already active for {host_alias}/{stack_name}: {active.id}")
         host = self.host_store.get(host_alias)
         if host.local:
             raise RunError("local deploys are not supported by the console")
@@ -370,15 +386,16 @@ class TaskManager:
             )
             return {"pushed": len(stack.files), "action": action, "health": health}
 
-        return self.start("deploy", work, host=host_alias, svc=stack_name, title=f"deploy {host_alias}/{stack_name}")
+        return self.start(
+            "deploy", work, host=host_alias, svc=stack_name,
+            title=f"deploy {host_alias}/{stack_name}",
+            idle_for=(host_alias, stack_name),
+        )
 
     # ----------------------------------------------------------- lifecycle
     def lifecycle(self, host_alias: str, stack_name: str, action: str) -> Run:
         if action not in ("restart", "down", "up"):
             raise RunError("lifecycle action must be restart, down or up")
-        active = self.active_for(host_alias, stack_name)
-        if active:
-            raise RunError(f"a run is already active for {host_alias}/{stack_name}: {active.id}")
         host = self.host_store.get(host_alias)
         stack = stacks.get_stack(self.settings, host_alias, stack_name)
 
@@ -402,7 +419,11 @@ class TaskManager:
             )
             return {"action": action}
 
-        return self.start("lifecycle", work, host=host_alias, svc=stack_name, title=f"{action} {host_alias}/{stack_name}")
+        return self.start(
+            "lifecycle", work, host=host_alias, svc=stack_name,
+            title=f"{action} {host_alias}/{stack_name}",
+            idle_for=(host_alias, stack_name),
+        )
 
     # -------------------------------------------------------------- update
     def update(
@@ -419,9 +440,6 @@ class TaskManager:
     ) -> Run:
         if not _bulk and self.batch_active():
             raise RunError("a bulk update queue is active; wait for it to finish")
-        active = self.active_for(host_alias, stack_name)
-        if active:
-            raise RunError(f"a run is already active for {host_alias}/{stack_name}: {active.id}")
         host = self.host_store.get(host_alias)
         stack = stacks.get_stack(self.settings, host_alias, stack_name)
 
@@ -461,6 +479,7 @@ class TaskManager:
         run = self.start(
             "update", work, host=host_alias, svc=stack_name,
             title=f"update {host_alias}/{stack_name}",
+            idle_for=(host_alias, stack_name),
         )
         if self.store.policy(host_alias, stack_name):
             self.store.mark_policy_attempt(host_alias, stack_name, "", applied=False)
@@ -624,9 +643,6 @@ class TaskManager:
         self.monitor.request_refresh()
 
     def rollback(self, host_alias: str, stack_name: str, snapshot_id: str) -> Run:
-        active = self.active_for(host_alias, stack_name)
-        if active:
-            raise RunError(f"a run is already active for {host_alias}/{stack_name}: {active.id}")
         host = self.host_store.get(host_alias)
         stack = stacks.get_stack(self.settings, host_alias, stack_name)
 
@@ -635,13 +651,14 @@ class TaskManager:
                 self.settings, self.store, host, stack, snapshot_id, run.emit
             )
 
-        return self.start("rollback", work, host=host_alias, svc=stack_name, title=f"rollback {host_alias}/{stack_name}")
+        return self.start(
+            "rollback", work, host=host_alias, svc=stack_name,
+            title=f"rollback {host_alias}/{stack_name}",
+            idle_for=(host_alias, stack_name),
+        )
 
     # ------------------------------------------------------------- secrets
     def rotate(self, host_alias: str, stack_name: str, rotation) -> Run:
-        active = self.active_for(host_alias, stack_name)
-        if active:
-            raise RunError(f"a run is already active for {host_alias}/{stack_name}: {active.id}")
         host = self.host_store.get(host_alias)
         if host.local:
             raise RunError("local stacks cannot be rotated")
@@ -651,7 +668,11 @@ class TaskManager:
             rotate_secret(self.settings, self.store, run, host, host_alias, stack_name, rotation)
             return {"key": spec.key, "file": spec.file, "mechanism": spec.mechanism}
 
-        return self.start("secrets", work, host=host_alias, svc=stack_name, title=f"rotate {spec.key} on {host_alias}/{stack_name}")
+        return self.start(
+            "secrets", work, host=host_alias, svc=stack_name,
+            title=f"rotate {spec.key} on {host_alias}/{stack_name}",
+            idle_for=(host_alias, stack_name),
+        )
 
     # -------------------------------------------------------- auto updates
     def auto_sweep(self) -> str | None:
@@ -705,11 +726,25 @@ class TaskManager:
         return None
 
 
-def _push_and_restart(settings, run: Run, host, host_alias: str, stack_name: str, spec) -> None:
-    """Push the stack and restart it so the new credential is live."""
+def _service_port(stack, service: str) -> int:
+    """The container port copyparty listens on, from the compose mapping."""
+    for item in getattr(stack, "services", None) or []:
+        if item.name != service:
+            continue
+        for port in item.ports:
+            if port.get("protocol") != "tcp":
+                continue
+            value = str(port.get("container_port") or "")
+            if value.isdigit() and 0 < int(value) < 65536:
+                return int(value)
+    return 3923
+
+
+def _push_and_restart(settings, run: Run, host, host_alias: str, stack_name: str, spec, files: dict[str, str]) -> None:
+    """Push the rotated file and restart so the new credential is live."""
     stack = stacks.get_stack(settings, host_alias, stack_name)
-    run.emit(f">> pushing {len(stack.files)} files to {host_alias}")
-    push = stacks.push_files(host, stack_name, stack.files, settings.remote_root, base=stack.path)
+    run.emit(f">> pushing {', '.join(sorted(files))} to {host_alias}")
+    push = stacks.push_files(host, stack_name, files, settings.remote_root, base=stack.path)
     if not push.get("ok"):
         raise stacks.StackError(f"push failed: {push.get('error')}")
     # accounts files are read at startup, so the container must restart; .env
@@ -730,19 +765,72 @@ def _push_and_restart(settings, run: Run, host, host_alias: str, stack_name: str
 
 
 def rotate_secret(settings, store, run: Run, host, host_alias: str, stack_name: str, rotation) -> None:
-    """Write, push, restart and verify a rotation; restore the old value on failure."""
+    """Snapshot, write, push, restart and verify; restore the old value on failure."""
     spec = rotation.spec
     run.emit(f">> rotate {spec.key} on {host_alias}/{stack_name} ({spec.mechanism})")
+    stack = stacks.get_stack(settings, host_alias, stack_name)
+    snapshot = updates.create_snapshot(
+        settings,
+        stack,
+        {
+            "host": host_alias,
+            "stack": stack_name,
+            "service": spec.service,
+            "key": spec.key,
+            "mechanism": spec.mechanism,
+        },
+        "rotate",
+    )
+    snapshot_id = str(snapshot.get("id") or "")
+    run.emit(f"   recovery snapshot {snapshot_id}".rstrip())
+    written = False
     try:
-        stacks.write_file(settings, host_alias, stack_name, spec.file, rotation.new_content)
+        stacks.write_file(
+            settings, host_alias, stack_name, spec.file, rotation.new_content,
+            base_hash=rotation.base,
+        )
+        written = True
         run.emit(f"   wrote {spec.file}")
-        _push_and_restart(settings, run, host, host_alias, stack_name, spec)
+        _push_and_restart(
+            settings, run, host, host_alias, stack_name, spec,
+            {spec.file: rotation.new_content},
+        )
+        if spec.mechanism == "copyparty-accounts":
+            run.emit(">> verifying the new login")
+            verify_account(
+                host, stack_name, spec.service, rotation.secret,
+                settings.remote_root, port=_service_port(stack, spec.service),
+            )
+            run.emit("   login ok")
     except Exception:
-        # Never leave the stack on a credential the host rejects.
+        try:
+            current = stacks.get_stack(settings, host_alias, stack_name).files.get(spec.file)
+        except Exception:
+            current = None
+        if current != rotation.new_content:
+            if written:
+                run.emit("!! the secret file changed during the rotation; leaving it for review")
+                store.add_event(
+                    "secrets", "error",
+                    f"{host_alias}/{stack_name}: rotation of {spec.key} failed and the file changed; "
+                    f"recovery snapshot {snapshot_id or 'unknown'}",
+                    host=host_alias, svc=stack_name,
+                )
+            else:
+                run.emit("!! rotation stopped before writing — nothing to restore")
+            raise
+        # The file is on the new value (or write_file landed it before
+        # raising), so a rollback is both safe and necessary.
         run.emit("!! rotation failed — restoring the previous credential")
         try:
-            stacks.write_file(settings, host_alias, stack_name, spec.file, rotation.old_content)
-            _push_and_restart(settings, run, host, host_alias, stack_name, spec)
+            stacks.write_file(
+                settings, host_alias, stack_name, spec.file, rotation.old_content,
+                base_hash=util.sha256_text(rotation.new_content),
+            )
+            _push_and_restart(
+                settings, run, host, host_alias, stack_name, spec,
+                {spec.file: rotation.old_content},
+            )
             run.emit("   previous credential restored and healthy")
             store.add_event(
                 "secrets", "warning",
@@ -753,7 +841,8 @@ def rotate_secret(settings, store, run: Run, host, host_alias: str, stack_name: 
             run.emit(f"!! restore failed as well: {restore_exc}")
             store.add_event(
                 "secrets", "error",
-                f"{host_alias}/{stack_name}: rotation of {spec.key} failed and the restore failed",
+                f"{host_alias}/{stack_name}: rotation of {spec.key} failed and the restore failed; "
+                f"recovery snapshot {snapshot_id or 'unknown'}",
                 host=host_alias, svc=stack_name,
             )
         raise

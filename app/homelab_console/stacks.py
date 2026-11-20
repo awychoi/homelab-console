@@ -904,6 +904,7 @@ def write_file(
     content: str,
     *,
     create_only: bool = False,
+    base_hash: str | None = None,
 ) -> dict[str, Any]:
     _validate_host_dir(host)
     if not STACK_NAME_RE.match(stack):
@@ -921,6 +922,8 @@ def write_file(
     if not str(directory.resolve()).startswith(str(root) + os.sep):
         raise StackError(f"stack not found: {host}/{stack}")
     target = safe_stack_path(directory, rel_path.as_posix())
+    if base_hash and util.sha256_text(util.read_text(target, default="")) != base_hash:
+        raise StackError("file changed on disk since it was reviewed — reload before saving")
     if create_only and target.exists():
         raise StackError(f"file already exists: {rel_path.as_posix()}")
     if rel_path.as_posix() in COMPOSE_NAMES:
