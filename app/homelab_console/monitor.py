@@ -336,12 +336,21 @@ class FleetMonitor:
             for service in stack.services:
                 if not service.image:
                     continue
-                requests[service.image.repo] = {
-                    "repo": service.image.repo,
-                    "current": service.image.tag if service.image.explicit_tag else "",
-                    "labels": labels_by_image.get(service.image_raw) or {},
-                    "groups": sorted(groups),
-                }
+                existing = requests.get(service.image.repo)
+                if existing is None:
+                    requests[service.image.repo] = {
+                        "repo": service.image.repo,
+                        "current": service.image.tag if service.image.explicit_tag else "",
+                        "labels": labels_by_image.get(service.image_raw) or {},
+                        "groups": sorted(groups),
+                        "has_build": service.has_build,
+                    }
+                    continue
+                # One pulled reference is enough to check upstream; only a
+                # repo that every stack builds locally stays unchecked.
+                existing["has_build"] = bool(existing["has_build"] and service.has_build)
+                if not existing["labels"]:
+                    existing["labels"] = labels_by_image.get(service.image_raw) or {}
         return list(requests.values())
 
     def check_releases_now(self, force: bool = True) -> bool:

@@ -228,15 +228,28 @@ def cmd_check_releases(args) -> int:
     settings = _load_settings(args)
     service = releases.ReleaseService(settings)
     all_stacks = stacks.discover(settings)
-    requests = []
-    seen = set()
+    requests: dict[str, dict] = {}
     for stack in all_stacks:
         for svc in stack.services:
-            if svc.image and svc.image.repo not in seen:
-                seen.add(svc.image.repo)
-                requests.append({"repo": svc.image.repo, "current": svc.image.tag if svc.image.explicit_tag else ""})
+            if not svc.image:
+                continue
+            existing = requests.get(svc.image.repo)
+            if existing is None:
+                requests[svc.image.repo] = {
+                    "repo": svc.image.repo,
+                    "current": svc.image.tag if svc.image.explicit_tag else "",
+                    "has_build": svc.has_build,
+                }
+                continue
+            # One pulled reference is enough to check upstream; only a repo
+            # that every stack builds locally stays unchecked.
+            existing["has_build"] = bool(existing["has_build"] and svc.has_build)
     print(f"checking {len(requests)} source(s)…")
-    summary = service.refresh(requests, force=not args.cached, progress=lambda message: print(f"  {message}"))
+    summary = service.refresh(
+        list(requests.values()),
+        force=not args.cached,
+        progress=lambda message: print(f"  {message}"),
+    )
     print()
     for stack in all_stacks:
         targets = updates.build_targets(stack, None, service)

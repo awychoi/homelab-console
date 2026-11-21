@@ -167,7 +167,9 @@ def build_targets(
             continue
         container = containers.get(service.name)
         labels = (container or {}).get("image_labels") or {}
-        source = release_service.source_for(image.repo, labels, groups)
+        source = release_service.source_for(
+            image.repo, labels, groups, has_build=service.has_build
+        )
         entry = release_service.entries.get(source.key)
         running_tag = str((container or {}).get("image_tag") or "")
         running_digest = _digest_for(container, image.repo)

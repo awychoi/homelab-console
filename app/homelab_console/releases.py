@@ -200,6 +200,13 @@ def _registry_of(key: str) -> str:
     return ""
 
 
+def _explicit_registry(repo: str) -> bool:
+    """Whether an image reference names a registry (``ghcr.io/x``, not ``x``)."""
+    value = str(repo or "").strip()
+    first = value.split("/", 1)[0]
+    return bool(value) and ("." in first or ":" in first or first == "localhost")
+
+
 def _suggest_github_repo(key: str) -> str:
     """A conservative suggestion for GHCR images, never an automatic source."""
     if not key.startswith("ghcr.io/"):
@@ -260,6 +267,8 @@ def lookup(
     repo: str,
     labels: dict[str, str] | None = None,
     overrides: dict[str, dict[str, Any]] | None = None,
+    *,
+    has_build: bool = False,
 ) -> Source:
     key = normalize_key(repo)
     if not key:
@@ -267,6 +276,17 @@ def lookup(
     override = _override_for(key, overrides)
     if override is not None:
         return _source_from_override(key, override)
+    if has_build and not _explicit_registry(repo):
+        # A compose ``build:`` with a registry-less name is an image built on
+        # the host (the legacy ``unjobs:local`` shape).  Guessing Docker Hub
+        # for it produced a permanent 404 on every release check.
+        return Source(
+            key=key,
+            kind="unknown",
+            label=key,
+            notes="built locally from a build context; releases are not checked",
+            origin="local",
+        )
     if key in CATALOG:
         return replace(CATALOG[key], origin="catalog")
     if key.startswith("library/") and key[len("library/"):] in CATALOG:
@@ -714,6 +734,8 @@ def dockerhub_tags(repo: str, pages: int = 5, page_size: int = 100) -> list[dict
     for _ in range(pages):
         status, payload, _ = http_json(url)
         if status != 200 or not isinstance(payload, dict):
+            if status == 404:
+                raise RuntimeError(f"Docker Hub repository {namespace}/{name} not found")
             detail = payload.get("message") if isinstance(payload, dict) else str(payload)[:200]
             raise RuntimeError(f"Docker Hub returned HTTP {status}: {detail}")
         results = payload.get("results") or []
@@ -738,14 +760,27 @@ def github_latest(repo: str, token: str = "") -> dict[str, str]:
             "published": str(payload.get("published_at") or ""),
         }
     if status == 404:
-        # No releases: fall back to tags and pick the highest stable version.
+        # A 404 on releases/latest is normal for a repository that only pushes
+        # tags.  A 404 on the tags call as well means the repository itself is
+        # missing or private — GitHub hides both behind the same status.
         status, payload, _ = http_json(f"https://api.github.com/repos/{repo}/tags?per_page=100", headers)
+        if status == 404:
+            hint = (
+                "private repositories need a GitHub token in Settings"
+                if not token
+                else "check the token scope and the repository name"
+            )
+            raise RuntimeError(f"GitHub repository {repo} was not found — {hint}")
+        if status in (403, 429):
+            raise RuntimeError("GitHub rate limit hit — add a token in Settings or retry later")
         if status == 200 and isinstance(payload, list):
-            tags = [str(item.get("name") or "") for item in payload if item.get("name")]
+            tags = [str(item.get("name") or "") for item in payload if isinstance(item, dict) and item.get("name")]
             stable = [tag for tag in tags if version_numbers(tag) and not PRERELEASE_RE.search(tag)]
             if stable:
                 best = max(stable, key=lambda tag: version_numbers(tag) or (0,))
                 return {"tag": best, "url": f"https://github.com/{repo}/tags", "published": ""}
+            if tags:
+                raise RuntimeError(f"GitHub repository {repo} has no stable version tags")
         raise RuntimeError(f"GitHub repository {repo} has no usable releases or tags")
     if status in (403, 429):
         raise RuntimeError("GitHub rate limit hit — add a token in Settings or retry later")
@@ -836,9 +871,11 @@ class ReleaseService:
         repo: str,
         labels: dict[str, str] | None = None,
         groups: Iterable[str] = (),
+        *,
+        has_build: bool = False,
     ) -> Source:
         """Resolve one image, applying custom sources and group context."""
-        source = lookup(repo, labels, self.overrides)
+        source = lookup(repo, labels, self.overrides, has_build=has_build)
         grouped = group_managed_source(repo, groups, self.overrides)
         return grouped or source
 
@@ -880,7 +917,9 @@ class ReleaseService:
         """Check the unique sources behind ``requests``.
 
         Each request is ``{"repo": <image repo>, "current": <tag>, "labels":
-        {...}, "groups": [...]}``.  Returns a summary with per-key entries.
+        {...}, "groups": [...], "has_build": <bool>}``.  Returns a summary with
+        per-key entries.  Entries for images that are no longer requested are
+        pruned, so a deleted stack cannot leave a permanent error behind.
         """
         say = progress or (lambda _message: None)
         ttl = int(self.settings.get("release_ttl_s", 6 * 3600))
@@ -892,16 +931,31 @@ class ReleaseService:
                 str(request.get("repo") or ""),
                 request.get("labels") or {},
                 request.get("groups") or (),
+                has_build=bool(request.get("has_build")),
             )
             existing = wanted.get(source.key)
             # A redis image can appear in an Immich stack (managed) and a
             # normal stack (checked).  The checked context wins so the
-            # release is still fetched for the stack that can use it.
-            if existing is None or (existing.kind == "managed" and source.kind != "managed"):
+            # release is still fetched for the stack that can use it.  The
+            # same applies to a locally built image that is also pulled
+            # elsewhere by its registry reference.
+            if (
+                existing is None
+                or (existing.kind == "managed" and source.kind != "managed")
+                or (existing.origin == "local" and source.origin != "local")
+            ):
                 wanted[source.key] = source
 
-        tasks: list[Source] = []
+        # The cache is scoped to the fleet: an image that no stack references
+        # any more (a deleted stack or a retired source) must not keep
+        # reporting its last error forever.  It is re-fetched if it returns.
         removed = 0
+        with self.lock:
+            for key in [key for key in self.entries if key not in wanted]:
+                if self.entries.pop(key, None) is not None:
+                    removed += 1
+
+        tasks: list[Source] = []
         for source in wanted.values():
             if source.kind in ("managed", "unknown"):
                 # Unmanaged images are not a failed check; drop any stale
@@ -911,6 +965,10 @@ class ReleaseService:
                         removed += 1
                 continue
             cached = self.entries.get(source.key)
+            if cached is not None and cached.kind != source.kind:
+                # The source type changed in Settings; the cached value
+                # describes a different upstream.
+                cached = None
             # Old Docker Hub cache entries predate release-age capture; refresh
             # those once instead of showing "age unknown" until the 6h TTL.
             missing_age = bool(
@@ -940,6 +998,9 @@ class ReleaseService:
                 if cached:
                     cached.error = "offline mode: showing cached value"
                     results[source.key] = cached
+            if removed:
+                with self.lock:
+                    self._save()
             return {"checked": 0, "cached": len(results), "errors": ["offline mode"]}
 
         if tasks:
@@ -1035,9 +1096,14 @@ class ReleaseService:
         return source, self.entries.get(source.key)
 
     def status(self) -> dict[str, Any]:
+        # Before the first refresh of this process, report the age of the
+        # cache that was loaded from disk instead of claiming "never checked".
+        checked_at = self.last_refresh or max(
+            (entry.checked_at for entry in self.entries.values()), default=0
+        )
         return {
-            "checked_at": self.last_refresh,
-            "checked_iso": util.iso(self.last_refresh) if self.last_refresh else "",
+            "checked_at": checked_at,
+            "checked_iso": util.iso(checked_at) if checked_at else "",
             "sources": len(self.entries),
             "errors": sum(1 for entry in self.entries.values() if entry.error),
         }

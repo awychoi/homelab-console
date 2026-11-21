@@ -62,7 +62,17 @@ GitHub source, an OCI `org.opencontainers.image.source` label when the container
 exposes one, or a source you add.
 
 Images on `quay.io` or a private registry are marked **unmanaged** rather than
-guessed. If an image is unmanaged or its check fails, add a source.
+guessed. A service that builds from a local `build:` context with a
+registry-less image (for example `unjobs:local`) is marked **built locally**:
+there is no upstream tag list to compare, so add a source only if the image is
+also published to a registry. If an image is unmanaged or its check fails, add
+a source.
+
+A missing GitHub repository and a private one look the same to the anonymous
+API (404). Add a GitHub token in Settings for a private repository; without one
+the check reports that the repository was not found. Sources are only checked
+while their image is in a stack, so removing a stack also removes its stale
+release-check errors on the next refresh.
 
 #### What an update source does
 

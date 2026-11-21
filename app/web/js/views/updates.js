@@ -85,7 +85,8 @@ function contentHtml(ctx) {
     .join(' · ');
   const unmanagedKeys = new Set(
     targets
-      .filter((target) => target.status === 'unmanaged' || target.source?.kind === 'unknown')
+      .filter((target) => target.source?.origin !== 'local'
+        && (target.status === 'unmanaged' || target.source?.kind === 'unknown'))
       .map((target) => target.source?.key || target.image),
   );
   const unmanagedCount = unmanagedKeys.size;

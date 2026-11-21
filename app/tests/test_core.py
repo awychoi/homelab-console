@@ -298,6 +298,56 @@ class ReleaseTests(unittest.TestCase):
         self.assertEqual(arm.label, "caddy")
         self.assertEqual(releases.lookup("amd64/nginx").hub_repo, "amd64/nginx")
 
+    def test_local_build_is_not_guessed_as_docker_hub(self):
+        # A compose `build:` with a registry-less image is built on the host
+        # (`unjobs:local`); guessing Docker Hub turned it into a permanent 404.
+        source = releases.lookup("unjobs", has_build=True)
+        self.assertEqual(source.kind, "unknown")
+        self.assertEqual(source.origin, "local")
+        self.assertIn("built locally", source.notes)
+        # An explicit registry still wins: a build that pushes to GHCR is a
+        # normal source and keeps its OCI-label/override discovery.
+        self.assertNotEqual(releases.lookup("ghcr.io/owner/app", has_build=True).origin, "local")
+        self.assertEqual(releases.lookup("docker.io/library/redis", has_build=True).kind, "dockerhub")
+        # Without a build context, the same bare name is a Docker Hub image.
+        self.assertEqual(releases.lookup("unjobs").kind, "dockerhub")
+
+    def test_missing_or_private_github_repository_is_named(self):
+        not_found = (404, {"message": "Not Found"}, {})
+        with unittest.mock.patch.object(releases, "http_json", side_effect=[not_found, not_found]) as fetch:
+            with self.assertRaises(RuntimeError) as caught:
+                releases.github_latest("awychoi/vacancy_classifier")
+        message = str(caught.exception)
+        self.assertIn("GitHub repository awychoi/vacancy_classifier was not found", message)
+        self.assertIn("token", message)
+        self.assertEqual(fetch.call_count, 2)
+
+    def test_github_repository_with_only_tags_uses_highest_stable_tag(self):
+        responses = [
+            (404, {"message": "Not Found"}, {}),
+            (200, [{"name": "v2.0.0-rc.1"}, {"name": "v1.2.1"}, {"name": "v1.2.2"}, {"name": "nightly"}], {}),
+        ]
+        with unittest.mock.patch.object(releases, "http_json", side_effect=responses):
+            result = releases.github_latest("owner/tag-only")
+        self.assertEqual(result["tag"], "v1.2.2")
+        self.assertTrue(result["url"].endswith("/tags"))
+
+    def test_github_repository_without_stable_tags_explains_why(self):
+        responses = [
+            (404, {"message": "Not Found"}, {}),
+            (200, [{"name": "nightly"}, {"name": "v2.0.0-beta.1"}], {}),
+        ]
+        with unittest.mock.patch.object(releases, "http_json", side_effect=responses):
+            with self.assertRaises(RuntimeError) as caught:
+                releases.github_latest("owner/nightly-only")
+        self.assertIn("no stable version tags", str(caught.exception))
+
+    def test_docker_hub_404_names_the_repository(self):
+        with unittest.mock.patch.object(releases, "http_json", return_value=(404, {"message": "object not found"}, {})):
+            with self.assertRaises(RuntimeError) as caught:
+                releases.dockerhub_tags("unjobs")
+        self.assertEqual(str(caught.exception), "Docker Hub repository library/unjobs not found")
+
     def test_custom_release_source_overrides_catalog_and_auto_detection(self):
         key, source = releases.validate_source_override(
             "ghcr.io/paperless-ngx/paperless-ngx",
@@ -323,6 +373,90 @@ class ReleaseTests(unittest.TestCase):
             "custom",
         )
         self.assertEqual(releases.lookup("ghcr.io/owner/app").suggested_github_repo, "owner/app")
+
+
+class ReleaseCacheTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self.tmp.name)
+        self.settings = make_repo(self.root)
+        self.settings.values["release_sources"] = {
+            "example/current": {"kind": "unknown", "label": "Current"},
+        }
+        self.service = releases.ReleaseService(self.settings)
+        self.service.reload_overrides()
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def test_refresh_drops_images_that_left_the_fleet(self):
+        now = util.now_ts()
+        self.service.entries["unjobs"] = releases.ReleaseEntry(
+            key="unjobs", kind="dockerhub", label="unjobs",
+            error="Docker Hub returned HTTP 404: object not found", checked_at=now,
+        )
+        self.service.entries["example/current"] = releases.ReleaseEntry(
+            key="example/current", kind="unknown", label="Current", checked_at=now,
+        )
+        with unittest.mock.patch.object(releases, "http_json", side_effect=AssertionError("no network expected")):
+            summary = self.service.refresh([{"repo": "example/current"}])
+        self.assertEqual(summary["checked"], 0)
+        self.assertEqual(summary["errors"], [])
+        self.assertEqual(self.service.entries, {})
+        self.assertEqual(self.service.status()["sources"], 0)
+        self.assertEqual(self.service.status()["errors"], 0)
+        # The removal is persisted, so a restart cannot resurrect the error.
+        self.assertNotIn("unjobs", releases.ReleaseService(self.settings).entries)
+
+    def test_refresh_keeps_a_cached_source_still_in_the_fleet(self):
+        now = util.now_ts()
+        self.service.entries["caddy"] = releases.ReleaseEntry(
+            key="caddy", kind="dockerhub", label="caddy", latest="2.11.9",
+            published_at=now, checked_at=now,
+            extra={
+                "latest_by_variant": {"plain": "2.11.9"},
+                "latest_published_by_variant": {"plain": now},
+                "latest_by_platform": {"plain:arm64": "2.11.9"},
+                "latest_published_by_platform": {"plain:arm64": now},
+            },
+        )
+        self.service.entries["unjobs"] = releases.ReleaseEntry(
+            key="unjobs", kind="dockerhub", label="unjobs", error="not found", checked_at=now,
+        )
+        with unittest.mock.patch.object(releases, "http_json", side_effect=AssertionError("no network expected")):
+            self.service.refresh([{"repo": "caddy"}])
+        self.assertEqual(list(self.service.entries), ["caddy"])
+        self.assertEqual(self.service.status()["errors"], 0)
+
+    def test_status_reports_the_loaded_cache_age_before_a_refresh(self):
+        self.service.entries["caddy"] = releases.ReleaseEntry(
+            key="caddy", kind="dockerhub", label="caddy", latest="2.11.9", checked_at=1234567890,
+        )
+        status = self.service.status()
+        self.assertEqual(status["checked_at"], 1234567890)
+        self.assertTrue(status["checked_iso"])
+
+    def test_changed_source_type_is_rechecked_instead_of_served_from_cache(self):
+        now = util.now_ts()
+        self.service.entries["example/current"] = releases.ReleaseEntry(
+            key="example/current", kind="dockerhub", label="Current", latest="9.9.9",
+            published_at=now, checked_at=now,
+            extra={"latest_by_platform": {"plain:arm64": "9.9.9"}},
+        )
+        # Settings changed the image from Docker Hub to GitHub.
+        self.settings.values["release_sources"] = {
+            "example/current": {"kind": "github", "github_repo": "owner/current", "label": "Current"},
+        }
+        self.service.reload_overrides()
+        with unittest.mock.patch.object(
+            releases,
+            "github_latest",
+            return_value={"tag": "v1.0.0", "url": "https://github.com/owner/current/releases", "published": ""},
+        ):
+            self.service.refresh([{"repo": "example/current"}])
+        entry = self.service.entries["example/current"]
+        self.assertEqual(entry.kind, "github")
+        self.assertEqual(entry.latest, "v1.0.0")
 
 
 class TerminalAndDeletePathTests(unittest.TestCase):
@@ -649,6 +783,27 @@ services:
         self.assertEqual(target["status"], "unpinned")
         self.assertIn("pin-latest", target["actions"])
         self.assertEqual(target["new_value"], "n8nio/n8n:2.45.4")
+
+    def test_local_build_target_is_unmanaged_not_a_failed_check(self):
+        stack_dir = self.root / "stacks" / "pi3" / "unjobs"
+        stack_dir.mkdir()
+        (stack_dir / "docker-compose.yml").write_text(
+            "services:\n  unjobs:\n    build: /srv/unjobs/src\n    image: unjobs:local\n"
+        )
+        stack = stacks.get_stack(self.settings, "pi3", "unjobs")
+        runtime = {"containers": [{"service": "unjobs", "image_tag": "local", "repo_digests": [], "state": "running"}]}
+        target = updates.build_targets(stack, runtime, self.service)[0]
+        self.assertEqual(target["source"]["kind"], "unknown")
+        self.assertEqual(target["source"]["origin"], "local")
+        self.assertEqual(target["status"], "unmanaged")
+        self.assertEqual(target["actions"], [])
+        self.assertEqual(target["error"], "")
+        self.assertIn("built locally", " ".join(target["notes"]))
+
+    def test_build_service_with_a_registry_image_is_still_checked(self):
+        source = self.service.source_for("docker.io/library/redis", has_build=True)
+        self.assertEqual(source.kind, "dockerhub")
+        self.assertNotEqual(source.origin, "local")
 
 
 class BackupPlanTests(unittest.TestCase):

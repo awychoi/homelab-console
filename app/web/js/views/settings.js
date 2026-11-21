@@ -153,6 +153,7 @@ function releaseTarget(source) {
   if (source.kind === 'dockerhub') return `Docker Hub · ${source.hub_repo || source.key || '—'}`;
   if (source.kind === 'github') return `GitHub · ${source.github_repo || '—'}`;
   if (source.kind === 'managed') return source.managed_by || 'compatibility-managed';
+  if (source.origin === 'local') return 'local build context';
   return 'not checked';
 }
 
@@ -163,6 +164,7 @@ const RELEASE_ORIGIN_LABELS = {
   labels: 'From image labels',
   group: 'Compatibility-managed',
   managed: 'Compatibility-managed',
+  local: 'Built locally',
   unknown: 'Needs a source',
 };
 
@@ -185,6 +187,7 @@ function releaseOriginPill(row) {
 
 function releaseCurrentText(row) {
   if (row.origin === 'unknown') return 'No update source — updates for this image are not checked.';
+  if (row.origin === 'local') return 'Built from a local build context — releases are not checked.';
   if (row.kind === 'dockerhub') return `Docker Hub tags · ${row.hub || row.key}`;
   if (row.kind === 'github') return `GitHub releases · ${row.github || '—'}`;
   if (row.kind === 'managed') return `Compatibility-managed${row.managed ? ` by ${row.managed}` : ''}`;
@@ -193,7 +196,7 @@ function releaseCurrentText(row) {
 
 function releaseActionLabel(row) {
   if (row.origin === 'custom') return 'Edit source';
-  if (row.origin === 'unknown') return row.suggestion ? 'Add GitHub source' : 'Add source';
+  if (row.origin === 'unknown' || row.origin === 'local') return row.suggestion ? 'Add GitHub source' : 'Add source';
   return 'Change source';
 }
 
@@ -254,7 +257,7 @@ function releaseSourcesHtml(ctx) {
     const row = detected.get(key);
     if (target.host && target.stack) row.stacks.add(`${target.host}/${target.stack}`);
   }
-  const originOrder = { unknown: 0, custom: 1, managed: 2, group: 3, catalog: 4, labels: 5, auto: 6 };
+  const originOrder = { unknown: 0, local: 1, custom: 2, managed: 3, group: 4, catalog: 5, labels: 6, auto: 7 };
   const allDetected = [...detected.values()]
     .map((row) => ({ ...row, stacks: [...row.stacks] }))
     .sort((a, b) => (originOrder[a.origin] ?? 9) - (originOrder[b.origin] ?? 9) || a.key.localeCompare(b.key));

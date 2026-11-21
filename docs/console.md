@@ -585,11 +585,18 @@ snapshot repo files
   `amd64/nginx`, …) stay Docker Hub sources even though their OCI label points
   at the upstream GitHub project. That keeps release checks on the tag list
   that actually has the image.
+- A service with a compose `build:` and a registry-less image (for example
+  `image: unjobs:local`) is marked **built locally** and is not guessed as a
+  Docker Hub image. An explicit registry (`ghcr.io/...`) still gets a normal
+  release source, and a custom source always wins.
 - **Settings → Update sources** adds or overrides a source per image
   (`dockerhub`, `github`, `managed`, or `unknown`). Custom sources win over the
   catalog and auto-detection. The Settings page lists detected images with a
   source dialog for each, including a likely GitHub repository suggestion for
   GHCR images.
+- A missing or private GitHub repository is reported as such (“was not found —
+  private repositories need a GitHub token in Settings”) instead of the
+  misleading “no releases or tags”.
 - SearXNG calendar tags and n8n's hash-suffixed tags are handled explicitly.
 - Images with no update source are marked unmanaged rather than guessed.
 - `:latest`/unpinned images are flagged separately with two safe actions:
@@ -602,6 +609,11 @@ snapshot repo files
   forces a refresh. A GitHub token is optional but raises the anonymous API
   limit. Page-specific release-check buttons were removed so there is exactly
   one release-check control.
+- The cache is scoped to the current fleet: when an image leaves every stack
+  (a deleted stack or a changed source), its cache entry is dropped on the
+  next refresh. A deleted stack therefore stops contributing errors to
+  **Check releases**, and a changed source type is re-checked immediately
+  instead of serving the previous upstream's value for up to six hours.
 
 </details>
 
