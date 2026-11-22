@@ -182,6 +182,53 @@ const ctx = {
 
 window.hlc = ctx;
 
+/**
+ * A background poll must not replace the view between pointerdown and click.
+ * The browser only emits a click when both ends of the press land on the same
+ * element; swapping the row (or a whole table) under the pointer silently
+ * drops the operator's click. Data can still update in `ctx.state`; the next
+ * poll paints it.
+ *
+ * A skipped render is replayed only when navigation changed the route. A
+ * data-only poll can wait, so it cannot wipe the busy state a click just put on
+ * a button in another view.
+ */
+let viewPointerDown = false;
+let pointerReleaseTimer = 0;
+let renderedRouteKey = '';
+
+function releaseViewPointer() {
+  if (!viewPointerDown) return;
+  viewPointerDown = false;
+  if (pointerReleaseTimer) {
+    clearTimeout(pointerReleaseTimer);
+    pointerReleaseTimer = 0;
+  }
+  const routeKey = JSON.stringify(ctx.route || parseRoute());
+  if (routeKey !== renderedRouteKey) {
+    setTimeout(() => {
+      if (!viewPointerDown && !ui.modalOpen()) renderCurrent();
+    }, 0);
+  }
+}
+
+document.addEventListener('pointerdown', (event) => {
+  if (event.pointerType === 'mouse' && event.button !== 0) return;
+  if (!(event.target instanceof Element) || !event.target.closest('#view')) return;
+  clearTimeout(pointerReleaseTimer);
+  pointerReleaseTimer = 0;
+  viewPointerDown = true;
+}, true);
+document.addEventListener('pointerup', () => {
+  // Hold the guard through the click that follows pointerup. A state fetch
+  // resolving in that window would otherwise repaint first and drop the click.
+  clearTimeout(pointerReleaseTimer);
+  pointerReleaseTimer = setTimeout(releaseViewPointer, 400);
+}, true);
+document.addEventListener('click', releaseViewPointer, true);
+document.addEventListener('pointercancel', releaseViewPointer, true);
+window.addEventListener('blur', releaseViewPointer);
+
 // The dirty-state banner (and the contextual commit button) open the
 // commit dialog without a detour through Settings.
 document.addEventListener('click', (event) => {
@@ -511,6 +558,8 @@ function renderCurrent() {
   const container = document.getElementById('view');
   if (!container) return;
   document.title = pageTitle(route);
+  // See releaseViewPointer(): replacing this DOM mid-press drops the click.
+  if (viewPointerDown) { updateChrome(); return; }
   let html;
   try {
     html = view.render(ctx, route.params);
@@ -525,13 +574,18 @@ function renderCurrent() {
   // normalized HTML: a raw string comparison fails on boolean attributes such
   // as the file editor's `disabled` Save button and replays the view (and its
   // scroll position) on every poll.
-  if (normalizedHtml(container.innerHTML) === normalizedHtml(html)) { updateChrome(); return; }
+  if (normalizedHtml(container.innerHTML) === normalizedHtml(html)) {
+    renderedRouteKey = JSON.stringify(route);
+    updateChrome();
+    return;
+  }
   const viewState = captureViewState(container);
   container.innerHTML = html;
   if (typeof view.mount === 'function') {
     try { view.mount(container, ctx, route.params); } catch (error) { console.error(error); }
   }
   restoreViewState(container, viewState);
+  renderedRouteKey = JSON.stringify(route);
   updateChrome();
 }
 

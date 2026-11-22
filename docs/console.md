@@ -361,7 +361,10 @@ HTTP API and git commands still use repository terminology.
   (`.env`-family files and ignored paths are refused); **Push** sends the
   current branch with your credential helper; **Check Gitea** compares refs, and
   the Gitea action runs the dry run and mirrors heads/tags in one step;
-  **Queue both** runs GitHub → Gitea serially.
+  **Queue both** runs GitHub → Gitea serially. A project action that is running
+  keeps its chip disabled and spinning across background polls, so a slow push
+  or mirror cannot be clicked twice; the same project waits for the first
+  action to finish.
   **Open in VS Code** launches `code -n`, and the play button next to it opens
   the app linked to the project.
 
@@ -881,6 +884,16 @@ The SPA is deliberately small, so shared primitives carry the consistency:
   Tabs use `role="tab"` + `aria-selected`; filters use `aria-pressed`.
 - Keep inline styles for genuinely dynamic values only (chart height, bar
   width, legend swatches). Layout and colour belong in the stylesheet.
+- Async button state belongs in `ctx.uiState`, not only on the button node:
+  the 12-second poll replaces the view HTML, and a DOM-only spinner would
+  disappear mid-action and hand the operator a second click target. Repos
+  renders its pending chips from `uiState.repoActions` so a poll keeps the
+  same disabled "Syncing…" button until the request settles.
+- `app.js` skips a view repaint between `pointerdown` and the click that
+  follows `pointerup`. Replacing the element under the pointer makes the
+  browser cancel the click entirely. A skipped data-only poll is left for the
+  next tick; only a route change is replayed, so the poll cannot reset a busy
+  button that the click just set.
 
 Add a stack starter by appending to `homelab_console/templates.py`.
 Update sources and safety/backup profiles are local console settings in

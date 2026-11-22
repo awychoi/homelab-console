@@ -512,6 +512,9 @@ button { cursor: pointer; }
 .chip-action { font: inherit; font-family: var(--mono); cursor: pointer; }
 .chip-action:hover { border-color: currentColor; filter: brightness(1.12); }
 .chip-action:active { transform: translateY(1px); }
+.chip[disabled], .chip[aria-busy="true"] { cursor: default; }
+.chip[disabled] { opacity: .5; pointer-events: none; }
+.chip[aria-busy="true"] { cursor: progress; }
 
 /* --------------------------------------------------------------- cards */
 .card {

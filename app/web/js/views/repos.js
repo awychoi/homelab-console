@@ -30,6 +30,39 @@ function allRepos(ctx) {
   return reposState(ctx)?.repos || [];
 }
 
+/**
+ * A project action is in flight until its promise settles — not until the
+ * button node disappears. The poll and the post-action refreshes replace the
+ * table, so the pending state lives in `uiState` and every repaint renders the
+ * same disabled chip instead of handing the operator a second click target.
+ */
+function repoPending(ctx, repo) {
+  return (ctx.uiState.repoActions || {})[repo.id] || null;
+}
+
+function repoBusyChip(label) {
+  return `<span class="chip info" aria-busy="true"><span class="spinner sm"></span> ${esc(label)}</span>`;
+}
+
+function repaintRepos(ctx) {
+  if (ctx.route?.name === 'repos' && !ui.modalOpen()) ctx.rerender?.();
+}
+
+async function runRepoAction(ctx, repo, action, label, task) {
+  if (repoPending(ctx, repo)) {
+    ui.toast('A project action is already running', 'warn', repo.rel);
+    return;
+  }
+  ctx.uiState.repoActions = { ...(ctx.uiState.repoActions || {}), [repo.id]: { action, label } };
+  repaintRepos(ctx);
+  try {
+    return await task();
+  } finally {
+    if (ctx.uiState.repoActions) delete ctx.uiState.repoActions[repo.id];
+    repaintRepos(ctx);
+  }
+}
+
 function isClean(repo) {
   const status = repo.gitea?.status;
   return !repo.needs?.commit && !repo.needs?.push && !(repo.behind > 0) && (status === 'synced' || status === 'skip');
@@ -139,9 +172,12 @@ function appHintRow(repo) {
     ${found.length > 1 ? `<span class="sub">+${found.length - 1} more in the app menu</span>` : ''}</div>`;
 }
 
-function giteaCell(repo) {
+function giteaCell(ctx, repo) {
   const gitea = repo.gitea || {};
   const status = gitea.status || 'unknown';
+  const pending = repoPending(ctx, repo);
+  if (pending?.action === 'gitea') return repoBusyChip(pending.label || 'Syncing…');
+  const locked = pending ? 'disabled' : '';
   if (status === 'unknown') {
     return `<span class="chip neutral">not checked</span><span class="sub">on demand</span>`;
   }
@@ -155,12 +191,12 @@ function giteaCell(repo) {
     return `<span class="chip good">in sync</span>${gitea.checked_at ? `<span class="sub">checked ${esc(ui.ago(gitea.checked_at))}</span>` : ''}`;
   }
   if (status === 'missing') {
-    return `<button type="button" class="chip chip-action warn" data-repo-action="gitea" title="Create this project in Gitea and push the backup" aria-label="Create ${esc(repo.rel)} in Gitea">${icon('git', 11)} missing · create</button><span class="sub">${gitea.checked_at ? `checked ${esc(ui.ago(gitea.checked_at))}` : 'sync will create it'}</span>`;
+    return `<button type="button" class="chip chip-action warn" data-repo-action="gitea" ${locked} title="Create this project in Gitea and push the backup" aria-label="Create ${esc(repo.rel)} in Gitea">${icon('git', 11)} missing · create</button><span class="sub">${gitea.checked_at ? `checked ${esc(ui.ago(gitea.checked_at))}` : 'sync will create it'}</span>`;
   }
   if (status === 'behind') {
     const push = gitea.counts?.push || 0;
     const prune = gitea.counts?.prune || 0;
-    return `<button type="button" class="chip chip-action warn" data-repo-action="gitea" title="Sync the Gitea backup" aria-label="Sync ${esc(repo.rel)} to Gitea">${icon('git', 11)} ${push ? `${push} ref${push === 1 ? '' : 's'} to sync` : 'refs differ'}</button>
+    return `<button type="button" class="chip chip-action warn" data-repo-action="gitea" ${locked} title="Sync the Gitea backup" aria-label="Sync ${esc(repo.rel)} to Gitea">${icon('git', 11)} ${push ? `${push} ref${push === 1 ? '' : 's'} to sync` : 'refs differ'}</button>
       ${prune ? `<span class="chip bad">${prune} to prune</span>` : ''}
       <span class="sub">checked ${esc(ui.ago(gitea.checked_at))}</span>`;
   }
@@ -173,8 +209,9 @@ function giteaCell(repo) {
   return `<span class="chip neutral">${esc(status)}</span>`;
 }
 
-function workingTreeCell(repo) {
+function workingTreeCell(ctx, repo) {
   const entries = (repo.entries || []).filter((entry) => !entry.ignored);
+  const pending = repoPending(ctx, repo);
   if (repo.conflicts) {
     return `<span class="chip bad" title="Unresolved merge conflicts block commit and push">${icon('alert', 11)} ${repo.conflicts} conflict${repo.conflicts === 1 ? '' : 's'}</span><span class="sub">resolve before committing</span>`;
   }
@@ -193,14 +230,17 @@ function workingTreeCell(repo) {
     untracked ? `${untracked} new` : '',
     repo.ignored_count ? `${repo.ignored_count} ignored hidden` : '',
   ].filter(Boolean).join(' · ');
-  return `<button type="button" class="chip chip-action warn" data-repo-action="commit" title="Review and commit changed files" aria-label="Review and commit changed files in ${esc(repo.rel)}">${icon('commit', 11)} ${repo.dirty_count} file${repo.dirty_count === 1 ? '' : 's'}</button><span class="sub">${esc(bits || 'working tree changed')}</span>`;
+  return `<button type="button" class="chip chip-action warn" data-repo-action="commit" ${pending ? 'disabled' : ''} title="Review and commit changed files" aria-label="Review and commit changed files in ${esc(repo.rel)}">${icon('commit', 11)} ${repo.dirty_count} file${repo.dirty_count === 1 ? '' : 's'}</button><span class="sub">${esc(bits || 'working tree changed')}</span>`;
 }
 
-function unpushedCell(repo) {
+function unpushedCell(ctx, repo) {
+  const pending = repoPending(ctx, repo);
   const bits = [];
-  if (repo.needs?.push) {
+  if (pending?.action === 'push') {
+    bits.push(repoBusyChip(pending.label || 'Pushing…'));
+  } else if (repo.needs?.push) {
     const label = repo.ahead === null || repo.ahead === undefined ? 'new branch' : `${repo.ahead} ahead`;
-    bits.push(`<button type="button" class="chip chip-action warn" data-repo-action="push" title="Push ${esc(repo.rel)} to ${repo.github ? 'GitHub' : 'origin'}" aria-label="Push ${esc(repo.rel)} to ${repo.github ? 'GitHub' : 'origin'}">${icon('push', 11)} ${esc(label)}</button>`);
+    bits.push(`<button type="button" class="chip chip-action warn" data-repo-action="push" ${pending ? 'disabled' : ''} title="Push ${esc(repo.rel)} to ${repo.github ? 'GitHub' : 'origin'}" aria-label="Push ${esc(repo.rel)} to ${repo.github ? 'GitHub' : 'origin'}">${icon('push', 11)} ${esc(label)}</button>`);
   }
   if (repo.behind > 0) bits.push(`<span class="chip info" title="Updates available from origin; pull before pushing"><span class="repo-update-icon">${icon('download', 11)}</span> ${repo.behind} behind</span>`);
   if (!bits.length) {
@@ -260,9 +300,9 @@ function rowHtml(ctx, repo, selected) {
       ${dependencyRow(repo)}
       <div class="repo-last">${lastCommitCell(repo)}</div>
     </td>
-    <td data-label="Working tree">${repo.error ? `<span class="chip bad">read failed</span><span class="sub" title="${esc(repo.error)}">${esc(short(repo.error, 42))}</span>` : workingTreeCell(repo)}</td>
-    <td data-label="GitHub">${unpushedCell(repo)}</td>
-    <td class="repo-gitea" data-label="Gitea">${giteaCell(repo)}</td>
+    <td data-label="Working tree">${repo.error ? `<span class="chip bad">read failed</span><span class="sub" title="${esc(repo.error)}">${esc(short(repo.error, 42))}</span>` : workingTreeCell(ctx, repo)}</td>
+    <td data-label="GitHub">${unpushedCell(ctx, repo)}</td>
+    <td class="repo-gitea" data-label="Gitea">${giteaCell(ctx, repo)}</td>
     <td class="actions repo-actions" data-label="Open">${actionsCell(repo)}</td>
   </tr>`;
 }
@@ -549,22 +589,16 @@ export default {
           const repo = repoById(ctx, button.closest('[data-repo-id]')?.dataset.repoId);
           if (!repo) return;
           const action = button.dataset.repoAction;
+          if (repoPending(ctx, repo) && ['commit', 'gitea', 'push', 'use-app'].includes(action)) {
+            ui.toast('Wait for the current project action', 'warn', repo.rel);
+            return;
+          }
           if (action === 'commit') {
             showRepoCommit(ctx, repo);
             return;
           }
           if (action === 'gitea') {
-            const original = button.innerHTML;
-            button.disabled = true;
-            button.setAttribute('aria-busy', 'true');
-            button.innerHTML = '<span class="spinner sm"></span> Syncing…';
-            try {
-              await syncGitea(ctx, repo);
-            } finally {
-              button.disabled = false;
-              button.removeAttribute('aria-busy');
-              button.innerHTML = original;
-            }
+            await runRepoAction(ctx, repo, 'gitea', 'Syncing…', () => syncGitea(ctx, repo));
             return;
           }
           if (action === 'configure') {
@@ -617,19 +651,16 @@ export default {
             return;
           }
           if (action === 'push') {
-            const original = button.innerHTML;
-            button.disabled = true;
-            button.innerHTML = '<span class="spinner sm"></span> Pushing…';
-            try {
-              const result = await ctx.api.post(`/api/repos/${encodeURIComponent(repo.id)}/push`);
-              ui.toast('Pushed to GitHub', 'ok', `${repo.rel} · ${result.detail || ''}`);
-              await ctx.refreshState({ force: true });
-              refreshRemoteSoon(ctx);
-            } catch (error) {
-              ui.toast('GitHub push failed', 'err', ui.errorText(error));
-              button.disabled = false;
-              button.innerHTML = original;
-            }
+            await runRepoAction(ctx, repo, 'push', 'Pushing…', async () => {
+              try {
+                const result = await ctx.api.post(`/api/repos/${encodeURIComponent(repo.id)}/push`);
+                ui.toast('Pushed to GitHub', 'ok', `${repo.rel} · ${result.detail || ''}`);
+                await ctx.refreshState({ force: true });
+                refreshRemoteSoon(ctx);
+              } catch (error) {
+                ui.toast('GitHub push failed', 'err', ui.errorText(error));
+              }
+            });
           }
         });
       });
