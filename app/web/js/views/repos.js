@@ -14,6 +14,7 @@ const { esc, icon, agoHtml, pillHtml } = ui;
  * every poll and forces a full view replacement (visible as a flash).
  */
 const boundManageButtons = new WeakSet();
+const boundRepoRows = new WeakSet();
 
 const FILTERS = [
   { id: 'all', label: 'All' },
@@ -489,9 +490,219 @@ function syncPushButton(root, ctx) {
   button.innerHTML = `${icon('layers', 12)} Queue both${count ? ` (${count})` : ''}`;
 }
 
+function bindRepoRow(row, root, ctx, state) {
+  row.querySelector('.repo-select')?.addEventListener('change', (event) => {
+    const node = event.currentTarget;
+    if (node.checked) state.selection.add(node.dataset.repoSelect);
+    else state.selection.delete(node.dataset.repoSelect);
+    syncHeaderCheckbox(root, ctx);
+    syncPushButton(root, ctx);
+  });
+  row.querySelectorAll('[data-repo-action]').forEach((button) => {
+    button.addEventListener('click', async () => {
+      const repo = repoById(ctx, button.closest('[data-repo-id]')?.dataset.repoId);
+      if (!repo) return;
+      const action = button.dataset.repoAction;
+      if (repoPending(ctx, repo) && ['commit', 'gitea', 'push', 'use-app'].includes(action)) {
+        ui.toast('Wait for the current project action', 'warn', repo.rel);
+        return;
+      }
+      if (action === 'commit') {
+        showRepoCommit(ctx, repo);
+        return;
+      }
+      if (action === 'gitea') {
+        await runRepoAction(ctx, repo, 'gitea', 'Syncing…', () => syncGitea(ctx, repo));
+        return;
+      }
+      if (action === 'configure') {
+        showRepoApps(ctx, repo);
+        return;
+      }
+      if (action === 'launch') {
+        const original = button.innerHTML;
+        button.disabled = true;
+        try {
+          await ctx.api.post(`/api/repos/${encodeURIComponent(repo.id)}/app/open`);
+          ui.toast('Opening app', 'ok', repo.app?.name || repo.rel);
+        } catch (error) {
+          ui.toast('Could not open the app', 'err', ui.errorText(error));
+        } finally {
+          button.disabled = false;
+          button.innerHTML = original;
+        }
+        return;
+      }
+      if (action === 'use-app') {
+        const original = button.innerHTML;
+        button.disabled = true;
+        button.innerHTML = '<span class="spinner sm"></span> Linking…';
+        try {
+          await ctx.api.post(`/api/repos/${encodeURIComponent(repo.id)}/app`, {
+            path: button.dataset.appPath || '',
+          });
+          ui.toast('App linked', 'ok', repo.rel);
+          await ctx.refreshState({ force: true });
+        } catch (error) {
+          ui.toast('Could not link the app', 'err', ui.errorText(error));
+          button.disabled = false;
+          button.innerHTML = original;
+        }
+        return;
+      }
+      if (action === 'open') {
+        const original = button.innerHTML;
+        button.disabled = true;
+        try {
+          await ctx.api.post(`/api/repos/${encodeURIComponent(repo.id)}/open`);
+          ui.toast('Opening in VS Code', 'ok', repo.rel);
+        } catch (error) {
+          ui.toast('Could not open VS Code', 'err', ui.errorText(error));
+        } finally {
+          button.disabled = false;
+          button.innerHTML = original;
+        }
+        return;
+      }
+      if (action === 'push') {
+        await runRepoAction(ctx, repo, 'push', 'Pushing…', async () => {
+          try {
+            const result = await ctx.api.post(`/api/repos/${encodeURIComponent(repo.id)}/push`);
+            ui.toast('Pushed to GitHub', 'ok', `${repo.rel} · ${result.detail || ''}`);
+            await ctx.refreshState({ force: true });
+            refreshRemoteSoon(ctx);
+          } catch (error) {
+            ui.toast('GitHub push failed', 'err', ui.errorText(error));
+          }
+        });
+      }
+    });
+  });
+}
+
+function bindRepoRows(root, tbody, ctx, state) {
+  if (!tbody) return;
+  tbody.querySelectorAll('[data-repo-row]').forEach((row) => {
+    if (boundRepoRows.has(row)) return;
+    boundRepoRows.add(row);
+    bindRepoRow(row, root, ctx, state);
+  });
+}
+
 export default {
   render(ctx) {
     return contentHtml(ctx);
+  },
+  /**
+   * Update the Projects view without replacing the whole page. `renderCurrent`
+   * falls back to a full render when this returns false, so only the shapes
+   * that are guaranteed safe are patched here:
+   *
+   * - Text and attributes are updated in place, which keeps listeners, focus,
+   *   hover and scroll position intact for stat counts and relative labels.
+   * - The project table is keyed by `data-repo-id`; only a row whose markup
+   *   changed is replaced and rebound. A sync that flips one Gitea cell does
+   *   not recreate the other nineteen rows or flash the table.
+   * - A banner appearing/disappearing or any other tree-shape change falls
+   *   back to the full render, where mount() rebuilds the view.
+   */
+  patch(root, html, ctx) {
+    const tbody = root.querySelector('#repo-rows');
+    if (!tbody) return false;
+    const template = document.createElement('template');
+    template.innerHTML = html;
+    const state = initUi(ctx);
+
+    const rowKey = (row, index) => row.dataset.repoId || `row-${index}`;
+
+    const patchRows = (oldTbody, newTbody) => {
+      const oldRows = [...oldTbody.children];
+      const newRows = [...newTbody.children];
+      const oldByKey = new Map();
+      for (let index = 0; index < oldRows.length; index += 1) {
+        const key = rowKey(oldRows[index], index);
+        if (oldByKey.has(key)) return false;
+        oldByKey.set(key, oldRows[index]);
+      }
+      const newKeys = new Set();
+      for (let index = 0; index < newRows.length; index += 1) {
+        const key = rowKey(newRows[index], index);
+        if (newKeys.has(key)) return false;
+        newKeys.add(key);
+      }
+      const finalRows = [];
+      for (let index = 0; index < newRows.length; index += 1) {
+        const newRow = newRows[index];
+        const key = rowKey(newRow, index);
+        let oldRow = oldByKey.get(key);
+        if (!oldRow) {
+          oldRow = newRow.cloneNode(true);
+        } else {
+          oldByKey.delete(key);
+          if (oldRow.outerHTML !== newRow.outerHTML) {
+            const replacement = newRow.cloneNode(true);
+            oldRow.replaceWith(replacement);
+            oldRow = replacement;
+          }
+        }
+        finalRows.push(oldRow);
+      }
+      for (const leftover of oldByKey.values()) leftover.remove();
+      let cursor = oldTbody.firstChild;
+      for (const row of finalRows) {
+        if (row === cursor) cursor = cursor.nextSibling;
+        else oldTbody.insertBefore(row, cursor);
+      }
+      for (const row of finalRows) {
+        if (boundRepoRows.has(row)) continue;
+        boundRepoRows.add(row);
+        bindRepoRow(row, root, ctx, state);
+      }
+      return true;
+    };
+
+    const patchNode = (oldNode, newNode) => {
+      if (oldNode.nodeType !== newNode.nodeType) return false;
+      if (oldNode.nodeType === Node.TEXT_NODE || oldNode.nodeType === Node.COMMENT_NODE) {
+        if (oldNode.data !== newNode.data) oldNode.data = newNode.data;
+        return true;
+      }
+      if (oldNode.nodeType !== Node.ELEMENT_NODE) return false;
+      if (oldNode.tagName !== newNode.tagName) return false;
+      for (const attr of [...oldNode.attributes]) {
+        if (!newNode.hasAttribute(attr.name)) oldNode.removeAttribute(attr.name);
+      }
+      for (const attr of [...newNode.attributes]) {
+        if (oldNode.getAttribute(attr.name) !== attr.value) oldNode.setAttribute(attr.name, attr.value);
+      }
+      if (oldNode instanceof HTMLInputElement) {
+        if (oldNode.type === 'checkbox' || oldNode.type === 'radio') {
+          if (oldNode.checked !== newNode.checked) oldNode.checked = newNode.checked;
+        } else if (oldNode.type !== 'file' && oldNode.value !== newNode.value) {
+          oldNode.value = newNode.value;
+        }
+      } else if (oldNode instanceof HTMLSelectElement && oldNode.value !== newNode.value) {
+        oldNode.value = newNode.value;
+      }
+      if (oldNode.tagName === 'TBODY' && oldNode.id === 'repo-rows') {
+        return patchRows(oldNode, newNode);
+      }
+      if (oldNode.childNodes.length !== newNode.childNodes.length) return false;
+      for (let index = 0; index < oldNode.childNodes.length; index += 1) {
+        if (!patchNode(oldNode.childNodes[index], newNode.childNodes[index])) return false;
+      }
+      return true;
+    };
+
+    const oldChildren = [...root.childNodes];
+    const newChildren = [...template.content.childNodes];
+    if (oldChildren.length !== newChildren.length) return false;
+    for (let index = 0; index < oldChildren.length; index += 1) {
+      if (!patchNode(oldChildren[index], newChildren[index])) return false;
+    }
+    syncHeaderCheckbox(root, ctx);
+    syncPushButton(root, ctx);
+    return true;
   },
   mount(root, ctx) {
     const snapshot = reposState(ctx);
@@ -567,7 +778,7 @@ export default {
     const repaint = () => {
       if (!tbody) return;
       tbody.innerHTML = rowsHtml(ctx);
-      bindRows();
+      bindRepoRows(root, tbody, ctx, state);
       syncHeaderCheckbox(root, ctx);
       syncPushButton(root, ctx);
       root.querySelectorAll('[data-repo-filter]').forEach((node) => {
@@ -580,98 +791,6 @@ export default {
     const reload = async ({ message = '', force = true } = {}) => {
       await ctx.refreshState({ force });
       if (message) ui.toast(message, 'ok');
-    };
-
-    const bindRows = () => {
-      if (!tbody) return;
-      tbody.querySelectorAll('.repo-select').forEach((node) => {
-        node.addEventListener('change', () => {
-          if (node.checked) state.selection.add(node.dataset.repoSelect);
-          else state.selection.delete(node.dataset.repoSelect);
-          syncHeaderCheckbox(root, ctx);
-          syncPushButton(root, ctx);
-        });
-      });
-      tbody.querySelectorAll('[data-repo-action]').forEach((button) => {
-        button.addEventListener('click', async () => {
-          const repo = repoById(ctx, button.closest('[data-repo-id]')?.dataset.repoId);
-          if (!repo) return;
-          const action = button.dataset.repoAction;
-          if (repoPending(ctx, repo) && ['commit', 'gitea', 'push', 'use-app'].includes(action)) {
-            ui.toast('Wait for the current project action', 'warn', repo.rel);
-            return;
-          }
-          if (action === 'commit') {
-            showRepoCommit(ctx, repo);
-            return;
-          }
-          if (action === 'gitea') {
-            await runRepoAction(ctx, repo, 'gitea', 'Syncing…', () => syncGitea(ctx, repo));
-            return;
-          }
-          if (action === 'configure') {
-            showRepoApps(ctx, repo);
-            return;
-          }
-          if (action === 'launch') {
-            const original = button.innerHTML;
-            button.disabled = true;
-            try {
-              await ctx.api.post(`/api/repos/${encodeURIComponent(repo.id)}/app/open`);
-              ui.toast('Opening app', 'ok', repo.app?.name || repo.rel);
-            } catch (error) {
-              ui.toast('Could not open the app', 'err', ui.errorText(error));
-            } finally {
-              button.disabled = false;
-              button.innerHTML = original;
-            }
-            return;
-          }
-          if (action === 'use-app') {
-            const original = button.innerHTML;
-            button.disabled = true;
-            button.innerHTML = '<span class="spinner sm"></span> Linking…';
-            try {
-              await ctx.api.post(`/api/repos/${encodeURIComponent(repo.id)}/app`, {
-                path: button.dataset.appPath || '',
-              });
-              ui.toast('App linked', 'ok', repo.rel);
-              await ctx.refreshState({ force: true });
-            } catch (error) {
-              ui.toast('Could not link the app', 'err', ui.errorText(error));
-              button.disabled = false;
-              button.innerHTML = original;
-            }
-            return;
-          }
-          if (action === 'open') {
-            const original = button.innerHTML;
-            button.disabled = true;
-            try {
-              await ctx.api.post(`/api/repos/${encodeURIComponent(repo.id)}/open`);
-              ui.toast('Opening in VS Code', 'ok', repo.rel);
-            } catch (error) {
-              ui.toast('Could not open VS Code', 'err', ui.errorText(error));
-            } finally {
-              button.disabled = false;
-              button.innerHTML = original;
-            }
-            return;
-          }
-          if (action === 'push') {
-            await runRepoAction(ctx, repo, 'push', 'Pushing…', async () => {
-              try {
-                const result = await ctx.api.post(`/api/repos/${encodeURIComponent(repo.id)}/push`);
-                ui.toast('Pushed to GitHub', 'ok', `${repo.rel} · ${result.detail || ''}`);
-                await ctx.refreshState({ force: true });
-                refreshRemoteSoon(ctx);
-              } catch (error) {
-                ui.toast('GitHub push failed', 'err', ui.errorText(error));
-              }
-            });
-          }
-        });
-      });
     };
 
     root.querySelectorAll('[data-repo-filter]').forEach((button) => {
@@ -770,7 +889,7 @@ export default {
       button.addEventListener('click', () => ui.runModal(ctx, button.dataset.repoQueueLog, 'Projects: GitHub + Gitea'));
     });
 
-    bindRows();
+    bindRepoRows(root, tbody, ctx, state);
     syncHeaderCheckbox(root, ctx);
     syncPushButton(root, ctx);
 

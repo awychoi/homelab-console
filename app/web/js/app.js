@@ -593,9 +593,23 @@ function renderCurrent() {
     return;
   }
   const viewState = captureViewState(container);
-  container.innerHTML = html;
-  if (typeof view.mount === 'function') {
-    try { view.mount(container, ctx, route.params); } catch (error) { console.error(error); }
+  // Views with an incremental patcher keep their DOM (and its listeners,
+  // hover and focus) across a state update. Only a shape change — a banner
+  // appearing, a new control, a different view — falls back to replacement.
+  let patched = false;
+  if (typeof view.patch === 'function') {
+    try {
+      patched = view.patch(container, html, ctx, route.params);
+    } catch (error) {
+      console.error(error);
+      patched = false;
+    }
+  }
+  if (!patched) {
+    container.innerHTML = html;
+    if (typeof view.mount === 'function') {
+      try { view.mount(container, ctx, route.params); } catch (error) { console.error(error); }
+    }
   }
   restoreViewState(container, viewState);
   renderedRouteKey = JSON.stringify(route);

@@ -365,8 +365,9 @@ HTTP API and git commands still use repository terminology.
   keeps its chip disabled and spinning across background polls, so a slow push
   or mirror cannot be clicked twice; the same project waits for the first
   action to finish. Background polls only replace the view when the snapshot
-  changes; relative times refresh in place, so the table does not blink under
-  a toast.
+  changes; relative times refresh in place. A project action patches only the
+  affected row and the summary counts, so a sync does not recreate (or flash)
+  the whole table.
   **Open in VS Code** launches `code -n`, and the play button next to it opens
   the app linked to the project.
 
@@ -900,6 +901,12 @@ The SPA is deliberately small, so shared primitives carry the consistency:
   `data-rel-time`. `renderCurrent()` ignores that text when comparing the view
   and `updateChrome()` refreshes it after each poll, so "checked 12s ago"
   becoming "checked 24s ago" does not replace the page.
+- A view that changes often can export `patch(root, html, ctx, params)`.
+  `renderCurrent()` tries it before falling back to an `innerHTML` replacement;
+  return `false` when the tree shape cannot be reconciled. Repos patches text
+  and attributes in place and replaces only changed project rows keyed by
+  `data-repo-id`, so a Gitea sync does not recreate the table or lose its
+  listeners, hover and scroll position.
 - `app.js` skips a view repaint between `pointerdown` and the click that
   follows `pointerup`. Replacing the element under the pointer makes the
   browser cancel the click entirely. A skipped data-only poll is left for the
