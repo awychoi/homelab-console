@@ -265,7 +265,19 @@ function isEditing() {
 const htmlNormalizer = document.createElement('template');
 function normalizedHtml(html) {
   htmlNormalizer.innerHTML = html;
+  // Relative times are refreshed in place by updateChrome(). Treat their text
+  // as constant when deciding whether the view really changed; otherwise every
+  // poll that ticks "checked 12s ago" to "checked 24s ago" replaces the DOM.
+  htmlNormalizer.content.querySelectorAll('[data-rel-time]').forEach((node) => {
+    node.textContent = 'relative';
+  });
   return htmlNormalizer.innerHTML;
+}
+
+function refreshRelativeTimes() {
+  document.querySelectorAll('#view [data-rel-time]').forEach((node) => {
+    node.textContent = ui.ago(Number(node.dataset.relTime) || 0);
+  });
 }
 
 /**
@@ -444,6 +456,7 @@ function updateChrome() {
   }
   const crumb = document.getElementById('crumb');
   if (crumb) crumb.textContent = crumbLabel(route);
+  refreshRelativeTimes();
 }
 
 function renderShell() {

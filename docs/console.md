@@ -364,7 +364,9 @@ HTTP API and git commands still use repository terminology.
   **Queue both** runs GitHub → Gitea serially. A project action that is running
   keeps its chip disabled and spinning across background polls, so a slow push
   or mirror cannot be clicked twice; the same project waits for the first
-  action to finish.
+  action to finish. Background polls only replace the view when the snapshot
+  changes; relative times refresh in place, so the table does not blink under
+  a toast.
   **Open in VS Code** launches `code -n`, and the play button next to it opens
   the app linked to the project.
 
@@ -885,10 +887,19 @@ The SPA is deliberately small, so shared primitives carry the consistency:
 - Keep inline styles for genuinely dynamic values only (chart height, bar
   width, legend swatches). Layout and colour belong in the stylesheet.
 - Async button state belongs in `ctx.uiState`, not only on the button node:
-  the 12-second poll replaces the view HTML, and a DOM-only spinner would
-  disappear mid-action and hand the operator a second click target. Repos
-  renders its pending chips from `uiState.repoActions` so a poll keeps the
-  same disabled "Syncing…" button until the request settles.
+  a poll may replace the view HTML when the snapshot changed, and a DOM-only
+  spinner would disappear mid-action and hand the operator a second click
+  target. Repos renders its pending chips from `uiState.repoActions` so a poll
+  keeps the same disabled "Syncing…" button until the request settles.
+- Never store mount-only bookkeeping in a DOM attribute (for example
+  `button.dataset.bound = '1'`). `renderCurrent()` compares the serialized DOM
+  with the next render string, so an attribute that exists only after
+  `mount()` makes an unchanged view look dirty on every poll and replaces it —
+  a visible page flash. Keep bind state in a `WeakSet` or module variable.
+- Put relative times through `ui.agoHtml()`, which marks the text with
+  `data-rel-time`. `renderCurrent()` ignores that text when comparing the view
+  and `updateChrome()` refreshes it after each poll, so "checked 12s ago"
+  becoming "checked 24s ago" does not replace the page.
 - `app.js` skips a view repaint between `pointerdown` and the click that
   follows `pointerup`. Replacing the element under the pointer makes the
   browser cancel the click entirely. A skipped data-only poll is left for the

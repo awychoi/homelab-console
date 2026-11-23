@@ -5,7 +5,15 @@ import { addRoot, bindRootRemoval, openRepoSelection, readDraft, rootsDraft, roo
 import { syncGitea, showPushBoth, showRepoCommit, refreshRemoteSoon } from '../flows.js';
 import { showRepoApps } from '../appSetup.js';
 
-const { esc, icon } = ui;
+const { esc, icon, agoHtml, pillHtml } = ui;
+
+/**
+ * Bind state must never live in a DOM attribute. `renderCurrent()` compares the
+ * serialized view with the next render string, so a mount-only attribute such
+ * as `data-bound="1"` makes an otherwise unchanged Projects page look dirty on
+ * every poll and forces a full view replacement (visible as a flash).
+ */
+const boundManageButtons = new WeakSet();
 
 const FILTERS = [
   { id: 'all', label: 'All' },
@@ -158,8 +166,8 @@ function dependencyRow(repo) {
   if (!deps || !deps.items?.length) return '';
   const when = deps.state === 'checking'
     ? 'checking…'
-    : deps.checked_at ? `checked ${ui.ago(deps.checked_at)}` : 'not checked yet';
-  return `<div class="repo-deps">${deps.items.map(dependencyChip).join('')}<span class="sub">${esc(when)}</span></div>`;
+    : deps.checked_at ? `checked ${agoHtml(deps.checked_at)}` : 'not checked yet';
+  return `<div class="repo-deps">${deps.items.map(dependencyChip).join('')}<span class="sub">${when}</span></div>`;
 }
 
 function appHintRow(repo) {
@@ -188,17 +196,17 @@ function giteaCell(ctx, repo) {
     return `<span class="chip info"><span class="spinner sm"></span> checking</span>`;
   }
   if (status === 'synced' || status === 'created' || status === 'up-to-date') {
-    return `<span class="chip good">in sync</span>${gitea.checked_at ? `<span class="sub">checked ${esc(ui.ago(gitea.checked_at))}</span>` : ''}`;
+    return `<span class="chip good">in sync</span>${gitea.checked_at ? `<span class="sub">checked ${agoHtml(gitea.checked_at)}</span>` : ''}`;
   }
   if (status === 'missing') {
-    return `<button type="button" class="chip chip-action warn" data-repo-action="gitea" ${locked} title="Create this project in Gitea and push the backup" aria-label="Create ${esc(repo.rel)} in Gitea">${icon('git', 11)} missing · create</button><span class="sub">${gitea.checked_at ? `checked ${esc(ui.ago(gitea.checked_at))}` : 'sync will create it'}</span>`;
+    return `<button type="button" class="chip chip-action warn" data-repo-action="gitea" ${locked} title="Create this project in Gitea and push the backup" aria-label="Create ${esc(repo.rel)} in Gitea">${icon('git', 11)} missing · create</button><span class="sub">${gitea.checked_at ? `checked ${agoHtml(gitea.checked_at)}` : 'sync will create it'}</span>`;
   }
   if (status === 'behind') {
     const push = gitea.counts?.push || 0;
     const prune = gitea.counts?.prune || 0;
     return `<button type="button" class="chip chip-action warn" data-repo-action="gitea" ${locked} title="Sync the Gitea backup" aria-label="Sync ${esc(repo.rel)} to Gitea">${icon('git', 11)} ${push ? `${push} ref${push === 1 ? '' : 's'} to sync` : 'refs differ'}</button>
       ${prune ? `<span class="chip bad">${prune} to prune</span>` : ''}
-      <span class="sub">checked ${esc(ui.ago(gitea.checked_at))}</span>`;
+      <span class="sub">checked ${agoHtml(gitea.checked_at)}</span>`;
   }
   if (status === 'auth') {
     return `<span class="chip bad">token needed</span><span class="sub"><a href="#/settings">Open Settings → Repos</a></span>`;
@@ -405,7 +413,7 @@ function contentHtml(ctx) {
     .filter((entry) => entry.nested && !entry.selected).length;
   const authErrors = repos.filter((repo) => repo.gitea?.status === 'auth').length;
   const giteaTile = gitea.checked_at
-    ? { value: String(summary.gitea_behind || 0), sub: `${ui.plural(summary.gitea_checked || 0, 'project')} checked · ${ui.ago(gitea.checked_at)}` }
+    ? { value: String(summary.gitea_behind || 0), sub: `${ui.plural(summary.gitea_checked || 0, 'project')} checked · ${agoHtml(gitea.checked_at)}` }
     : { value: '—', sub: 'not checked yet' };
   const actions = `
     <button class="btn ghost sm" type="button" data-repo-manage title="Choose which discovered projects Repos manages">${icon('settings', 12)} Manage</button>
@@ -418,7 +426,7 @@ function contentHtml(ctx) {
     subtitle: `<strong>${summary.total || 0}</strong> projects<span class="dot">·</span><strong>${summary.attention || 0}</strong> need attention<span class="dot">·</span><span class="mono" title="${esc(roots.join('\n'))}">${esc(rootsLabel(roots))}</span>`,
     actions,
     badges: [
-      gitea.checked_at ? ui.pill('ok', `Gitea checked ${ui.ago(gitea.checked_at)}`) : ui.pill('neutral', 'Gitea on demand'),
+      gitea.checked_at ? pillHtml('ok', `Gitea checked ${agoHtml(gitea.checked_at)}`) : ui.pill('neutral', 'Gitea on demand'),
       depsBehind ? ui.pill('warn', `${depsBehind} dependency update${depsBehind === 1 ? '' : 's'}`) : '',
     ].join(' '),
   })}
@@ -490,8 +498,8 @@ export default {
     if (!snapshot) return;
     const bindManage = () => {
       root.querySelectorAll('[data-repo-manage]').forEach((button) => {
-        if (button.dataset.bound === '1') return;
-        button.dataset.bound = '1';
+        if (boundManageButtons.has(button)) return;
+        boundManageButtons.add(button);
         button.addEventListener('click', () => openRepoSelection(ctx));
       });
     };

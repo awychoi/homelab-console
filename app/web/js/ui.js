@@ -90,6 +90,18 @@ export function ago(timestamp) {
   return `${Math.floor(seconds / 86400)}d ago`;
 }
 
+/**
+ * Relative time that can be refreshed in place. `renderCurrent()` ignores the
+ * text inside `[data-rel-time]` when it compares the current DOM with the next
+ * render, so a poll that only moves "checked 12s ago" to "checked 24s ago"
+ * does not replace the whole view. `updateChrome()` refreshes the text after
+ * each poll; callers must not escape the returned markup again.
+ */
+export function agoHtml(timestamp) {
+  if (!timestamp) return 'never';
+  return `<span data-rel-time="${esc(timestamp)}">${esc(ago(timestamp))}</span>`;
+}
+
 export function clock(timestamp) {
   if (!timestamp) return '—';
   return new Date(Number(timestamp) * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
@@ -152,6 +164,12 @@ export function pill(status, label = null) {
   const value = String(status || 'unknown');
   const text = label ?? value.replace(/-/g, ' ');
   return `<span class="pill ${tone(value)}"><span class="dot"></span>${esc(text)}</span>`;
+}
+
+/** Pill with trusted inline HTML (escape any data before passing it in). */
+export function pillHtml(status, html) {
+  const value = String(status || 'unknown');
+  return `<span class="pill ${tone(value)}"><span class="dot"></span>${html}</span>`;
 }
 
 export function statusDot(status) {
