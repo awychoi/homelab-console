@@ -136,8 +136,18 @@ Repos is optional and not needed to deploy to a Pi.
   configured in **Settings → Repos**; the destructive prune warning lives there,
   and a sync does not prompt again. With prune off, extra Gitea refs are left
   in place and do not mark the backup as behind.
-- A missing Gitea project relies on Gitea's push-to-create. The GitHub owner must
-  match `gitea_owner`.
+- **Destinations are per project.** The target button on a Projects row opens
+  **Push and mirror destinations**. Skipping GitHub keeps commits local and
+  shows `skipped` instead of the ahead count; skipping Gitea shows `skipped`
+  instead of `missing` or `behind` and stops its ref checks. Both choices are
+  reversible in the same dialog, stored by project path in `repo_skips`, and
+  included in Backup & restore. The queue and **Check Gitea** leave a skipped
+  destination alone.
+- A missing Gitea project relies on Gitea's push-to-create. When the project has
+  a GitHub origin, its owner must match `gitea_owner`. A project with no GitHub
+  origin (a local-only or Gitea-only project) is mirrored as
+  `<gitea_owner>/<folder name>`; the folder must be a valid repository name.
+  This means a project never pushed to GitHub can still be created in Gitea.
 - **Apps and dependencies** are per project, not per root. The gear on a
   Projects row links one built `.app` bundle and the upstream `owner/name`
   repositories that bundle vendors. Suggestions come from a bounded scan of the
@@ -253,8 +263,13 @@ deselect the ones you do not want to manage.
   credential helper. It never force-pushes and does not manage pull requests.
 - **Check Gitea** compares local heads/tags with the configured mirror. The
   project’s Gitea action runs the dry run and syncs in one step; **Queue both**
-  pushes GitHub (when ahead), then mirrors to Gitea. A GitHub failure does not
-  stop the Gitea backup.
+  pushes GitHub (when ahead and not skipped), then mirrors to Gitea (unless
+  skipped). A GitHub failure does not stop the Gitea backup.
+- **Push and mirror destinations** (the target button on a row) skips GitHub or
+  Gitea per project. A skipped destination shows `skipped` instead of its
+  ahead/behind state and is left out of checks and the queue; choose it again
+  there to resume. A project with no GitHub origin is mirrored to Gitea under
+  its folder name, so it can stay Gitea-only.
 - **Open in VS Code** uses `code -n`, with a fallback to the macOS application.
 
 ## Backup and restore

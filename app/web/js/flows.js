@@ -1132,8 +1132,12 @@ export function showRepoCommit(ctx, repo) {
 }
 
 export async function syncGitea(ctx, repo) {
+  if (repo.skips?.gitea) {
+    toast('Gitea is skipped', 'warn', 'Resume Gitea from the target button on this project row first.');
+    return false;
+  }
   if (!repo.gitea?.target) {
-    toast('No Gitea target', 'warn', repo.gitea?.detail || 'This project has no GitHub origin or its owner does not match Gitea.');
+    toast('No Gitea target', 'warn', repo.gitea?.detail || 'This project has no Gitea target yet.');
     return false;
   }
   if (repo.lfs) {
@@ -1162,6 +1166,78 @@ export async function syncGitea(ctx, repo) {
   }
 }
 
+/**
+ * Per-project destination switches. The server stores skipped providers in
+ * `repo_skips`, so this is reversible and survives a restart; the Projects row
+ * then says "skipped" instead of "behind" or "N ahead".
+ */
+export function showRepoProviders(ctx, repo) {
+  const skips = repo.skips || {};
+  const githubOrigin = Boolean(repo.origin);
+  const githubCanToggle = githubOrigin || Boolean(skips.github);
+  const giteaManual = Boolean(repo.gitea?.manual);
+  const giteaAutoSkip = repo.gitea?.status === 'skip' && !giteaManual;
+  const giteaTarget = Boolean(repo.gitea?.target);
+  const giteaCanToggle = giteaTarget && !giteaAutoSkip || Boolean(skips.gitea);
+  const githubActive = githubOrigin && !skips.github;
+  const giteaActive = giteaTarget && !skips.gitea && !giteaAutoSkip;
+  const ahead = repo.ahead === null || repo.ahead === undefined
+    ? (repo.new_branch ? 'a new branch' : 'no upstream')
+    : `${repo.ahead} commit${repo.ahead === 1 ? '' : 's'} ahead`;
+  const githubNote = skips.github
+    ? (githubOrigin
+      ? `Skipped — ${ahead} stay local.`
+      : 'Skipped — there is no origin remote. Tick this to clear the stale skip.')
+    : !githubOrigin
+      ? 'Local only — there is no origin remote to push to.'
+      : `${ahead} · pushes the current branch with your git credential helper.`;
+  const giteaNote = !giteaTarget
+    ? (repo.gitea?.detail || 'No Gitea target for this project.')
+    : giteaAutoSkip
+      ? `Skipped automatically: ${repo.gitea?.detail || 'not eligible'}`
+      : skips.gitea
+        ? 'Skipped — no ref checks, mirror or queue entry.'
+        : `${repo.gitea.target} · mirrors every local branch and tag.`;
+  const ref = openModal({
+    title: 'Push and mirror destinations',
+    subtitle: repo.rel,
+    body: `<div class="info-box">${icon('info')}<div>A skipped destination is not pushed, checked or queued for this project, and the Projects table shows <strong>skipped</strong> instead of <strong>behind</strong>. Turn it back on at any time; no git remote is edited.</div></div>
+      <div class="field mt-2">
+        <label class="check"><input type="checkbox" id="provider-github" ${githubActive ? 'checked' : ''} ${githubCanToggle ? '' : 'disabled'}>
+          <span><strong>GitHub push</strong><span class="sub">${esc(githubNote)}</span></span></label>
+        <label class="check mt-2"><input type="checkbox" id="provider-gitea" ${giteaActive ? 'checked' : ''} ${giteaCanToggle ? '' : 'disabled'}>
+          <span><strong>Gitea backup</strong><span class="sub">${esc(giteaNote)}</span></span></label>
+      </div>
+      <div id="repo-provider-error"></div>`,
+    footer: `<div class="spacer"></div><button class="btn ghost" data-cancel>Cancel</button><button class="btn primary" data-save>Save destinations</button>`,
+  });
+  const githubBox = ref.body.querySelector('#provider-github');
+  const giteaBox = ref.body.querySelector('#provider-gitea');
+  ref.footer.querySelector('[data-cancel]').addEventListener('click', ref.close);
+  const save = ref.footer.querySelector('[data-save]');
+  save.addEventListener('click', async () => {
+    const skipped = [];
+    if (githubCanToggle && !githubBox.checked) skipped.push('github');
+    if (giteaCanToggle && !giteaBox.checked) skipped.push('gitea');
+    const restore = busy(save, 'Saving…');
+    try {
+      await api.post(repoApi(repo, '/skips'), { skipped });
+      ref.close();
+      await ctx.refreshState({ force: true });
+      refreshRemoteSoon(ctx);
+      const labels = skipped.map((provider) => (provider === 'github' ? 'GitHub' : 'Gitea'));
+      toast(
+        'Destinations updated',
+        'ok',
+        labels.length ? `${repo.rel} · ${labels.join(' + ')} skipped` : `${repo.rel} · saved`,
+      );
+    } catch (error) {
+      restore();
+      ref.body.querySelector('#repo-provider-error').innerHTML = errorHtml(ui.errorText(error));
+    }
+  });
+}
+
 export function showPushBoth(ctx, repos) {
   const selected = (repos || []).filter(Boolean);
   if (!selected.length) {
@@ -1169,27 +1245,37 @@ export function showPushBoth(ctx, repos) {
     return;
   }
   const unknown = selected.filter((repo) => repo.gitea?.status === 'unknown').length;
+  const skipped = selected.filter((repo) => repo.skips?.github || repo.skips?.gitea).length;
   const rows = selected.map((repo) => {
     const ahead = repo.ahead === null || repo.ahead === undefined ? 'new branch' : `${repo.ahead} ahead`;
-    const github = repo.needs?.push ? ahead : 'up to date';
-    const gitea = repo.gitea?.status === 'unknown'
-      ? 'mirror (not checked)'
-      : ['behind', 'missing'].includes(repo.gitea?.status)
-        ? 'mirror refs'
-        : repo.gitea?.status === 'synced' && !repo.needs?.push ? 'already in sync'
-          : (repo.gitea?.detail || 'mirror');
+    const github = repo.skips?.github
+      ? 'skipped'
+      : repo.needs?.push
+        ? ahead
+        : repo.origin ? 'up to date' : 'local only';
+    const gitea = repo.skips?.gitea
+      ? 'skipped'
+      : repo.gitea?.status === 'unknown'
+        ? 'mirror (not checked)'
+        : ['behind', 'missing'].includes(repo.gitea?.status)
+          ? 'mirror refs'
+          : repo.gitea?.status === 'skip'
+            ? 'skipped'
+            : repo.gitea?.status === 'synced' && !repo.needs?.push ? 'already in sync'
+              : (repo.gitea?.detail || 'mirror');
     return `<tr>
       <td class="mono">${esc(repo.rel)}</td>
-      <td>${repo.needs?.push ? ui.pill('info', github) : ui.pill('ok', github)}</td>
-      <td>${repo.gitea?.target ? ui.pill('neutral', gitea) : ui.pill('neutral', gitea)}</td>
+      <td>${repo.skips?.github ? ui.pill('neutral', github) : repo.needs?.push ? ui.pill('info', github) : ui.pill('ok', github)}</td>
+      <td>${ui.pill('neutral', gitea)}</td>
     </tr>`;
   }).join('');
   const ref = openModal({
     title: 'Queue GitHub + Gitea',
-    subtitle: `${selected.length} project(s) → GitHub then Gitea`,
+    subtitle: `${selected.length} project(s) → active destinations`,
     className: 'wide',
-    body: `<div class="info-box">${icon('info')}<div>GitHub receives the current branch, then Gitea receives every local branch and tag. If GitHub fails, the Gitea backup still runs and the queue continues.</div></div>
+    body: `<div class="info-box">${icon('info')}<div>GitHub receives the current branch, then Gitea receives every local branch and tag. A destination marked <strong>skipped</strong> is left alone. If GitHub fails, the Gitea backup still runs and the queue continues.</div></div>
       ${unknown ? `<div class="warn-box mt-2">${icon('clock')}<div>${ui.plural(unknown, 'project')} not checked against Gitea yet. The queue will mirror them and run the duplicate-history check before writing.</div></div>` : ''}
+      ${skipped ? `<div class="warn-box mt-2">${icon('skip')}<div>${ui.plural(skipped, 'project')} has a skipped destination. That destination is not pushed, checked or queued; use the target button on a project row to resume it.</div></div>` : ''}
       <div class="table-wrap mt-2"><table class="data">
         <thead><tr><th>Project</th><th>GitHub</th><th>Gitea</th></tr></thead>
         <tbody>${rows}</tbody>

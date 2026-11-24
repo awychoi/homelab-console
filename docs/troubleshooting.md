@@ -47,7 +47,9 @@ logs on disk; they usually say more than the UI banner.
 | An image says **unmanaged** or its check fails | Open **Settings → Update sources**, pick the detected image, and add a Docker Hub or GitHub source. `quay.io` and private registries are deliberately not guessed. An image with a compose `build:` and a registry-less name is marked **built locally** (no upstream to check) unless you add a source. |
 | A stack should be excluded from auto-update | Open the stack → **Safety & backup**, set the level to **critical**, and save. |
 | Gitea says “not checked” after a commit | The console rechecks the affected project after a commit or GitHub push. If it still says not checked, press **Check Gitea**. |
-| Gitea project missing / create fails | Push-to-create must be enabled for that Gitea owner, or create an empty project with the same owner/name once. A GitHub push alone does not create it. |
+| GitHub or Gitea says **skipped** | The destination was turned off for that project with the target button on the row (**Push and mirror destinations**). Open the same dialog and tick it to resume. Automatic Gitea skips (LFS, owner mismatch, invalid folder name, no branches) also show `skipped`; the reason is in the chip tooltip. |
+| Local-only project has no Gitea target | A project without a GitHub origin is mirrored as `<gitea_owner>/<folder name>`. Rename the folder to a valid repository name, or create the empty Gitea project at that path once. A project with a GitHub origin whose owner differs from `gitea_owner` is not mirrored; use the matching owner or a Gitea-only checkout. |
+| Gitea project missing / create fails | Push-to-create must be enabled for that Gitea owner, or create an empty project with the same owner/name once. A GitHub push alone does not create it, and a skipped Gitea destination is never created. |
 | Gitea says token needed | Set it in Settings (source) or the app's ⌘, window (native app), or authenticate the git credential helper. |
 | `Gitea URL must use https…` | Use an `https://` URL for a non-loopback Gitea, or set `HLC_GITEA_ALLOW_HTTP=1` only on a trusted network; the token travels as a header. |
 | Gitea sync says the preview is stale | The refs changed between the background dry run and the push. Retry the Gitea action; the next dry run returns a fresh hash. The backend refuses a stale preview instead of force-pushing. |
@@ -77,8 +79,10 @@ These are deliberate product boundaries, not bugs to work around.
 - **Text stack files.** Files larger than 2 MB or non-UTF-8 are not pushed by the
   console. `.env` values are visible in the local file editor by design.
 - **GitHub/Gitea, not a general Git host manager.** Repos pushes the
-  current branch, mirrors to one configured Gitea owner, and does not create
-  GitHub repos, rebase, pull or manage pull requests.
+  current branch, mirrors to one configured Gitea owner (using the folder name
+  for a project with no GitHub origin), and does not create GitHub repos,
+  rebase, pull or manage pull requests. Either destination can be skipped per
+  project.
 
 ## Reporting a problem
 

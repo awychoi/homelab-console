@@ -41,6 +41,7 @@ class _StubRepos:
         self.deps_checked = 0
         self.selection: dict[str, list[str]] = {}
         self.nested_selection: dict[str, list[str]] = {}
+        self.skips: dict[str, list[str]] = {}
         self.state_data = {
             "root": "/tmp/repos",
             "root_error": "",
@@ -139,6 +140,16 @@ class _StubRepos:
     def set_repo_dependencies(self, repo_id, raw):
         self.deps[repo_id] = list(raw or [])
         return {"ok": True, "dependencies": self.deps[repo_id]}
+
+    def set_repo_skips(self, repo_id, raw):
+        if not isinstance(raw, list):
+            raise RuntimeError("skipped must be a list")
+        self.skips[repo_id] = list(raw)
+        return {
+            "ok": True,
+            "repo": repo_id,
+            "skips": {"github": "github" in raw, "gitea": "gitea" in raw},
+        }
 
     def dependencies_configured(self):
         return bool(self.deps)
@@ -271,6 +282,22 @@ class RepoApiTests(unittest.TestCase):
         status, payload = self.request("POST", "/api/repos/homelab/app", {"path": ""})
         self.assertEqual(status, 200)
         self.assertIsNone(payload["app"])
+
+    def test_provider_skips_round_trip(self):
+        status, payload = self.request(
+            "POST", "/api/repos/homelab/skips", {"skipped": ["gitea"]}
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(self.app.repos.skips, {"homelab": ["gitea"]})
+        self.assertEqual(payload["skips"], {"github": False, "gitea": True})
+
+        status, _payload = self.request("POST", "/api/repos/homelab/skips", {})
+        self.assertEqual(status, 400)
+
+        status, payload = self.request("POST", "/api/repos/homelab/skips", {"skipped": []})
+        self.assertEqual(status, 200)
+        self.assertEqual(self.app.repos.skips, {"homelab": []})
+        self.assertEqual(payload["skips"], {"github": False, "gitea": False})
 
     def test_queue_actions(self):
         status, payload = self.request("POST", "/api/repos/connectivity/check")

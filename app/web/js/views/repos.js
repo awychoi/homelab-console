@@ -2,7 +2,7 @@ import * as ui from '../ui.js';
 import { pageHead, stateBanner, statTile, emptyState, giteaAuthBanner } from './common.js';
 import { nativePick } from '../native.js';
 import { addRoot, bindRootRemoval, openRepoSelection, readDraft, rootsDraft, rootsFromSettings, rootsHtml, rootsLabel } from '../repoRoots.js';
-import { syncGitea, showPushBoth, showRepoCommit, refreshRemoteSoon } from '../flows.js';
+import { syncGitea, showPushBoth, showRepoCommit, showRepoProviders, refreshRemoteSoon } from '../flows.js';
 import { showRepoApps } from '../appSetup.js';
 
 const { esc, icon, agoHtml, pillHtml } = ui;
@@ -191,7 +191,8 @@ function giteaCell(ctx, repo) {
     return `<span class="chip neutral">not checked</span><span class="sub">on demand</span>`;
   }
   if (status === 'skip') {
-    return `<span class="chip neutral">skipped</span><span class="sub" title="${esc(gitea.detail || '')}">${esc(short(gitea.detail, 44))}</span>`;
+    const note = gitea.manual ? 'not mirrored · click to resume' : short(gitea.detail, 44);
+    return `<button type="button" class="chip chip-action neutral" data-repo-action="providers" ${locked} title="${esc(gitea.detail || 'Gitea is skipped')} — click to manage destinations" aria-label="Manage push and mirror destinations for ${esc(repo.rel)}">${icon('skip', 11)} skipped</button><span class="sub" title="${esc(gitea.detail || '')}">${esc(note)}</span>`;
   }
   if (status === 'checking') {
     return `<span class="chip info"><span class="spinner sm"></span> checking</span>`;
@@ -247,6 +248,10 @@ function unpushedCell(ctx, repo) {
   const bits = [];
   if (pending?.action === 'push') {
     bits.push(repoBusyChip(pending.label || 'Pushing…'));
+  } else if (repo.skips?.github) {
+    bits.push(`<button type="button" class="chip chip-action neutral" data-repo-action="providers" ${pending ? 'disabled' : ''} title="GitHub push is skipped for this project — click to manage destinations" aria-label="Manage push and mirror destinations for ${esc(repo.rel)}">${icon('skip', 11)} skipped</button>`);
+    if (repo.ahead > 0) bits.push(`<span class="sub">${repo.ahead} commit${repo.ahead === 1 ? '' : 's'} not pushed</span>`);
+    else if (repo.new_branch) bits.push('<span class="sub">new branch not pushed</span>');
   } else if (repo.needs?.push) {
     const label = repo.ahead === null || repo.ahead === undefined ? 'new branch' : `${repo.ahead} ahead`;
     bits.push(`<button type="button" class="chip chip-action warn" data-repo-action="push" ${pending ? 'disabled' : ''} title="Push ${esc(repo.rel)} to ${repo.github ? 'GitHub' : 'origin'}" aria-label="Push ${esc(repo.rel)} to ${repo.github ? 'GitHub' : 'origin'}">${icon('push', 11)} ${esc(label)}</button>`);
@@ -284,6 +289,7 @@ function actionsCell(repo) {
   } else {
     actions.push(`<span class="btn ghost sm icon disabled" title="No GitHub origin" aria-hidden="true">${icon('external', 13)}</span>`);
   }
+  actions.push(`<button class="btn ghost sm icon" type="button" data-repo-action="providers" title="Push and mirror destinations" aria-label="Push and mirror destinations for ${esc(repo.rel)}">${icon('target', 13)}</button>`);
   actions.push(`<button class="btn ghost sm icon" type="button" data-repo-action="configure" title="App and dependencies" aria-label="App and dependencies for ${esc(repo.rel)}">${icon('settings', 13)}</button>`);
   return actions.join('');
 }
@@ -413,8 +419,10 @@ function contentHtml(ctx) {
   const nestedPending = (snapshot?.discovered || [])
     .filter((entry) => entry.nested && !entry.selected).length;
   const authErrors = repos.filter((repo) => repo.gitea?.status === 'auth').length;
+  const githubSkipped = repos.filter((repo) => repo.skips?.github).length;
+  const giteaSkipped = repos.filter((repo) => repo.skips?.gitea).length;
   const giteaTile = gitea.checked_at
-    ? { value: String(summary.gitea_behind || 0), sub: `${ui.plural(summary.gitea_checked || 0, 'project')} checked · ${agoHtml(gitea.checked_at)}` }
+    ? { value: String(summary.gitea_behind || 0), sub: `${ui.plural(summary.gitea_checked || 0, 'project')} checked${giteaSkipped ? ` · ${giteaSkipped} skipped` : ''} · ${agoHtml(gitea.checked_at)}` }
     : { value: '—', sub: 'not checked yet' };
   const actions = `
     <button class="btn ghost sm" type="button" data-repo-manage title="Choose which discovered projects Repos manages">${icon('settings', 12)} Manage</button>
@@ -441,7 +449,7 @@ function contentHtml(ctx) {
   <div class="grid cols-4 mb-2">
     ${statTile({ label: 'Projects', value: String(summary.total || 0), sub: `${summary.github || 0} with GitHub · ${(summary.total || 0) - (summary.github || 0)} local-only`, iconName: 'git', toneName: '', valueTone: '' })}
     ${statTile({ label: 'Files to commit', value: String(summary.dirty_files || 0), sub: summary.dirty_repos ? `${ui.plural(summary.dirty_repos, 'project')} dirty${summary.ignored_files ? ` · ${summary.ignored_files} ignored hidden` : ''}` : 'all working trees clean', iconName: 'commit', toneName: summary.dirty_repos ? 'warn' : 'ok', valueTone: summary.dirty_repos ? 'text-warn' : '' })}
-    ${statTile({ label: 'Commits to push', value: String(summary.ahead_commits || 0), sub: summary.ahead_repos ? `${ui.plural(summary.ahead_repos, 'project')} ahead of GitHub` : 'GitHub is current', iconName: 'upload', toneName: summary.ahead_repos ? 'warn' : 'ok', valueTone: summary.ahead_repos ? 'text-warn' : '' })}
+    ${statTile({ label: 'Commits to push', value: String(summary.ahead_commits || 0), sub: summary.ahead_repos ? `${ui.plural(summary.ahead_repos, 'project')} ahead of GitHub` : githubSkipped ? `${ui.plural(githubSkipped, 'project')} skipping GitHub` : 'GitHub is current', iconName: 'upload', toneName: summary.ahead_repos ? 'warn' : 'ok', valueTone: summary.ahead_repos ? 'text-warn' : '' })}
     ${statTile({ label: 'Gitea backup', value: giteaTile.value, sub: giteaTile.sub, iconName: 'shield', toneName: summary.gitea_behind ? 'warn' : gitea.checked_at ? 'ok' : '', valueTone: summary.gitea_behind ? 'text-warn' : '' })}
   </div>
   ${!gitea.checked_at && !rootError ? `<div class="banner">${icon('info')}<span><strong>Gitea state refreshes at startup and after project actions.</strong> Local dirty/ahead status refreshes every 10 seconds. Use <strong>Check Gitea</strong> to compare every eligible project's refs with the backup.</span></div>` : ''}
@@ -460,7 +468,7 @@ function contentHtml(ctx) {
     <tbody id="repo-rows">${rowsHtml(ctx)}</tbody>
   </table></div></div>
   ${queueHtml(ctx)}
-  <div class="hint mt-2">VS Code opens a new window per project. The play button launches the app linked to a project; the gear links an app and the upstream repositories it bundles. GitHub links use your browser's existing session, so private projects work without exposing a token to the console. Gitea is a backup mirror: it is only synced when you ask.</div>`;
+  <div class="hint mt-2">VS Code opens a new window per project. The play button launches the app linked to a project; the gear links an app and the upstream repositories it bundles. The target button skips GitHub or Gitea for that project; a skipped destination is not checked or queued and can be resumed there. GitHub links use your browser's existing session, so private projects work without exposing a token to the console. Gitea is a backup mirror: it is only synced when you ask.</div>`;
 }
 
 function repoById(ctx, id) {
@@ -503,7 +511,7 @@ function bindRepoRow(row, root, ctx, state) {
       const repo = repoById(ctx, button.closest('[data-repo-id]')?.dataset.repoId);
       if (!repo) return;
       const action = button.dataset.repoAction;
-      if (repoPending(ctx, repo) && ['commit', 'gitea', 'push', 'use-app'].includes(action)) {
+      if (repoPending(ctx, repo) && ['commit', 'gitea', 'push', 'use-app', 'providers'].includes(action)) {
         ui.toast('Wait for the current project action', 'warn', repo.rel);
         return;
       }
@@ -513,6 +521,10 @@ function bindRepoRow(row, root, ctx, state) {
       }
       if (action === 'gitea') {
         await runRepoAction(ctx, repo, 'gitea', 'Syncing…', () => syncGitea(ctx, repo));
+        return;
+      }
+      if (action === 'providers') {
+        showRepoProviders(ctx, repo);
         return;
       }
       if (action === 'configure') {

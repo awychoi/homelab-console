@@ -25,7 +25,7 @@ from pathlib import Path, PurePosixPath
 from typing import Any
 
 from . import profiles, releases, util
-from .config import VERSION, normalize_repo_exclusions
+from .config import VERSION, normalize_repo_exclusions, normalize_repo_skips
 
 MAX_ARCHIVE_BYTES = 2 * 1024 * 1024 * 1024
 MAX_EXTRACT_BYTES = 4 * 1024 * 1024 * 1024
@@ -51,6 +51,7 @@ SETTINGS_KEYS = (
     "repo_nested_selected",
     "repo_apps",
     "repo_dependencies",
+    "repo_skips",
     "dependencies_check_on_start",
     "gitea_url",
     "gitea_owner",
@@ -244,6 +245,11 @@ def _validated_settings(payload: Any) -> dict[str, Any]:
                 values[key] = normalize_repo_exclusions(value)
             except (TypeError, ValueError) as exc:
                 raise BackupError("archive has invalid repo_nested_selected") from exc
+        elif key == "repo_skips":
+            try:
+                values[key] = normalize_repo_skips(value)
+            except (TypeError, ValueError) as exc:
+                raise BackupError("archive has invalid repo_skips") from exc
         elif key == "release_sources":
             try:
                 values[key] = releases.normalize_source_overrides(value, strict=True)

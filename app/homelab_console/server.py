@@ -1315,6 +1315,11 @@ class ConsoleHandler(BaseHTTPRequestHandler):
                 200,
                 self.app.repos.set_repo_dependencies(repo_id, body.get("dependencies")),
             )
+        if action == "skips" and len(rest) == 2:
+            body = self._body()
+            if "skipped" not in body:
+                raise ApiError(400, "skipped is required; send [] to clear the skips")
+            return self._send_json(200, self.app.repos.set_repo_skips(repo_id, body.get("skipped")))
         if action == "commit" and len(rest) == 2:
             body = self._body()
             result = self.app.repos.commit(repo_id, body.get("files"), body.get("message"))

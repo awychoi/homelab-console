@@ -25,6 +25,8 @@ const ICONS = {
   disk: '<ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v12c0 1.7 3.6 3 8 3s8-1.3 8-3V6"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/>',
   network: '<circle cx="12" cy="5" r="2.5"/><circle cx="5" cy="19" r="2.5"/><circle cx="19" cy="19" r="2.5"/><path d="M12 7.5v4M12 11.5 6 17M12 11.5l6 5.5"/>',
   git: '<path d="M6 8v10"/><circle cx="6" cy="5.5" r="2.2" fill="currentColor" stroke="none"/><circle cx="6" cy="20.5" r="2.2" fill="currentColor" stroke="none"/><path d="M6 10h5.5a2 2 0 0 1 2 2v2.5"/><circle cx="13.5" cy="16.5" r="2.2" fill="currentColor" stroke="none"/>',
+  target: '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.2"/><circle cx="12" cy="12" r=".9" fill="currentColor" stroke="none"/>',
+  skip: '<circle cx="12" cy="12" r="9"/><path d="m5.6 5.6 12.8 12.8"/>',
   push: '<path d="M2.5 12h17"/><path d="m15 7.5 4.5 4.5-4.5 4.5"/><path d="M8 3v6.8"/><path d="M8 14.2V21"/>',
   code: '<path d="m8 6-5 6 5 6"/><path d="m16 6 5 6-5 6"/>',
   commit: '<circle cx="12" cy="12" r="3.2"/><path d="M3 12h5.2M15.8 12H21"/>',

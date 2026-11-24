@@ -41,6 +41,8 @@ __pycache__/
 """
 
 MAX_REPO_EXCLUSIONS = 500
+MAX_REPO_SKIPS = 500
+REPO_PROVIDERS = ("github", "gitea")
 MAX_DISMISSED_NOTICES = 200
 
 
@@ -91,6 +93,50 @@ def normalize_repo_exclusions(raw: Any) -> dict[str, list[str]]:
                 cleaned[str(root.resolve())] = ids
             except OSError:
                 continue
+    return cleaned
+
+
+def normalize_repo_skips(raw: Any) -> dict[str, list[str]]:
+    """Validate operator-skipped destinations, keyed by absolute project path.
+
+    The canonical value is ``{"<path>": ["github"]}``; a dict of booleans
+    (``{"github": true}``) is accepted too so a hand-edited config still works.
+    Unknown providers and relative paths are dropped instead of failing the
+    whole settings load.
+    """
+    if not isinstance(raw, dict):
+        return {}
+    cleaned: dict[str, list[str]] = {}
+    for raw_path, raw_providers in raw.items():
+        text = str(raw_path or "").strip()
+        if (
+            not text
+            or len(text) > 400
+            or any(char in text for char in ("\r", "\n", "\x00"))
+        ):
+            continue
+        try:
+            path = Path(text).expanduser()
+            if not path.is_absolute():
+                continue
+            key = str(path.resolve())
+        except OSError:
+            continue
+        if isinstance(raw_providers, str):
+            raw_providers = [raw_providers]
+        elif isinstance(raw_providers, dict):
+            raw_providers = [name for name, skipped in raw_providers.items() if skipped]
+        if not isinstance(raw_providers, (list, tuple)):
+            continue
+        providers: list[str] = []
+        for item in raw_providers:
+            name = str(item or "").strip().lower()
+            if name in REPO_PROVIDERS and name not in providers:
+                providers.append(name)
+        if providers:
+            cleaned[key] = providers
+        if len(cleaned) >= MAX_REPO_SKIPS:
+            break
     return cleaned
 
 
@@ -199,6 +245,7 @@ DEFAULTS: dict[str, Any] = {
     "repo_nested_selected": {},
     "repo_apps": {},
     "repo_dependencies": {},
+    "repo_skips": {},
     "dependencies_check_on_start": True,
     "dismissed_notices": {},
     "gitea_url": "",
@@ -348,6 +395,7 @@ class Settings:
         merged["repo_nested_selected"] = normalize_repo_exclusions(
             merged.get("repo_nested_selected")
         )
+        merged["repo_skips"] = normalize_repo_skips(merged.get("repo_skips"))
         merged["dismissed_notices"] = normalize_dismissed_notices(
             merged.get("dismissed_notices")
         )

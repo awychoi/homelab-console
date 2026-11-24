@@ -10,6 +10,7 @@ import tempfile
 import threading
 import time
 import unittest
+import zipfile
 from pathlib import Path
 from unittest import mock
 
@@ -693,6 +694,26 @@ class GiteaSyncTests(unittest.TestCase):
             self.assertEqual(result["status"], "synced")
             self.assertEqual(refs(local), refs(target))
 
+    def test_local_only_project_can_initialize_gitea_without_github(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp).resolve()
+            local = base / "local"
+            make_repo(local)
+            target = base / "gitea" / "example" / "local.git"
+            target.parent.mkdir(parents=True)
+            run("git", "init", "-q", "--bare", str(target))
+            cfg = repos.GiteaConfig(
+                root=base,
+                url=(base / "gitea").as_uri(),
+                owner="example",
+                timeout=30,
+            )
+            self.assertIsNone(repos.github_repo_from_url(""))
+            result = repos.sync_repo(local, cfg, "")
+            self.assertTrue(result["ok"], result.get("detail"))
+            self.assertEqual(result["status"], "synced")
+            self.assertEqual(refs(local), refs(target))
+
     def test_force_and_prune_after_amend(self):
         with tempfile.TemporaryDirectory() as tmp:
             local, target, cfg = self._fixture(Path(tmp).resolve())
@@ -1323,3 +1344,168 @@ class DependencyTrackingTests(unittest.TestCase):
         meta = self.fleet.state()["dependencies"]
         self.assertEqual(meta["state"], "error")
         self.assertEqual(meta["errors"], 1)
+
+
+class ProviderSkipTests(unittest.TestCase):
+    def make_fleet(self, tmp: str, local: Path, skips: list[str] | None = None):
+        settings = configure_gitea(Settings.load(Path(tmp).resolve() / "console"))
+        settings.values["repo_root"] = str(local.parent)
+        if skips is not None:
+            settings.values["repo_skips"] = {str(local): skips}
+        return settings, repos.RepoFleet(settings, StoreStub(), QueueTests.FakeTasks())
+
+    def prepare_ahead_repo(self, base: Path) -> Path:
+        local = base / "repos" / "demo"
+        make_repo(local)
+        run("git", "remote", "add", "origin", "https://github.com/example/demo.git", cwd=local)
+        (local / "f.txt").write_text("two\n")
+        run("git", "add", "f.txt", cwd=local)
+        run("git", "commit", "-qm", "second", cwd=local)
+        return local
+
+    def test_local_only_project_gets_a_gitea_target_from_its_folder_name(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp).resolve()
+            local = base / "repos" / "notes"
+            make_repo(local)
+            settings, fleet = self.make_fleet(tmp, local)
+            state = fleet.refresh()
+            row = state["repos"][0]
+            self.assertIsNone(row["github"])
+            self.assertFalse(row["skips"]["gitea"])
+            self.assertEqual(row["gitea"]["target"], "https://gitea.invalid/example/notes.git")
+            self.assertEqual(row["gitea"]["status"], "unknown")
+
+    def test_an_unusable_folder_name_is_skipped_with_a_reason(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp).resolve()
+            local = base / "repos" / "notes with spaces"
+            make_repo(local)
+            settings, fleet = self.make_fleet(tmp, local)
+            state = fleet.refresh()
+            row = state["repos"][0]
+            self.assertIsNone(row["gitea"]["target"])
+            self.assertEqual(row["gitea"]["status"], "skip")
+            self.assertIn("not a usable Gitea repository name", row["gitea"]["detail"])
+
+    def test_manual_skips_hide_ahead_and_gitea_behind(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp).resolve()
+            local = self.prepare_ahead_repo(base)
+            settings, fleet = self.make_fleet(tmp, local, ["github", "gitea"])
+            state = fleet.refresh()
+            row = state["repos"][0]
+            self.assertTrue(row["new_branch"])
+            self.assertTrue(row["skips"]["github"])
+            self.assertTrue(row["skips"]["gitea"])
+            self.assertFalse(row["needs"]["push"])
+            self.assertEqual(row["gitea"]["status"], "skip")
+            self.assertTrue(row["gitea"]["manual"])
+            self.assertEqual(state["summary"]["ahead_repos"], 0)
+            self.assertEqual(state["summary"]["gitea_behind"], 0)
+            self.assertEqual(state["summary"]["clean"], 1)
+
+    def test_resuming_gitea_clears_the_carried_skip(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp).resolve()
+            local = self.prepare_ahead_repo(base)
+            settings, fleet = self.make_fleet(tmp, local, ["gitea"])
+            self.assertEqual(fleet.refresh()["repos"][0]["gitea"]["status"], "skip")
+            settings.values["repo_skips"] = {}
+            row = fleet.refresh()["repos"][0]
+            self.assertEqual(row["gitea"]["status"], "unknown")
+            self.assertFalse(row["skips"]["gitea"])
+
+    def test_set_repo_skips_round_trip_and_queue_omits_github(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp).resolve()
+            local = self.prepare_ahead_repo(base)
+            settings, fleet = self.make_fleet(tmp, local)
+            fleet.refresh()
+            with mock.patch.object(fleet, "recheck_gitea_async", return_value=False):
+                with self.assertRaises(repos.RepoError):
+                    fleet.set_repo_skips("demo", ["gitlab"])
+                result = fleet.set_repo_skips("demo", ["github"])
+                self.assertTrue(result["ok"])
+                self.assertEqual(settings.get("repo_skips"), {str(local): ["github"]})
+                self.assertEqual(result["skips"], {"github": True, "gitea": False})
+                fleet.refresh()
+                with mock.patch.object(fleet, "push_github") as push_mock, \
+                     mock.patch.object(fleet, "sync_gitea", return_value={"ok": True, "status": "synced", "detail": "backed up"}) as sync_mock:
+                    queued = fleet.queue_push_both(["demo"])
+                    self.assertEqual(queued["queue"]["items"][0]["github"], "skipped")
+                    fleet.tasks.work(QueueTests.FakeRun())
+                push_mock.assert_not_called()
+                sync_mock.assert_called_once_with("demo", dry_run=False, post_action=False)
+
+    def test_push_and_sync_refuse_a_skipped_destination(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp).resolve()
+            local = self.prepare_ahead_repo(base)
+            settings, fleet = self.make_fleet(tmp, local, ["github", "gitea"])
+            fleet.refresh()
+            with mock.patch.object(repos, "_git") as git_mock, \
+                 mock.patch.object(repos, "sync_repo") as sync_mock:
+                pushed = fleet.push_github("demo")
+                synced = fleet.sync_gitea("demo")
+            self.assertEqual(pushed["status"], "skip")
+            self.assertEqual(synced["status"], "skip")
+            git_mock.assert_not_called()
+            sync_mock.assert_not_called()
+
+    def test_a_late_gitea_check_does_not_replace_a_manual_skip(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp).resolve()
+            local = self.prepare_ahead_repo(base)
+            settings, fleet = self.make_fleet(tmp, local, ["gitea"])
+            fleet.refresh()
+            fleet._set_gitea("demo", {"status": "synced", "detail": "late", "target": "x"})
+            row = fleet._row("demo")
+            self.assertEqual(row["gitea"]["status"], "skip")
+            self.assertTrue(row["gitea"]["manual"])
+
+    def test_backup_keeps_provider_skips(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp).resolve()
+            local = self.prepare_ahead_repo(base)
+            settings, _fleet = self.make_fleet(tmp, local, ["github"])
+            from homelab_console import appbackup
+
+            appbackup.create_backup(settings, base / "fleet.zip")
+            with zipfile.ZipFile(base / "fleet.zip") as archive:
+                payload = json.loads(archive.read("settings.json"))
+            self.assertEqual(payload["repo_skips"], {str(local): ["github"]})
+
+    def test_normalize_repo_skips_drops_bad_rows(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp).resolve()
+            cleaned = repos.normalize_repo_skips(
+                {
+                    str(base / "a"): ["gitea", "gitea", "bogus"],
+                    str(base / "b"): {"github": True, "gitea": False},
+                    str(base / "c"): [],
+                    "relative/path": ["github"],
+                    str(base / "d"): "GITHUB",
+                }
+            )
+            self.assertEqual(cleaned[str(base / "a")], ["gitea"])
+            self.assertEqual(cleaned[str(base / "b")], ["github"])
+            self.assertEqual(cleaned[str(base / "d")], ["github"])
+            self.assertNotIn("relative/path", cleaned)
+            self.assertNotIn(str(base / "c"), cleaned)
+
+
+class GiteaTargetTests(unittest.TestCase):
+    def test_local_name_and_owner_mismatch(self):
+        cfg = repos.GiteaConfig(root=Path("/tmp"), url="https://gitea.invalid", owner="example")
+        target, reason, parsed = repos.gitea_target("", cfg, "notes")
+        self.assertEqual(target, "https://gitea.invalid/example/notes.git")
+        self.assertEqual(reason, "")
+        self.assertIsNone(parsed)
+
+        target, reason, parsed = repos.gitea_target(
+            "https://github.com/other/notes.git", cfg, "notes"
+        )
+        self.assertIsNone(target)
+        self.assertIn("does not match", reason)
+        self.assertEqual(parsed, ("other", "notes"))

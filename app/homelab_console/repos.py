@@ -44,7 +44,7 @@ from urllib import request as urlrequest
 from urllib.parse import urlparse
 
 from . import apps, util
-from .config import Settings
+from .config import REPO_PROVIDERS, Settings, normalize_repo_skips
 
 if TYPE_CHECKING:  # avoid importing the runner at module load time
     from .runner import TaskManager
@@ -58,6 +58,7 @@ APP_HINT_TTL = 600
 APP_HINT_BUDGET = 40
 TOKEN_RE = re.compile(r"^[A-Za-z0-9._~-]{20,300}$")
 OWNER_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
+REPO_NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$")
 DISCOVERY_SKIP_DIRS = {
     ".git",
     ".venv",
@@ -495,15 +496,50 @@ def gitea_repo_url(base: str, owner: str, name: str) -> str:
     return f"{base.rstrip('/')}/{owner}/{name}.git"
 
 
-def gitea_target(origin: str, cfg: GiteaConfig) -> tuple[str | None, str, tuple[str, str] | None]:
-    """Return ``(target, skip_reason, github)``."""
+def gitea_target(
+    origin: str,
+    cfg: GiteaConfig,
+    fallback_name: str = "",
+) -> tuple[str | None, str, tuple[str, str] | None]:
+    """Return ``(target, skip_reason, github)``.
+
+    A github.com origin must keep the configured Gitea owner so two GitHub
+    accounts cannot collapse onto the same backup name.  A project without a
+    GitHub origin (a local-only project, or one hosted elsewhere) is backed up
+    under its checkout folder name in the configured Gitea owner, which is what
+    makes a Gitea-only project possible.
+    """
+    if not cfg.url or not cfg.owner:
+        return None, "Gitea is not configured", None
     parsed = github_repo_from_url(origin)
-    if parsed is None:
+    if parsed is not None:
+        owner, name = parsed
+        if owner.lower() != cfg.owner.lower():
+            return None, f"github owner {owner} does not match gitea owner {cfg.owner}", parsed
+        return gitea_repo_url(cfg.url, cfg.owner, name), "", parsed
+    name = str(fallback_name or "").strip()
+    if not name:
         return None, "origin is not a github.com URL", None
-    owner, name = parsed
-    if owner.lower() != cfg.owner.lower():
-        return None, f"github owner {owner} does not match gitea owner {cfg.owner}", parsed
-    return gitea_repo_url(cfg.url, cfg.owner, name), "", parsed
+    if not REPO_NAME_RE.match(name):
+        return None, f"{name!r} is not a usable Gitea repository name", None
+    return gitea_repo_url(cfg.url, cfg.owner, name), "", None
+
+
+def provider_skips(values: Any) -> dict[str, bool]:
+    """Map a stored skip list to ``{"github": bool, "gitea": bool}``."""
+    if isinstance(values, str):
+        values = [values]
+    names = (
+        {str(item or "").strip().lower() for item in values}
+        if isinstance(values, (list, tuple, set))
+        else set()
+    )
+    return {provider: provider in names for provider in REPO_PROVIDERS}
+
+
+def repo_skips(settings: Settings, path: Path) -> dict[str, bool]:
+    mapping = normalize_repo_skips(settings.get("repo_skips"))
+    return provider_skips(mapping.get(str(path)))
 
 
 def discover_repos(
@@ -1040,7 +1076,13 @@ def is_shallow(repo: Path) -> bool:
     return result.returncode == 0 and result.stdout.strip() == "true"
 
 
-def repo_row(path: Path, root: Path, cfg: GiteaConfig) -> dict[str, Any]:
+def repo_row(
+    path: Path,
+    root: Path,
+    cfg: GiteaConfig,
+    skips: dict[str, bool] | None = None,
+) -> dict[str, Any]:
+    skips = {provider: bool((skips or {}).get(provider)) for provider in REPO_PROVIDERS}
     identity = repo_identity(path, root)
     status = _git(
         path,
@@ -1077,6 +1119,7 @@ def repo_row(path: Path, root: Path, cfg: GiteaConfig) -> dict[str, Any]:
             "origin": "",
             "github": None,
             "lfs": False,
+            "skips": skips,
             "gitea": {"status": "error", "detail": "cannot read project", "checked_at": 0},
             "needs": {"commit": False, "push": False, "gitea": False},
         }
@@ -1104,7 +1147,7 @@ def repo_row(path: Path, root: Path, cfg: GiteaConfig) -> dict[str, Any]:
         ahead, behind = _ahead_behind(path, upstream)
     has_commits = bool(parsed["head"] and parsed["head"] != "(initial)")
 
-    needs_push = bool(origin and not detached and has_commits and (
+    needs_push = bool(origin and not detached and has_commits and not skips["github"] and (
         (ahead is not None and ahead > 0) or (ahead is None and new_branch)
     ))
     entries = parsed["entries"]
@@ -1116,11 +1159,19 @@ def repo_row(path: Path, root: Path, cfg: GiteaConfig) -> dict[str, Any]:
     dirty = bool(entries)
     dirty_count = len(selectable_entries)
     ignored_count = len(ignored_entries)
-    target, skip_reason, github_pair = gitea_target(origin, cfg)
+    target, skip_reason, github_pair = gitea_target(origin, cfg, path.name)
     if github_pair and not github:
         github = github_pair
     lfs = _uses_lfs(path)
-    if lfs:
+    if skips["gitea"]:
+        gitea = {
+            "status": "skip",
+            "detail": "skipped in Projects — resume to check and mirror again",
+            "target": target,
+            "checked_at": 0,
+            "manual": True,
+        }
+    elif lfs:
         gitea = {
             "status": "skip",
             "detail": "Git LFS project — handle separately",
@@ -1171,6 +1222,7 @@ def repo_row(path: Path, root: Path, cfg: GiteaConfig) -> dict[str, Any]:
         "origin": redact(origin),
         "github": ({"owner": github[0], "repo": github[1], "url": github_url(*github)} if github else None),
         "lfs": lfs,
+        "skips": skips,
         "gitea": gitea,
         "needs": {
             "commit": dirty_count > 0,
@@ -1289,7 +1341,7 @@ def check_gitea(repo: Path, cfg: GiteaConfig, token: str) -> dict[str, Any]:
     except RepoError as exc:
         return {"status": "error", "detail": str(exc), "target": None, "checked_at": 0}
     origin = _origin(repo)
-    target, skip_reason, _ = gitea_target(origin, cfg)
+    target, skip_reason, _ = gitea_target(origin, cfg, repo.name)
     if _uses_lfs(repo):
         return {"status": "skip", "detail": "Git LFS project — handle separately", "target": target, "checked_at": 0}
     if skip_reason:
@@ -1453,7 +1505,7 @@ def sync_repo(
     except RepoError as exc:
         return {"ok": False, "status": "error", "detail": str(exc), "target": None}
     origin = _origin(repo)
-    target, skip_reason, _ = gitea_target(origin, cfg)
+    target, skip_reason, _ = gitea_target(origin, cfg, repo.name)
     base = {"target": target, "dry_run": dry_run, "ok": False}
     if _uses_lfs(repo):
         return {**base, "ok": True, "status": "skip", "detail": "Git LFS project — handle separately"}
@@ -1927,10 +1979,19 @@ class RepoFleet:
                 if entry.get("selected")
             ]
             rows: list[dict[str, Any]] = []
+            skips_map = normalize_repo_skips(self.settings.get("repo_skips"))
             if selected:
                 workers = min(4, max(1, len(selected)))
                 with ThreadPoolExecutor(max_workers=workers, thread_name_prefix="hlc-repo-scan") as pool:
-                    rows = list(pool.map(lambda item: repo_row(item[0], item[1], cfg), selected))
+                    rows = list(pool.map(
+                        lambda item: repo_row(
+                            item[0],
+                            item[1],
+                            cfg,
+                            provider_skips(skips_map.get(str(item[0]))),
+                        ),
+                        selected,
+                    ))
             # Carry the scan-only flags (nested opt-in, explicit root) onto the
             # status rows; repo_row only knows the checkout itself.
             entries_by_path = {entry["path"]: entry for entry in discovered_entries}
@@ -1970,6 +2031,8 @@ class RepoFleet:
                         and previous.get("head")
                         and previous.get("head") == row.get("head")
                         and previous_gitea.get("status") not in ("unknown", "checking", None)
+                        and previous_gitea.get("status") != "skip"
+                        and (row.get("gitea") or {}).get("status") != "skip"
                     ):
                         row["gitea"] = previous_gitea
                 self._snapshot = {
@@ -2389,6 +2452,45 @@ class RepoFleet:
             "errors": state.get("discovery_errors", []),
         }
 
+    def set_repo_skips(self, repo_id: str, raw: Any) -> dict[str, Any]:
+        """Mark GitHub and/or Gitea as skipped for one project.
+
+        A skipped destination is not pushed, checked or queued, and the row
+        reports ``skipped`` instead of ``behind``. The setting is a plain list
+        in ``repo_skips``, so sending ``[]`` (or omitting the provider) resumes
+        the destination without touching any git remote.
+        """
+        path, identity = self.resolve(repo_id)
+        if isinstance(raw, str):
+            raw = [raw]
+        elif isinstance(raw, dict):
+            raw = [name for name, skipped in raw.items() if skipped]
+        if not isinstance(raw, (list, tuple)):
+            raise RepoError("skipped must be a list of destinations")
+        skipped: list[str] = []
+        for item in raw:
+            name = str(item or "").strip().lower()
+            if name not in REPO_PROVIDERS:
+                raise RepoError(f"unknown destination: {item!r}")
+            if name not in skipped:
+                skipped.append(name)
+        mapping = normalize_repo_skips(self.settings.get("repo_skips"))
+        if skipped:
+            mapping[str(path)] = skipped
+        else:
+            mapping.pop(str(path), None)
+        self.settings.update({"repo_skips": mapping})
+        action = "skipping " + ", ".join(skipped) if skipped else "all destinations active"
+        self.store.add_event("repo", "info", f"{identity['rel']}: {action}")
+        self.refresh()
+        if "gitea" not in skipped:
+            self.recheck_gitea_async(repo_id)
+        return {
+            "ok": True,
+            "repo": identity["rel"],
+            "skips": {provider: provider in skipped for provider in REPO_PROVIDERS},
+        }
+
     def state(self) -> dict[str, Any]:
         with self._lock:
             payload = copy.deepcopy(self._snapshot)
@@ -2432,6 +2534,19 @@ class RepoFleet:
             if not row:
                 return
             previous = row.get("gitea") or {}
+            if repo_skips(self.settings, Path(row["path"]))["gitea"]:
+                row["gitea"] = {
+                    "status": "skip",
+                    "detail": "skipped in Projects — resume to check and mirror again",
+                    "target": result.get("target") or previous.get("target"),
+                    "checked_at": now,
+                    "manual": True,
+                }
+                row.setdefault("needs", {})["gitea"] = False
+                self._snapshot["summary"] = self._summary(
+                    self._snapshot.get("repos", []), self._snapshot.get("discovered") or []
+                )
+                return
             status = result.get("status") or "error"
             if status in ("created", "up-to-date"):
                 status = "synced"
@@ -2464,6 +2579,8 @@ class RepoFleet:
         row = self._row(repo_id)
         if not row:
             return None
+        if repo_skips(self.settings, Path(row["path"]))["gitea"]:
+            return None
         gitea = row.get("gitea") or {}
         if not gitea.get("target") or gitea.get("status") in ("skip", "checking"):
             return None
@@ -2490,6 +2607,8 @@ class RepoFleet:
             return False
         row = self._row(repo_id)
         if not row or not (row.get("gitea") or {}).get("target"):
+            return False
+        if repo_skips(self.settings, Path(row["path"]))["gitea"]:
             return False
         if (row.get("gitea") or {}).get("status") in ("skip", "auth", "unreachable", "error", "checking"):
             return False
@@ -2808,6 +2927,8 @@ class RepoFleet:
 
     def push_github(self, repo_id: str, *, post_action: bool = True) -> dict[str, Any]:
         path, identity = self.resolve(repo_id)
+        if repo_skips(self.settings, path)["github"]:
+            return {"ok": True, "status": "skip", "detail": "GitHub is skipped for this project"}
         try:
             _ensure_repo_config_safe(path)
         except RepoError as exc:
@@ -2861,6 +2982,14 @@ class RepoFleet:
         post_action: bool = True,
     ) -> dict[str, Any]:
         path, identity = self.resolve(repo_id)
+        skips = repo_skips(self.settings, path)
+        if skips["gitea"]:
+            return {
+                "ok": True,
+                "status": "skip",
+                "detail": "Gitea is skipped for this project",
+                "target": (self._row(repo_id) or {}).get("gitea", {}).get("target"),
+            }
         try:
             cfg = gitea_config(self.settings)
         except RepoError as exc:
@@ -2914,14 +3043,21 @@ class RepoFleet:
         for repo_id in dict.fromkeys(wanted):
             row = by_id[repo_id]
             gitea = row.get("gitea") or {}
+            skips = row.get("skips") or {}
             github_state = "pending" if row.get("needs", {}).get("push") else "skipped"
             github_detail = "" if github_state == "pending" else "up to date"
-            if not row.get("origin"):
+            if skips.get("github"):
+                github_state = "skipped"
+                github_detail = "skipped for this project"
+            elif not row.get("origin"):
                 github_state = "skipped"
                 github_detail = "no origin remote"
             gitea_state = "pending"
             gitea_detail = ""
-            if not gitea.get("target"):
+            if skips.get("gitea"):
+                gitea_state = "skipped"
+                gitea_detail = "skipped for this project"
+            elif not gitea.get("target"):
                 gitea_state = "skipped"
                 gitea_detail = gitea.get("detail") or "not eligible for Gitea"
             elif gitea.get("status") == "skip":

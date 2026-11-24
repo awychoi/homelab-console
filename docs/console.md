@@ -4,8 +4,8 @@
 
 A local web app for the Mac with two workspaces: **Pi fleet** (status,
 guided ed25519 onboarding, reviewable deploys, upstream release checks and
-opt-in updates) and **Repos** (the local GitHub checkouts, their Gitea
-backup and a project dashboard).
+opt-in updates) and **Repos** (the local git checkouts, their GitHub and Gitea
+destinations and a project dashboard).
 
 ![Fleet dashboard, dark theme](assets/screenshots/fleet.png)
 
@@ -361,7 +361,10 @@ HTTP API and git commands still use repository terminology.
   (`.env`-family files and ignored paths are refused); **Push** sends the
   current branch with your credential helper; **Check Gitea** compares refs, and
   the Gitea action runs the dry run and mirrors heads/tags in one step;
-  **Queue both** runs GitHub → Gitea serially. A project action that is running
+  **Queue both** runs GitHub → Gitea serially. The **target** button on a row
+  skips either destination for that project (reversibly); a skipped row shows
+  `skipped` instead of `N ahead` or `behind`, and is left out of checks and the
+  queue. A project action that is running
   keeps its chip disabled and spinning across background polls, so a slow push
   or mirror cannot be clicked twice; the same project waits for the first
   action to finish. Background polls only replace the view when the snapshot
@@ -405,6 +408,14 @@ pull, network call or destructive git action is performed by Pulse.
   date`, `2 behind`, `local only`); **Push** is the action that sends the
   current branch. A repo with no upstream still reports ahead/behind against
   `origin/<branch>` when that ref exists.
+- **Destinations are per project and reversible.** The target button on a row
+  (or the `skipped` chip) opens **Push and mirror destinations**. Skipping
+  GitHub leaves local commits unpushed without changing the remote, so the row
+  says `skipped` rather than `N ahead`; skipping Gitea stops its ref checks and
+  shows `skipped` rather than `missing` or `behind`. Skipped destinations stay
+  out of **Check Gitea** and the queue until resumed. The choice is stored by
+  absolute project path in `repo_skips`, so it survives a restart and is
+  included in Backup & restore.
 - The dashboard highlights up to nine tasks that need action and offers
   **Review** shortcuts into the filtered Projects table. Conflicts, local
   changes, push work and backup gaps are called out; dirty items include staged,
@@ -451,12 +462,18 @@ pull, network call or destructive git action is performed by Pulse.
   are configured once in **Settings → Repos**; enabling prune shows the
   destructive warning there. With prune off, extra refs on Gitea are left in
   place and do not count as out of sync. Missing Gitea projects rely on
-  push-to-create. LFS, shallow and unrelated-history projects are skipped with
-  a reason; the duplicate-history check runs before any write.
+  push-to-create. A project with a GitHub origin targets
+  `<gitea_owner>/<github repo>` and the origin owner must match `gitea_owner`;
+  a project without a GitHub origin (local-only, or hosted elsewhere) targets
+  `<gitea_owner>/<folder name>`, so it can be backed up without ever being
+  pushed to GitHub. LFS, shallow and unrelated-history projects are skipped
+  with a reason; the duplicate-history check runs before any write.
 - **Queue both** is a serial queue: GitHub push (when the current branch is
-  ahead), then Gitea mirror, per project. If GitHub fails, Gitea is still backed
-  up and the queue continues. The full run is streamed in the usual run log
-  and the queue card retains per-project GitHub/Gitea results.
+  ahead and GitHub is not skipped), then Gitea mirror (unless Gitea is
+  skipped), per project. If GitHub fails, Gitea is still backed up and the
+  queue continues. A manually skipped destination is reported as `skipped`
+  and never attempted. The full run is streamed in the usual run log and the
+  queue card retains per-project GitHub/Gitea results.
 - Automatic Gitea ref checks (`gitea_check_on_start`) run **once at startup**,
   queued behind the first local scan, and recheck the **affected project after a
   commit or GitHub push**; **Check Gitea** always works on demand. There is no
@@ -682,9 +699,11 @@ snapshot repo files
 - **Single operator, local.** No users, no auth server, no remote access. Use
   an SSH tunnel for remote use.
 - **Repos is GitHub/Gitea, not a general Git host manager.** It pushes
-  the current branch to GitHub and mirrors heads/tags to one configured Gitea
-  owner. It does not create GitHub repos, manage branches, rebase, pull, or
-  force-push GitHub.
+  the current branch to GitHub when the project has an origin and GitHub is not
+  skipped, and mirrors heads/tags to one configured Gitea owner. A project
+  without a GitHub origin uses its folder name for the Gitea target, so it can
+  be Gitea-only. It does not create GitHub repos, manage branches, rebase, pull,
+  or force-push GitHub. Either destination can be skipped per project.
 - **Gitea is a backup, not a second push URL.** The console never edits
   `remote.origin.pushurl`; ordinary `git push` stays GitHub-only.
 - **No auto-commit.** The commit dialog stages only the checked paths and
@@ -774,6 +793,7 @@ must carry a same-origin `Origin`. SSE uses a short-lived, run-scoped
 | POST | `/api/repos/<id>/app` | link an app (`{"path": "..."}`, empty to clear) |
 | POST | `/api/repos/<id>/app/open` | launch the linked app |
 | POST | `/api/repos/<id>/dependencies` | replace the tracked upstream repositories |
+| POST | `/api/repos/<id>/skips` | skip GitHub/Gitea for one project (`{"skipped": ["gitea"]}`; `[]` resumes) |
 | POST | `/api/repos/dependencies/check` | refresh newest releases for every tracked dependency |
 | POST | `/api/repos/selection` | save per-root repo exclusions |
 | POST | `/api/repos/refresh` | rescan local project status |
@@ -821,10 +841,11 @@ Persisted in `.hlc/config.json` (mode 600) and editable in Settings.
 | `repo_nested_selected` | `{}` | nested projects opted into Repos |
 | `repo_apps` | `{}` | project path → linked `.app` bundle |
 | `repo_dependencies` | `{}` | project path → `[{ "repo": "owner/name" }]` |
+| `repo_skips` | `{}` | project path → skipped destinations (`["github"]`, `["gitea"]`, or both) |
 | `dependencies_check_on_start` | true | one cached upstream release lookup at startup |
 | `dismissed_notices` | `{}` | page banners/warnings closed by the operator; restored from Appearance |
 | `gitea_url` | empty | backup server base URL; empty disables Gitea |
-| `gitea_owner` | empty | must match the GitHub owner; empty disables Gitea |
+| `gitea_owner` | empty | must match the GitHub owner when a GitHub origin exists; local-only projects use the folder name; empty disables Gitea |
 | `gitea_timeout_s` | 120 | push/fetch timeout; ref checks cap at 15s |
 | `gitea_prune` | true | delete Gitea refs absent locally; warning shown in Settings |
 | `gitea_force` | true | allow rewritten history to update Gitea |
@@ -849,7 +870,7 @@ sent as a header, so prefer HTTPS.
 .venv/bin/python -m unittest discover -s app/tests -v
 ```
 
-The suite is stdlib-only (254 tests) and covers compose parsing, nested file
+The suite is stdlib-only (277 tests) and covers compose parsing, nested file
 creation, stack-file saves with base hashes, stack-layout warnings, plan
 hashing, pin rewriting, host round-trips,
 SSH config edits, version selection, managed targets, release-age metadata,
@@ -858,7 +879,8 @@ listing, path safety, snapshots, recursive project discovery and selection, and
 the Repos workspace: porcelain-v2 status, selective commits, ignored tracked paths,
 ahead/behind-origin reporting, connectivity probes, one-repo post-action Gitea
 checks, VS Code launch, Gitea create/update/prune/force (including prune-off
-extras), unrelated-history and LFS skips, token masking, the queue failure
+extras), Gitea-only targets and per-project destination skips, unrelated-history
+and LFS skips, token masking, the queue failure
 policy and the encoded-id HTTP route. There is no build step; edit `app/web/`, reload the page, and the server
 serves the new modules with `no-cache` (the HTML is served `no-store`).
 

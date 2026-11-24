@@ -118,7 +118,7 @@ function attentionItems(repos) {
 
 function attentionHtml(items) {
   if (!items.length) {
-    return `<div class="card"><div class="card-body attention-empty"><span class="status-dot ok"></span><span class="muted">Every project is clean, pushed to GitHub and backed up.</span></div></div>`;
+    return `<div class="card"><div class="card-body attention-empty"><span class="status-dot ok"></span><span class="muted">Every project is clean and its active destinations are current.</span></div></div>`;
   }
   return `<div class="card"><ul class="attention-list">
     ${items.slice(0, 9).map((item) => `<li class="attention-item">
@@ -172,6 +172,7 @@ function contentHtml(ctx) {
   const behind = repos.filter((repo) => repo.behind > 0).length;
   const authErrors = repos.filter((repo) => repo.gitea?.status === 'auth').length;
   const giteaBehind = repos.filter((repo) => ['behind', 'missing'].includes(repo.gitea?.status)).length;
+  const githubSkipped = repos.filter((repo) => repo.skips?.github).length;
   const items = attentionItems(repos);
   const giteaConfigured = snapshot.gitea_configured !== false;
   const backup = backupSummary(repos, { configured: giteaConfigured });
@@ -192,7 +193,7 @@ function contentHtml(ctx) {
   <div class="grid cols-4 mb-2">
     ${statTile({ label: 'Projects', value: String(summary.total || 0), sub: `${summary.github || 0} with GitHub · ${(summary.total || 0) - (summary.github || 0)} local-only`, iconName: 'git' })}
     ${statTile({ label: 'Files to commit', value: String(summary.dirty_files || 0), sub: summary.dirty_repos ? `${ui.plural(summary.dirty_repos, 'project')} dirty${summary.ignored_files ? ` · ${summary.ignored_files} ignored hidden` : ''}` : 'all working trees clean', iconName: 'commit', toneName: summary.dirty_repos ? 'warn' : 'ok', valueTone: summary.dirty_repos ? 'text-warn' : '' })}
-    ${statTile({ label: 'Commits to push', value: String(summary.ahead_commits || 0), sub: summary.ahead_repos ? `${ui.plural(summary.ahead_repos, 'project')} ahead of GitHub` : 'GitHub is current', iconName: 'upload', toneName: summary.ahead_repos ? 'warn' : 'ok', valueTone: summary.ahead_repos ? 'text-warn' : '' })}
+    ${statTile({ label: 'Commits to push', value: String(summary.ahead_commits || 0), sub: summary.ahead_repos ? `${ui.plural(summary.ahead_repos, 'project')} ahead of GitHub` : githubSkipped ? `${ui.plural(githubSkipped, 'project')} skipping GitHub` : 'GitHub is current', iconName: 'upload', toneName: summary.ahead_repos ? 'warn' : 'ok', valueTone: summary.ahead_repos ? 'text-warn' : '' })}
     ${statTile({
       label: 'Backup coverage',
       value: !backup.configured || !backup.checked || !backup.eligible ? '—' : `${backup.synced}<small> / ${backup.eligible}</small>`,
